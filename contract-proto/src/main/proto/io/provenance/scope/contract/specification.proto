@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "Specifications";
+
+import "io/provenance/scope/contract/common.proto";
+
+message ScopeSpec {
+    string name = 1;
+    string description = 2;
+    string website_url = 3;
+    string icon_url = 4;
+    repeated PartyType parties_involved = 5;
+}
+
+message ContractSpec {
+    reserved "consideration_specs";
+    reserved 5;
+
+    DefinitionSpec definition = 1;
+    repeated DefinitionSpec input_specs = 2;
+    repeated PartyType parties_involved = 3;
+    repeated ConditionSpec condition_specs = 4;
+    repeated FunctionSpec function_specs = 6;
+}
+
+message ConditionSpec {
+    string func_name = 1;
+    repeated DefinitionSpec input_specs = 2;
+    OutputSpec output_spec = 3;
+}
+
+message FunctionSpec {
+    reserved "responsible_party";
+    reserved 2;
+
+    string func_name = 1;
+
+    PartyType invoker_party = 5;
+
+    repeated DefinitionSpec input_specs = 3;
+    OutputSpec output_spec = 4;
+}
+
+enum PartyType {
+    reserved "MARKER";
+    reserved 9;
+
+    NONE = 0;
+    ORIGINATOR = 1;
+    SERVICER = 2;
+    INVESTOR = 3;
+    CUSTODIAN = 4;
+    OWNER = 5;
+    AFFILIATE = 6;
+    OMNIBUS = 7;
+    PROVENANCE = 8;
+}
