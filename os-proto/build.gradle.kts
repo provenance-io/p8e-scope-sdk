@@ -22,11 +22,6 @@ plugins {
     id("com.google.protobuf")
 }
 
-repositories {
-    // Use Maven Central for resolving dependencies.
-    mavenCentral()
-}
-
 sourceSets {
     main {
         java {

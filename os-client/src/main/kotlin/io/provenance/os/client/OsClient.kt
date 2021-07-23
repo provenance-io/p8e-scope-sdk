@@ -1,14 +1,14 @@
 package io.provenance.os.client
 
-import com.google.protobuf.Message
 import com.google.protobuf.ByteString
+import com.google.protobuf.Message
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
-import io.p8e.proto.PK
 import io.p8e.crypto.SignerImpl
 import io.p8e.crypto.sign
-//import io.p8e.util.toByteString
-//import io.p8e.util.toHex
+import io.p8e.proto.PK
+import io.p8e.util.toByteString
+import io.p8e.util.toHex
 import io.provenance.p8e.encryption.dime.ProvenanceDIME
 import io.provenance.p8e.encryption.ecies.ECUtils
 import io.provenance.os.util.CertificateUtil
@@ -23,14 +23,10 @@ import objectstore.Object
 import objectstore.Object.Chunk.ImplCase
 import objectstore.PublicKeyServiceGrpc
 import objectstore.PublicKey as ObjectStorePrivateKey
-import io.provenance.os.util.base64Decode
-import io.provenance.p8e.encryption.model.KeyRef
 import io.provenance.os.util.toHexString
 import io.provenance.os.util.toPublicKeyProtoOS
 import io.provenance.proto.encryption.EncryptionProtos.ContextType.RETRIEVAL
 import objectstore.Util
-import org.bouncycastle.asn1.tsp.EncryptionInfo
-import org.bouncycastle.jce.interfaces.ECPublicKey
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -76,31 +72,13 @@ open class OsClient(
         mailboxBlockingClient.ack(request)
     }
 
-    // TODO Move this to a more local place. Also found in Util.kt
-    fun PublicKey.toPublicKeyProto(): PK.PublicKey =
-        PK.PublicKey.newBuilder()
-            .setCurve(PK.KeyCurve.SECP256K1)
-            .setType(PK.KeyType.ELLIPTIC)
-            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
-            .setCompressed(false)
-            .build()
-    /**
-     * Converts an EC public key to a byte array by encoding Q point parameter.
-     *
-     * @param publicKey An EC public key to be converted.
-     * @return A byte array representation of the EC public key.
-     */
-    fun convertPublicKeyToBytes(publicKey: PublicKey): ByteArray {
-        return (publicKey as ECPublicKey).q.getEncoded(false)
-    }
     fun ByteArray.toByteString() = ByteString.copyFrom(this)
     fun PublicKey.toHex() = toPublicKeyProto().toHex()
-
 
     fun mailboxGet(publicKey: PublicKey, maxResults: Int): Sequence<Pair<UUID, DIMEInputStream>> {
         val response = mailboxBlockingClient.get(
             Mailbox.GetRequest.newBuilder()
-                .setPublicKey(convertPublicKeyToBytes(publicKey).toByteString())
+                .setPublicKey(ECUtils.convertPublicKeyToBytes(publicKey).toByteString())
                 .setMaxResults(maxResults)
                 .build()
         )
@@ -124,7 +102,7 @@ open class OsClient(
         objectAsyncClient.get(
             Object.HashRequest.newBuilder()
                 .setHash(sha512.toByteString())
-                .setPublicKey(convertPublicKeyToBytes(publicKey).toByteString())
+                .setPublicKey(ECUtils.convertPublicKeyToBytes(publicKey).toByteString())
                 .build(),
             BufferedStreamObserver(errorHandler = { error = it; finishLatch.countDown() }) { buffer, startTimeMs ->
                 val iterator = buffer.iterator()
@@ -297,6 +275,8 @@ class SingleResponseObserver<T> : StreamObserver<T> {
         finishLatch.countDown()
     }
 }
+// TODO this will be externalized with above todo
+fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
 fun propertyChunkRequest(pair: Pair<String, ByteArray>): Object.ChunkBidi =
     Object.ChunkBidi.newBuilder()

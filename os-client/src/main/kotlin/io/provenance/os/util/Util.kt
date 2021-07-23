@@ -1,7 +1,8 @@
 package io.provenance.os.util
 
 import com.google.common.hash.Hashing
-import io.p8e.util.toByteString
+import com.google.protobuf.ByteString
+//import io.p8e.util.toByteString
 import io.provenance.p8e.encryption.ecies.ECUtils
 import objectstore.Util
 import java.io.InputStream
@@ -44,6 +45,9 @@ fun InputStream.readAllBytes(contentLength: Int) = use { inputStream ->
         } while (read > 0)
     }
 }
+
+// TODO this will be externalized with todo comment in OsClient.kt
+fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
 fun PublicKey.toPublicKeyProtoOS(): Util.PublicKey =
     Util.PublicKey.newBuilder()

@@ -9,6 +9,7 @@ repositories {
 
 dependencies {
     compile(project(":os-proto"))
+    compile(project(":encryption"))
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
     implementation("io.grpc", "grpc-stub", Version.grpc_version)
