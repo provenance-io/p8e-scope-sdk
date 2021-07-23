@@ -2,13 +2,8 @@ package io.provenance.p8e.encryption.model
 
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.util.*
+import java.util.UUID
 
-data class ExternalKeyRef(val uuid: UUID, val publicKey: PublicKey)
-
-data class KeyRef(val publicKey: PublicKey, val privateKey: PrivateKey?, val uuid: UUID?, val type: KeyProviders)
-
-enum class KeyProviders {
-    DATABASE,
-    SMARTKEY,
-}
+sealed class KeyRef(val publicKey: PublicKey)
+class SmartKeyRef(publicKey: PublicKey, val uuid: UUID) : KeyRef(publicKey)
+class DirectKeyRef(publicKey: PublicKey, val privateKey: PrivateKey) : KeyRef(publicKey)

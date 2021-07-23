@@ -4,8 +4,9 @@ import io.provenance.p8e.encryption.aes.ProvenanceAESCrypt
 import io.provenance.p8e.encryption.experimental.extensions.toAgreeKey
 import io.provenance.p8e.encryption.experimental.extensions.toTransientSecurityObject
 import io.provenance.p8e.encryption.kdf.ProvenanceHKDFSHA256
-import io.provenance.p8e.encryption.model.KeyProviders.SMARTKEY
+import io.provenance.p8e.encryption.model.DirectKeyRef
 import io.provenance.p8e.encryption.model.KeyRef
+import io.provenance.p8e.encryption.model.SmartKeyRef
 import org.slf4j.LoggerFactory
 import java.security.InvalidKeyException
 import java.security.PublicKey
@@ -70,17 +71,19 @@ class ProvenanceECIESCipher {
     @Throws(ProvenanceECIESDecryptException::class)
     fun decrypt(payload: ProvenanceECIESCryptogram, keyRef: KeyRef, additionalAuthenticatedData: String?): ByteArray {
         try {
+            val ephemeralDerivedSecretKey = when (keyRef) {
+                is SmartKeyRef -> {
+                    // Create a transient security object out of the ephemeral public key from the payload.
+                    val transientEphemeralSObj = payload.ephemeralPublicKey.toTransientSecurityObject()
 
-            val ephemeralDerivedSecretKey = if(keyRef.type == SMARTKEY) {
-                // Create a transient security object out of the ephemeral public key from the payload.
-                val transientEphemeralSObj = payload.ephemeralPublicKey.toTransientSecurityObject()
-
-                // Compute the shared/agree key via SmartKey's API
-                val secretKey = keyRef.uuid.toString().toAgreeKey(transientEphemeralSObj.transientKey)
-                ProvenanceHKDFSHA256.derive(secretKey.value, null, ECUtils.KDF_SIZE)
-            } else {
-                val secretKey = ProvenanceKeyGenerator.computeSharedKey(keyRef.privateKey!!, payload.ephemeralPublicKey)
-                ProvenanceHKDFSHA256.derive(ECUtils.convertSharedSecretKeyToBytes(secretKey), null, ECUtils.KDF_SIZE)
+                    // Compute the shared/agree key via SmartKey's API
+                    val secretKey = keyRef.uuid.toString().toAgreeKey(transientEphemeralSObj.transientKey)
+                    ProvenanceHKDFSHA256.derive(secretKey.value, null, ECUtils.KDF_SIZE)
+                }
+                is DirectKeyRef -> {
+                    val secretKey = ProvenanceKeyGenerator.computeSharedKey(keyRef.privateKey, payload.ephemeralPublicKey)
+                    ProvenanceHKDFSHA256.derive(ECUtils.convertSharedSecretKeyToBytes(secretKey), null, ECUtils.KDF_SIZE)
+                }
             }
 
             // Validate data MAC value

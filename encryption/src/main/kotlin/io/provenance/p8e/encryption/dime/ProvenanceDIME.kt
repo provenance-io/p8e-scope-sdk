@@ -17,7 +17,6 @@ import io.provenance.p8e.encryption.model.DIMEProcessingModel
 import io.provenance.p8e.encryption.model.DIMEStreamProcessingModel
 import objectstore.Util
 import io.provenance.p8e.encryption.ecies.ProvenanceECIESCipher
-import io.provenance.p8e.encryption.model.KeyProviders.DATABASE
 import io.provenance.p8e.encryption.model.KeyRef
 import io.provenance.proto.encryption.EncryptionProtos
 import io.provenance.proto.encryption.EncryptionProtos.Audience

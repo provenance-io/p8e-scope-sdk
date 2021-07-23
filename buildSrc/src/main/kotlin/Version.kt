@@ -3,6 +3,8 @@ object Version {
 
     const val kotlin = "1.4.31"
     const val protobuf = "3.6.1"
+    const val guava = "30.1.1-jre"
+    const val fortanixKms = "3.23.1408"
 
     const val bouncy_castle = "1.68"
     const val grpc_version = "1.36.2"

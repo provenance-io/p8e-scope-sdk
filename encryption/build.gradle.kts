@@ -12,22 +12,21 @@ dependencies {
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
     implementation("org.bouncycastle", "bcprov-jdk15on", Version.bouncy_castle)
 
-    implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
-    implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
-
     // GRPC
     implementation("io.grpc", "grpc-protobuf", Version.grpc_version)
-    implementation("io.grpc", "grpc-stub", Version.grpc_version)
 
+    implementation("com.google.guava:guava:${Version.guava}")
+
+    // TODO how to log in a library? What logging framework should this be?
     implementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
 
+    implementation("com.fasterxml.jackson.core", "jackson-annotations", Version.jackson_version)
     implementation("com.fasterxml.jackson.core", "jackson-core", Version.jackson_version)
     implementation("com.fasterxml.jackson.core", "jackson-databind", Version.jackson_version)
     implementation("com.fasterxml.jackson.datatype", "jackson-datatype-jsr310", Version.jackson_version)
     implementation("com.fasterxml.jackson.module", "jackson-module-kotlin", Version.jackson_version)
-    implementation("com.fasterxml.jackson.core", "jackson-annotations", Version.jackson_version)
 
-    implementation("com.fortanix", "sdkms-client", "3.23.1408")
+    implementation("com.fortanix", "sdkms-client", Version.fortanixKms)
 }
 
 sourceSets {
