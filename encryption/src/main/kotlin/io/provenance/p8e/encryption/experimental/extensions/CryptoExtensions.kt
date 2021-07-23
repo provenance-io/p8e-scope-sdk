@@ -18,7 +18,7 @@ import io.provenance.p8e.encryption.experimental.aes.randomIv
 import io.provenance.p8e.encryption.experimental.ecies.HmacVerification
 import io.provenance.p8e.encryption.experimental.ecies.eciesDecrypt
 import io.provenance.p8e.encryption.experimental.ecies.eciesEncrypt
-import io.provenance.proto.encryption.EncryptionProtos
+import io.provenance.scope.encryption.proto.Encryption.Audience
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.util.*
@@ -73,7 +73,7 @@ fun ByteArray.toSecretKeySpec() = ProvenanceAESCrypt.secretKeySpecGenerate(this)
 /**
  *
  */
-fun EncryptionProtos.Audience.toCryptogram(): ProvenanceECIESCryptogram {
+fun Audience.toCryptogram(): ProvenanceECIESCryptogram {
     return ProvenanceECIESCryptogram(
             Base64.getDecoder().decode(ephemeralPubkey.toStringUtf8()).toPublicKey(),
             Base64.getDecoder().decode(tag.toStringUtf8()),

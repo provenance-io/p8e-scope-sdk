@@ -5,14 +5,9 @@ plugins {
 }
 
 dependencies {
-    // TODO needed for proto utils UUID and AuditFields
-    compile(project(":os-proto"))
-
-    // Encryption
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
     implementation("org.bouncycastle", "bcprov-jdk15on", Version.bouncy_castle)
 
-    // GRPC
     implementation("io.grpc", "grpc-protobuf", Version.grpc_version)
 
     implementation("com.google.guava:guava:${Version.guava}")
@@ -32,13 +27,7 @@ dependencies {
 sourceSets {
     main {
         java {
-            srcDir("src/main/kotlin")
             srcDir("build/generated/source/proto/main/java")
-        }
-    }
-    test {
-        java {
-            srcDirs("src/test/kotlin")
         }
     }
 }
