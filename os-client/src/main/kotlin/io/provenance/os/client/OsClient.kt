@@ -275,8 +275,6 @@ class SingleResponseObserver<T> : StreamObserver<T> {
         finishLatch.countDown()
     }
 }
-// TODO this will be externalized with above todo
-fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
 fun propertyChunkRequest(pair: Pair<String, ByteArray>): Object.ChunkBidi =
     Object.ChunkBidi.newBuilder()

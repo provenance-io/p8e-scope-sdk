@@ -46,9 +46,6 @@ fun InputStream.readAllBytes(contentLength: Int) = use { inputStream ->
     }
 }
 
-// TODO this will be externalized with todo comment in OsClient.kt
-fun ByteArray.toByteString() = ByteString.copyFrom(this)
-
 fun PublicKey.toPublicKeyProtoOS(): Util.PublicKey =
     Util.PublicKey.newBuilder()
         .setSecp256K1(ECUtils.convertPublicKeyToBytes(this).toByteString())
