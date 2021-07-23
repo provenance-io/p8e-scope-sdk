@@ -3,6 +3,7 @@ package io.provenance.os.domain.inputstream
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicLong
 
+// TODO can be removed - this isn't used for anything
 class LimitedInputStream(
     private val inputStream: InputStream,
     private val limit: Long,

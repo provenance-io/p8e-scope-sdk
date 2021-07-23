@@ -1,26 +1,12 @@
 import com.google.protobuf.gradle.*
 
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.google.protobuf:protobuf-gradle-plugin:0.8.7")
-    }
-}
-
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.4.31"
-    `java-library`
     id("com.google.protobuf")
 }
 
 dependencies {
-//    compile project(":p8e-proto-internal")
-
+    // TODO needed for proto utils UUID and AuditFields
     compile(project(":os-proto"))
-
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     // Encryption
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
@@ -33,23 +19,15 @@ dependencies {
     implementation("io.grpc", "grpc-protobuf", Version.grpc_version)
     implementation("io.grpc", "grpc-stub", Version.grpc_version)
 
-    // Align versions of all Kotlin components
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+    implementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
 
-    // Use the Kotlin JDK 8 standard library.
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("com.fasterxml.jackson.core", "jackson-core", Version.jackson_version)
+    implementation("com.fasterxml.jackson.core", "jackson-databind", Version.jackson_version)
+    implementation("com.fasterxml.jackson.datatype", "jackson-datatype-jsr310", Version.jackson_version)
+    implementation("com.fasterxml.jackson.module", "jackson-module-kotlin", Version.jackson_version)
+    implementation("com.fasterxml.jackson.core", "jackson-annotations", Version.jackson_version)
 
-    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    implementation("com.google.guava:guava:30.1-jre")
-
-    // Use the Kotlin test library.
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-
-    // Use the Kotlin JUnit integration.
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
-
-    // This dependency is exported to consumers, that is to say found on their compile classpath.
-    api("org.apache.commons:commons-math3:3.6.1")
+    implementation("com.fortanix", "sdkms-client", "3.23.1408")
 }
 
 sourceSets {

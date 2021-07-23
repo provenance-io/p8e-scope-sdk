@@ -6,6 +6,3 @@ build
 
 # Ignore idea
 .idea
-
-# Ignore os-proto folder
-os-proto/src/main/proto

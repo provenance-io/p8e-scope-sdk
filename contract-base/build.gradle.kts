@@ -1,7 +1,3 @@
-plugins {
-    id("org.jetbrains.kotlin.jvm") version Version.kotlin
-}
-
 dependencies {
     api(project(":contract-proto"))
 

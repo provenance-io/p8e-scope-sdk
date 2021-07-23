@@ -1,17 +1,13 @@
 package io.provenance.os.domain.inputstream
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import io.p8e.crypto.SignatureInputStream
 import io.p8e.crypto.SignerImpl
 import io.p8e.crypto.verify
-import io.p8e.util.base64String
 import io.provenance.p8e.encryption.dime.ProvenanceDIME
 import io.provenance.p8e.encryption.util.ByteUtil
 import io.provenance.p8e.encryption.util.ByteUtil.writeUInt16
 import io.provenance.p8e.encryption.util.ByteUtil.writeUInt32
-import io.p8e.util.configureProvenance
-import io.p8e.util.toHex
 import io.provenance.p8e.encryption.util.HashingCipherInputStream
 import io.provenance.os.domain.Signature
 import io.provenance.os.util.CertificateUtil
@@ -23,7 +19,6 @@ import java.io.EOFException
 import java.io.FilterInputStream
 import java.io.InputStream
 import java.nio.ByteBuffer
-import java.security.KeyPair
 import java.security.MessageDigest
 import java.security.PublicKey
 import java.util.UUID

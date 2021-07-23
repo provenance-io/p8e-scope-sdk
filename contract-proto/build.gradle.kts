@@ -6,7 +6,6 @@ import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version Version.kotlin
     id("com.google.protobuf")
 }
 

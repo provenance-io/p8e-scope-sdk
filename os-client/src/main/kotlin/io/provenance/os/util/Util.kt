@@ -2,7 +2,6 @@ package io.provenance.os.util
 
 import com.google.common.hash.Hashing
 import com.google.protobuf.ByteString
-//import io.p8e.util.toByteString
 import io.provenance.p8e.encryption.ecies.ECUtils
 import objectstore.Util
 import java.io.InputStream
@@ -47,9 +46,11 @@ fun InputStream.readAllBytes(contentLength: Int) = use { inputStream ->
 }
 
 fun PublicKey.toPublicKeyProtoOS(): Util.PublicKey =
-    Util.PublicKey.newBuilder()
-        .setSecp256K1(ECUtils.convertPublicKeyToBytes(this).toByteString())
-        .build()
+    with (ECUtils.convertPublicKeyToBytes(this)) {
+        Util.PublicKey.newBuilder()
+            .setSecp256K1(ByteString.copyFrom(this))
+            .build()
+    }
 
 object Util {
     fun getFullPath(bucket: String, name: String) = "$bucket/$name"

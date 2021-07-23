@@ -1,13 +1,11 @@
 syntax = "proto3";
 
-package encryption;
-
-option java_package = "io.provenance.proto.encryption";
+package objectstore;
 
 import "util.proto";
 
 message DIME {
-    objectstore.UUID uuid                      = 1; // Unique identifier for this entity on the block chain
+    UUID uuid                      = 1; // Unique identifier for this entity on the block chain
     Audience owner                 = 2; // Convienient structure for enforcing owner specification/encryption access to payload
 
     map<string, string> metadata   = 3; // Clear text metadata key/values associated with this payload
@@ -15,7 +13,7 @@ message DIME {
     repeated Audience audience     = 4; // DEKs for Processing and Retrieval
     repeated Payload payload       = 5; // A set of encrypted payloads
 
-    objectstore.AuditFields audit_fields = 99;
+    AuditFields audit_fields = 99;
 }
 
 enum ContextType {

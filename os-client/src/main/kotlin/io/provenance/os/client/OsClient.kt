@@ -4,11 +4,6 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.grpc.ManagedChannelBuilder
 import io.grpc.stub.StreamObserver
-import io.p8e.crypto.SignerImpl
-import io.p8e.crypto.sign
-import io.p8e.proto.PK
-import io.p8e.util.toByteString
-import io.p8e.util.toHex
 import io.provenance.p8e.encryption.dime.ProvenanceDIME
 import io.provenance.p8e.encryption.ecies.ECUtils
 import io.provenance.os.util.CertificateUtil
@@ -72,13 +67,11 @@ open class OsClient(
         mailboxBlockingClient.ack(request)
     }
 
-    fun ByteArray.toByteString() = ByteString.copyFrom(this)
-    fun PublicKey.toHex() = toPublicKeyProto().toHex()
-
     fun mailboxGet(publicKey: PublicKey, maxResults: Int): Sequence<Pair<UUID, DIMEInputStream>> {
+        val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
         val response = mailboxBlockingClient.get(
             Mailbox.GetRequest.newBuilder()
-                .setPublicKey(ECUtils.convertPublicKeyToBytes(publicKey).toByteString())
+                .setPublicKey(ByteString.copyFrom(ecPublicKey))
                 .setMaxResults(maxResults)
                 .build()
         )
@@ -98,11 +91,12 @@ open class OsClient(
         val finishLatch = CountDownLatch(1)
         var error: Throwable? = null
         val bytes = ByteArrayOutputStream()
+        val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
 
         objectAsyncClient.get(
             Object.HashRequest.newBuilder()
-                .setHash(sha512.toByteString())
-                .setPublicKey(ECUtils.convertPublicKeyToBytes(publicKey).toByteString())
+                .setHash(ByteString.copyFrom(sha512))
+                .setPublicKey(ByteString.copyFrom(ecPublicKey))
                 .build(),
             BufferedStreamObserver(errorHandler = { error = it; finishLatch.countDown() }) { buffer, startTimeMs ->
                 val iterator = buffer.iterator()
