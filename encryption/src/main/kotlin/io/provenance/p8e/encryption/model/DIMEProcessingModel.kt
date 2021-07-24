@@ -3,8 +3,8 @@ package io.provenance.p8e.encryption.model
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.provenance.p8e.encryption.aes.ProvenanceAESCrypt
 import io.provenance.p8e.encryption.dime.ProvenanceDIME
-import io.provenance.scope.encryption.proto.Encryption.Audience
-import io.provenance.scope.encryption.proto.Encryption.DIME
+import io.provenance.scope.encryption.Encryption.Audience
+import io.provenance.scope.encryption.Encryption.DIME
 import java.io.InputStream
 import java.util.*
 import javax.crypto.spec.SecretKeySpec

@@ -1,4 +1,4 @@
-package io.provenance.os.domain.inputstream
+package io.provenance.p8e.encryption.domain.inputstream
 
 import java.io.InputStream
 import java.util.concurrent.atomic.AtomicLong

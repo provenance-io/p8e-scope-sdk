@@ -1,4 +1,4 @@
-package io.provenance.os.util
+package io.provenance.p8e.encryption.crypto
 
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.crypto.CryptoException

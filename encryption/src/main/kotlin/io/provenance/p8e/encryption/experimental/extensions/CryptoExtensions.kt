@@ -18,7 +18,7 @@ import io.provenance.p8e.encryption.experimental.aes.randomIv
 import io.provenance.p8e.encryption.experimental.ecies.HmacVerification
 import io.provenance.p8e.encryption.experimental.ecies.eciesDecrypt
 import io.provenance.p8e.encryption.experimental.ecies.eciesEncrypt
-import io.provenance.scope.encryption.proto.Encryption.Audience
+import io.provenance.scope.encryption.Encryption.Audience
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.util.*

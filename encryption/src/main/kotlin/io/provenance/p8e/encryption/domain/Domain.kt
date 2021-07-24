@@ -1,4 +1,4 @@
-package io.provenance.os.domain
+package io.provenance.p8e.encryption.domain
 
 const val CREATED_BY_HEADER = "x-created-by"
 const val DIME_FIELD_NAME = "DIME"

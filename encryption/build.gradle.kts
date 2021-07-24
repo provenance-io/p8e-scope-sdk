@@ -22,6 +22,8 @@ dependencies {
     implementation("com.fasterxml.jackson.module", "jackson-module-kotlin", Version.jackson_version)
 
     implementation("com.fortanix", "sdkms-client", Version.fortanixKms)
+
+    implementation("com.hubspot.jackson", "jackson-datatype-protobuf", "0.9.9-jackson2.9-proto3")
 }
 
 sourceSets {

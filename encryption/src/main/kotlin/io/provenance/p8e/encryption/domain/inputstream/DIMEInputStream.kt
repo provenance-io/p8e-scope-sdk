@@ -1,22 +1,32 @@
-package io.provenance.os.domain.inputstream
+package io.provenance.p8e.encryption.domain.inputstream
 
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.google.common.io.BaseEncoding
+import com.google.protobuf.ByteString
 import io.p8e.crypto.SignatureInputStream
 import io.p8e.crypto.SignerImpl
-import io.p8e.crypto.verify
 import io.provenance.p8e.encryption.dime.ProvenanceDIME
 import io.provenance.p8e.encryption.util.ByteUtil
 import io.provenance.p8e.encryption.util.ByteUtil.writeUInt16
 import io.provenance.p8e.encryption.util.ByteUtil.writeUInt32
 import io.provenance.p8e.encryption.util.HashingCipherInputStream
-import io.provenance.os.domain.Signature
-import io.provenance.os.util.CertificateUtil
-import io.provenance.os.util.orThrow
+import io.provenance.p8e.encryption.domain.Signature
+import io.provenance.p8e.encryption.crypto.CertificateUtil
+//import io.provenance.os.util.orThrow
 import io.provenance.p8e.encryption.model.KeyRef
-import io.provenance.proto.encryption.EncryptionProtos.DIME
+import io.provenance.scope.encryption.Encryption.DIME
 import java.io.BufferedInputStream
 import java.io.EOFException
 import java.io.FilterInputStream
+import com.hubspot.jackson.datatype.protobuf.ProtobufModule
+import io.provenance.p8e.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.PK
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -109,6 +119,8 @@ class DIMEInputStream(
             .signature
     }
 
+    fun <T: Any, X: Throwable> T?.orThrow(supplier: () -> X) = this?.let { it } ?: throw supplier()
+
     override fun read() =
         if (pos >= header.size) {
             val res = `in`.read()
@@ -200,12 +212,29 @@ class DIMEInputStream(
         pos += header.size
 
         val signatureToUse = signatures.find { it.publicKey.toString(Charsets.UTF_8) == CertificateUtil.publicKeyToPem(signaturePublicKey) }
-            .orThrow { IllegalStateException("Unable to find signature in object for public key ${signaturePublicKey.toHex()}")}
+            .orThrow { IllegalStateException("Unable to find signature in object for public key ${
+                BaseEncoding.base16().encode(PK.PublicKey.newBuilder()
+                .setCurve(PK.KeyCurve.SECP256K1)
+                .setType(PK.KeyType.ELLIPTIC)
+                .setPublicKeyBytes(
+                    ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(signaturePublicKey)))
+                .setCompressed(false)
+                .build().toByteArray())}")}
             .signature
 
         return ProvenanceDIME.getDEK(dime.audienceList, encryptionKeyRef)
             .let { ProvenanceDIME.decryptPayload(this, it) }
             .verify(signer, signaturePublicKey, signatureToUse)
+    }
+
+    fun InputStream.verify(signer: SignerImpl, publicKey: PublicKey, signature: ByteArray): SignatureInputStream {
+        return SignatureInputStream(
+            this,
+            signer = signer.apply {
+                initVerify(publicKey)
+            },
+            signature
+        )
     }
 
     fun length() = pos
@@ -219,6 +248,13 @@ class DIMEInputStream(
         const val MAGIC_BYTES = 0x44494D45L
 
         const val VERSION = 0x1
+
+        fun ObjectMapper.configureProvenance(): ObjectMapper = registerKotlinModule()
+            .registerModule(JavaTimeModule())
+            .registerModule(ProtobufModule())
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
         fun parse(
             inputStream: InputStream,

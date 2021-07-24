@@ -17,12 +17,12 @@ import io.provenance.p8e.encryption.model.DIMEProcessingModel
 import io.provenance.p8e.encryption.model.DIMEStreamProcessingModel
 import io.provenance.p8e.encryption.ecies.ProvenanceECIESCipher
 import io.provenance.p8e.encryption.model.KeyRef
-import io.provenance.scope.encryption.proto.Encryption.Audience
-import io.provenance.scope.encryption.proto.Encryption.ContextType
-import io.provenance.scope.encryption.proto.Encryption.DIME
-import io.provenance.scope.encryption.proto.Encryption.AuditFields
-import io.provenance.scope.encryption.proto.Encryption.Payload
-import io.provenance.scope.encryption.proto.Encryption.UUID as UuidProto
+import io.provenance.scope.encryption.Encryption.Audience
+import io.provenance.scope.encryption.Encryption.ContextType
+import io.provenance.scope.encryption.Encryption.DIME
+import io.provenance.scope.encryption.Util.AuditFields
+import io.provenance.scope.encryption.Encryption.Payload
+import io.provenance.scope.encryption.Util.UUID as UuidProto
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.InputStream
