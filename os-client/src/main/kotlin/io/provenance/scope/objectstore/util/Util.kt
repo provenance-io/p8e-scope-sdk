@@ -10,9 +10,7 @@ import java.util.Base64
 
 const val CHUNK_SIZE = 2 * 1024 * 1024
 
-fun <T : Any> T?.orThrowNotFound(message: String) = this?.let { it } ?: throw NotFoundException(
-    message
-)
+fun <T : Any> T?.orThrowNotFound(message: String) = this ?: throw NotFoundException(message)
 
 class NotFoundException(message: String) : RuntimeException(message)
 
@@ -20,9 +18,9 @@ class FileExistsException: RuntimeException()
 
 fun ByteArray.toHexString() = map { String.format("%02X", it) }.reduce { acc, s -> "$acc$s" }
 
-fun <T: Any, X: Throwable> T?.orThrow(supplier: () -> X) = this?.let { it } ?: throw supplier()
+fun <T: Any, X: Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()
 
-fun <T: Any?> T?.orGet(supplier: () -> T) = this?.let { it } ?: supplier()
+fun <T: Any?> T?.orGet(supplier: () -> T) = this ?: supplier()
 
 fun ByteArray.base64Encode() = Base64.getEncoder().encode(this)
 

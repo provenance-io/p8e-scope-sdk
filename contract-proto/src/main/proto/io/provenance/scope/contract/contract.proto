@@ -3,7 +3,7 @@ syntax = "proto3";
 package io.provenance.scope.contract;
 
 option java_package = "io.provenance.scope.contract.proto";
-option java_outer_classname = "Contractsasdf";
+option java_outer_classname = "Contracts";
 
 import "google/protobuf/timestamp.proto";
 
