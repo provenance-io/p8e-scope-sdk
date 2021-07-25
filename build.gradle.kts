@@ -19,7 +19,7 @@ plugins {
 }
 
 subprojects {
-    group = "io.provenance.p8e"
+    group = "io.provenance.scope"
     version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
     val subProjectName = name
 
@@ -81,9 +81,9 @@ subprojects {
                     }
 
                     scm {
-                        connection.set("git@github.com:provenance-io/p8e.git")
-                        developerConnection.set("git@github.com:provenance-io/p8e.git")
-                        url.set("https://github.com/provenance-io/p8e")
+                        connection.set("git@github.com:provenance-io/p8e-scope-sdk.git")
+                        developerConnection.set("git@github.com:provenance-io/p8e-scope-sdk.git")
+                        url.set("https://github.com/provenance-io/p8e-scope-sdk")
                     }
                 }
             }

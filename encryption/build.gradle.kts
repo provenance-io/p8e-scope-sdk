@@ -1,4 +1,9 @@
-import com.google.protobuf.gradle.*
+import com.google.protobuf.gradle.generateProtoTasks
+import com.google.protobuf.gradle.id
+import com.google.protobuf.gradle.ofSourceSet
+import com.google.protobuf.gradle.plugins
+import com.google.protobuf.gradle.protobuf
+import com.google.protobuf.gradle.protoc
 
 plugins {
     id("com.google.protobuf")
@@ -20,10 +25,9 @@ dependencies {
     implementation("com.fasterxml.jackson.core", "jackson-databind", Version.jackson_version)
     implementation("com.fasterxml.jackson.datatype", "jackson-datatype-jsr310", Version.jackson_version)
     implementation("com.fasterxml.jackson.module", "jackson-module-kotlin", Version.jackson_version)
+    implementation("com.hubspot.jackson", "jackson-datatype-protobuf", "0.9.9-jackson2.9-proto3")
 
     implementation("com.fortanix", "sdkms-client", Version.fortanixKms)
-
-    implementation("com.hubspot.jackson", "jackson-datatype-protobuf", "0.9.9-jackson2.9-proto3")
 }
 
 sourceSets {

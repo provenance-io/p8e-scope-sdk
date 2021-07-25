@@ -17,7 +17,6 @@
             <option value="$PROJECT_DIR$/encryption" />
             <option value="$PROJECT_DIR$/engine" />
             <option value="$PROJECT_DIR$/os-client" />
-            <option value="$PROJECT_DIR$/os-proto" />
             <option value="$PROJECT_DIR$/sdk" />
           </set>
         </option>

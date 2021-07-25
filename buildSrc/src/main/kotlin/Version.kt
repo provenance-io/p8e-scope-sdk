@@ -9,6 +9,6 @@ object Version {
     const val bouncy_castle = "1.68"
     const val grpc_version = "1.36.2"
     const val javax_annotation_version = "1.3.2"
-    const val os_proto_version = "0.4.0"
+    const val os_proto_version = "0.5.0"
     const val jackson_version = "2.12.2"
 }
