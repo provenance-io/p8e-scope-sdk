@@ -9,6 +9,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.google.common.io.BaseEncoding
 import com.google.protobuf.ByteString
+import io.provenance.scope.encryption.crypto.verify
 import io.provenance.scope.encryption.crypto.SignatureInputStream
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.dime.ProvenanceDIME
@@ -189,13 +190,13 @@ class DIMEInputStream(
      * @param keyPair - The encryption key pair to decrypt the stream
      * @return - SignatureInputStream containing a CipherInputStream in DECRYPT mode.
      */
-    fun getDecryptedPayload(encryptionKeyRef: KeyRef, signer: SignerImpl): SignatureInputStream {
+    fun getDecryptedPayload(encryptionKeyRef: KeyRef): SignatureInputStream {
         // seek past the header
         pos += header.size
 
         return ProvenanceDIME.getDEK(dime.audienceList, encryptionKeyRef)
             .let { ProvenanceDIME.decryptPayload(this, it) }
-            .verify(signer, getFirstSignaturePublicKey(), getFirstSignature())
+            .verify(getFirstSignaturePublicKey(), getFirstSignature())
     }
 
     /**
@@ -206,7 +207,7 @@ class DIMEInputStream(
      * @param signaturePublicKey - The signature public key to use for signature verification
      * @return - SignatureInputStream containing a CipherInputStream in DECRYPT mode.
      */
-    fun getDecryptedPayload(encryptionKeyRef: KeyRef, signaturePublicKey: PublicKey, signer: SignerImpl): SignatureInputStream {
+    fun getDecryptedPayload(encryptionKeyRef: KeyRef, signaturePublicKey: PublicKey): SignatureInputStream {
         // seek past the header
         pos += header.size
 
@@ -223,17 +224,7 @@ class DIMEInputStream(
 
         return ProvenanceDIME.getDEK(dime.audienceList, encryptionKeyRef)
             .let { ProvenanceDIME.decryptPayload(this, it) }
-            .verify(signer, signaturePublicKey, signatureToUse)
-    }
-
-    fun InputStream.verify(signer: SignerImpl, publicKey: PublicKey, signature: ByteArray): SignatureInputStream {
-        return SignatureInputStream(
-            this,
-            signer = signer.apply {
-                initVerify(publicKey)
-            },
-            signature
-        )
+            .verify(signaturePublicKey, signatureToUse)
     }
 
     fun length() = pos
