@@ -23,9 +23,9 @@ import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Contracts.ConditionProto
 import io.provenance.scope.contract.proto.Contracts.ConsiderationProto
 import io.provenance.scope.contract.proto.Contracts.Contract
-import io.provenance.scope.contract.proto.Contracts.Record as FactProto
+import io.provenance.scope.contract.proto.Contracts.Record as RecordProto
 import java.lang.reflect.ParameterizedType
-import java.util.*
+import java.util.Base64
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
@@ -40,7 +40,7 @@ object ContractSpecMapper {
     fun ContractSpec.newContract(): Contract.Builder =
         Contract.newBuilder()
             .setSpec(
-                FactProto.newBuilder()
+                RecordProto.newBuilder()
                     .setName(this.definition.name)
                     .setDataLocation(
                         Location.newBuilder()
@@ -70,7 +70,7 @@ object ContractSpecMapper {
             .setConsiderationName(this.funcName)
 
     fun DefinitionSpec.newFact() =
-        FactProto.newBuilder()
+        RecordProto.newBuilder()
             .setName(this.name)
 
     fun PartyType.newRecital() =
@@ -117,7 +117,7 @@ object ContractSpecMapper {
             .valueParameters
             .forEach { param ->
                 val factAnnotation = param.findAnnotation<Record>()
-                    .orThrowContractDefinition("Constructor param(${param.name}) is missing @Fact annotation")
+                    .orThrowContractDefinition("Constructor param(${param.name}) is missing @Record annotation")
 
                 with(ProtoUtil) {
                     if (List::class == param.type.classifier) {
@@ -203,7 +203,7 @@ object ContractSpecMapper {
                             )
                         }
                     } ?: param.findAnnotation<Input>()
-                    .orThrowNotFound("No @Input or @Fact Found for Param ${param}")
+                    .orThrowNotFound("No @Input or @Record Found for Param ${param}")
                     .also {
                         with(ProtoUtil) {
                             builder.addInputSpecs(
@@ -221,7 +221,7 @@ object ContractSpecMapper {
             }
 
         func.findAnnotation<Record>()
-            .orThrowNotFound("No @Fact Found for Function ${func}")
+            .orThrowNotFound("No @Record Found for Function ${func}")
             .also { fact ->
                 with(ProtoUtil) {
                     builder.setOutputSpec(
@@ -270,7 +270,7 @@ object ContractSpecMapper {
                             )
                         }
                     } ?: param.findAnnotation<Input>()
-                    .orThrowNotFound("No @Input or @Fact Found for Param ${param}")
+                    .orThrowNotFound("No @Input or @Record Found for Param ${param}")
                     .also {
                         with(ProtoUtil) {
                             function.addInputSpecs(
@@ -288,7 +288,7 @@ object ContractSpecMapper {
             }
 
         func.findAnnotation<Record>()
-            .orThrowNotFound("No @Fact Found for Function ${func}")
+            .orThrowNotFound("No @Record Found for Function ${func}")
             .also { fact ->
                 with(ProtoUtil) {
                     function.setOutputSpec(

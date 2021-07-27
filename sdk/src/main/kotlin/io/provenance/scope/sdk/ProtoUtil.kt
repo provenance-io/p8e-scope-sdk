@@ -3,15 +3,11 @@ package io.provenance.scope.sdk
 import com.google.protobuf.Message
 import com.google.protobuf.Message.Builder
 import com.google.protobuf.util.JsonFormat
-import io.provenance.scope.encryption.crypto.Pen
-import io.provenance.scope.encryption.crypto.SignerImpl.Companion.PROVIDER
-import io.provenance.scope.encryption.crypto.SignerImpl.Companion.SIGN_ALGO
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type
 import io.provenance.scope.contract.proto.Commons.Location
 import io.provenance.scope.contract.proto.Commons.OutputSpec
 import io.provenance.scope.contract.proto.Commons.ProvenanceReference
-import io.provenance.scope.contract.proto.Commons.Signature
 import io.provenance.scope.contract.proto.Contracts.ProposedRecord
 import io.provenance.scope.contract.proto.Utils
 import java.util.UUID
@@ -61,13 +57,6 @@ object ProtoUtil {
         Location.newBuilder()
             .setRef(ref)
             .setClassname(classname)
-
-    fun signatureBuilderOf(signature: String): Signature.Builder =
-        Signature.newBuilder()
-            .setAlgo(SIGN_ALGO)
-            .setProvider(PROVIDER)
-            .setSignature(signature)
-
 
 //    outputDef.name,
 //    String(objectWithItem.obj.unencryptedSha512.base64Encode()),

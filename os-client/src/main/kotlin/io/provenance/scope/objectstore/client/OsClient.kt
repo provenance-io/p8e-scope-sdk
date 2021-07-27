@@ -41,6 +41,7 @@ open class OsClient(
 
     private val objectBlockingClient: ObjectServiceGrpc.ObjectServiceBlockingStub
     private val objectAsyncClient: ObjectServiceGrpc.ObjectServiceStub
+    private val objectFutureClient: ObjectServiceGrpc.ObjectServiceFutureStub
     private val publicKeyBlockingClient: PublicKeyServiceGrpc.PublicKeyServiceBlockingStub
     private val mailboxBlockingClient: MailboxServiceGrpc.MailboxServiceBlockingStub
 
@@ -59,6 +60,7 @@ open class OsClient(
             .build()
 
         objectAsyncClient = ObjectServiceGrpc.newStub(channel)
+        objectFutureClient = ObjectServiceGrpc.newFutureStub(channel)
         objectBlockingClient = ObjectServiceGrpc.newBlockingStub(channel)
         publicKeyBlockingClient = PublicKeyServiceGrpc.newBlockingStub(channel)
         mailboxBlockingClient = MailboxServiceGrpc.newBlockingStub(channel)
@@ -88,17 +90,18 @@ open class OsClient(
             }
     }
 
-    fun get(sha512: ByteArray, publicKey: PublicKey, deadlineSeconds: Long = 60L): DIMEInputStream {
-        if (sha512.size != 64) {
-            throw IllegalArgumentException("Provided SHA-512 must be byte array of size 64, found size: ${sha512.size}")
+    // TODO move to futures based stub
+    fun get(hash: ByteArray, publicKey: PublicKey): DIMEInputStream {
+        if (hash.size < 16) {
+            throw IllegalArgumentException("Provided hash must be byte array of at least size 16, found size: ${hash.size}")
         }
 
         val bytes = ByteArrayOutputStream()
         val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
 
-        val iterator = objectBlockingClient.get(
+        val iterator = objectBlockingClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).get(
             Objects.HashRequest.newBuilder()
-                .setHash(ByteString.copyFrom(sha512))
+                .setHash(ByteString.copyFrom(hash))
                 .setPublicKey(ByteString.copyFrom(ecPublicKey))
                 .build()
         )

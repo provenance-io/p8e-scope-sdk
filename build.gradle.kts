@@ -21,6 +21,7 @@ plugins {
 subprojects {
     group = "io.provenance.scope"
     version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
+
     val subProjectName = name
 
     apply(plugin = "maven-publish")
