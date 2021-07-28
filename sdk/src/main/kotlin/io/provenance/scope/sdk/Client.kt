@@ -7,6 +7,7 @@ import io.provenance.metadata.v1.Session
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowContractDefinition
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
@@ -50,50 +51,39 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
 
     }
 
-    // fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
-    //     val constructor = clazz.declaredConstructors
-    //         .filter {
-    //             it.parameters.isNotEmpty() &&
-    //                 it.parameters.all { param ->
-    //                     Message::class.java.isAssignableFrom(param.type) &&
-    //                         param.getAnnotation(Record::class.java) != null
-    //                 }
-    //         }
-    //         .takeIf { it.isNotEmpty() }
-    //         // TODO different error type?
-    //         .orThrowContractDefinition("Unable to build POJO of type ${clazz.name} because not all constructor params implement ${Message::class.java.name} and have a \"Record\" annotation")
-    //         .firstOrNull {
-    //             it.parameters.any { param ->
-    //                 scope.recordsList.any { wrapper ->
-    //                     (wrapper.record.name == param.getAnnotation(Record::class.java)?.name &&
-    //                         wrapper.record.resultType() == param.type.name)
-    //                 }
-    //             }
-    //         }
-    //         .orThrowContractDefinition("No constructor params have a matching record in scope ${scope.uuid()}")
+    fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
+        val constructor = clazz.declaredConstructors
+            .filter {
+                it.parameters.isNotEmpty() &&
+                    it.parameters.all { param ->
+                        Message::class.java.isAssignableFrom(param.type) &&
+                            param.getAnnotation(Record::class.java) != null
+                    }
+            }
+            .takeIf { it.isNotEmpty() }
+            // TODO different error type?
+            .orThrowContractDefinition("Unable to build POJO of type ${clazz.name} because not all constructor params implement ${Message::class.java.name} and have a \"Record\" annotation")
+            .firstOrNull {
+                it.parameters.any { param ->
+                    scope.recordsList.any { wrapper ->
+                        (wrapper.record.name == param.getAnnotation(Record::class.java)?.name &&
+                            wrapper.record.resultType() == param.type.name)
+                    }
+                }
+            }
+            .orThrowContractDefinition("No constructor params have a matching record in scope ${scope.uuid()}")
 
-    //     val params = constructor.parameters
-    //         .map { it.getAnnotation(Record::class.java).name to it.type }
-    //         .map { (name, type) ->
-    //             // TODO change this to find or null and throw exception message
-    //             scope.recordsList.first { wrapper ->
-    //                 wrapper.record.name == name && wrapper.record.resultType() == type.name
-    //             }.record to type
-    //         }.map { (record, type) ->
-    //             osClient.getRecord(record.resultHash(), publicKey)
-    //             when (record) {
-    //                 is Record ->
-    //                     completableFuture(executor) {
-    //                         client.loadProto(
-    //                             record.resultHash,
-    //                             type.name
-    //                         )
-    //                     }
-    //                 is Scope -> completableFuture(executor) { record }
-    //                 else -> null
-    //             }
-    //         }
+        val params = constructor.parameters
+            .map { it.getAnnotation(Record::class.java).name to it.type }
+            .map { (name, type) ->
+                // TODO change this to find or null and throw exception message
+                scope.recordsList.first { wrapper ->
+                    wrapper.record.name == name && wrapper.record.resultType() == type.name
+                }.record to type
+            }.map { (record, type) ->
+                osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
+            }
 
-    //     return clazz.cast(constructor.newInstance(*params.map { it?.get() }.toList().toTypedArray()))
-    // }
+        return clazz.cast(constructor.newInstance(*params.toList().toTypedArray()))
+    }
 }

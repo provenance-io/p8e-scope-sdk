@@ -99,6 +99,7 @@ open class OsClient(
         val bytes = ByteArrayOutputStream()
         val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
 
+        // TODO wrap this call in try and return previous error on 404
         val iterator = objectBlockingClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).get(
             Objects.HashRequest.newBuilder()
                 .setHash(ByteString.copyFrom(hash))
