@@ -19,6 +19,15 @@ class CachedOsClient(config: ClientConfig, val osClient: OsClient) {
         .weigher { _: String, value: RecordCacheValue ->  value.bytes.size }
         .build()
 
+    // takes in input stream, audience - return raw response from object-store
+    fun putJar() {
+
+    }
+
+    fun putRecord() {
+
+    }
+
     // TODO for now just forward all requests but this needs to get cached
     fun getRecord(classname: String, hash: ByteArray, keyRef: KeyRef): Message {
         // TODO add good error like we had previously

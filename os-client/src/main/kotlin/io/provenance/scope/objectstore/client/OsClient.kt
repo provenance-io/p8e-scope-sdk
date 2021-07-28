@@ -66,7 +66,7 @@ open class OsClient(
         mailboxBlockingClient = MailboxServiceGrpc.newBlockingStub(channel)
     }
 
-    fun ack(uuid: UUID) {
+    fun mailboxAck(uuid: UUID) {
         val request = Mailboxes.AckRequest.newBuilder()
             .setUuid(Utils.UUID.newBuilder().setValue(uuid.toString()).build())
             .build()
@@ -177,7 +177,6 @@ open class OsClient(
         additionalAudiences: Set<PublicKey> = setOf(),
         metadata: Map<String, String> = mapOf(),
         uuid: UUID = UUID.randomUUID(),
-        deadlineSeconds: Long = 60L
     ): Objects.ObjectResponse {
         val signerPublicKey = signer.getPublicKey()
         val signatureInputStream = inputStream.sign(signer)
@@ -198,7 +197,8 @@ open class OsClient(
             externalHash = false
         )
         val responseObserver = SingleResponseObserver<Objects.ObjectResponse>()
-        val requestObserver = objectAsyncClient.put(responseObserver)
+        // TODO test that deadline works on async requests like this
+        val requestObserver = objectAsyncClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).put(responseObserver)
         val header = Objects.MultiStreamHeader.newBuilder()
             .setStreamCount(1)
             .putMetadata(CREATED_BY_HEADER, UUID(0, 0).toString())
@@ -224,7 +224,8 @@ open class OsClient(
             }
         }
 
-        if (!responseObserver.finishLatch.await(deadlineSeconds, TimeUnit.SECONDS)) {
+        // TODO change this up if deadline functions correctly
+        if (!responseObserver.finishLatch.await(deadlineMs, TimeUnit.MILLISECONDS)) {
             throw TimeoutException("No response received")
         }
         if (responseObserver.error != null) {
