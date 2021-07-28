@@ -3,14 +3,13 @@ package io.provenance.scope.sdk
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.metadata.v1.ScopeSpecification
-import io.provenance.metadata.v1.Session
+import io.provenance.metadata.v1.Session as SessionProto
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.contracts.ContractHash
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.objectstore.client.OsClient
-import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.sdk.ContractSpecMapper.dehydrateSpec
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowContractDefinition
 import io.provenance.scope.sdk.extensions.resultHash
@@ -42,7 +41,7 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
     // TODO return type of both of these will be a Builder that accepts functions like .addRecord(...) / .addProposedRecord(...)
     // contractManager.newContract(...).addProposedFact(...)
     // executes a new session against an existing scope
-    fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse, session: Session): SessionBuilder.Builder {
+    fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse, session: SessionProto): Session.Builder {
         // dehydrate clazz into ContractSpec
         val contractHash = getContractHash(clazz)
         val protoHash = clazz.methods
@@ -57,14 +56,9 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
 
-        return SessionBuilder.Builder()
-            .addProposedSession(session)
-            .addAllParticipants(contractSpec.partiesInvolvedList)
-        // return some class like what Contract.kt used to do
-        // SessionBuilder
-        // addProposedSession()
-        // addParticipant()
-        // this function will .addParticipant() for affiliate.partyType
+        return Session.Builder()
+            .also { it.client = this } // TODO remove when class is moved over
+            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey)
     }
 
     // executes the first session against a non-existent scope

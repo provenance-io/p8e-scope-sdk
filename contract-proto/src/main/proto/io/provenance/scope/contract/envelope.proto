@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "Envelopes";
+
+import "google/protobuf/descriptor.proto";
+import "google/protobuf/timestamp.proto";
+
+import "io/provenance/scope/contract/contract.proto";
+import "io/provenance/scope/contract/common.proto";
+import "io/provenance/scope/contract/specification.proto";
+import "io/provenance/scope/contract/public_key.proto";
+import "io/provenance/scope/contract/util.proto";
+
+message Envelope {
+    // ref contains
+    // 1) the scope of the object being modified on blockchain.
+    // 2) the uuid of the contract execution.
+    // 3) the hash of the contract instance that has been executed.
+    ProvenanceReference ref = 1;
+
+    // The executed contract.
+    Contract contract = 2;
+
+    // Signatures for the contract.
+    repeated Signature signatures = 3;
+
+    reserved 4;
+
+    // Unique identifier for determining contract/group execution instance
+    UUID execution_uuid = 5;
+    // Unique identifier for determining previous execution instance
+    UUID prev_execution_uuid = 6;
+
+    // When a contract execution is considered stale and expired
+    google.protobuf.Timestamp expiration_time = 7;
+
+    // Scope snapshot for executing
+    // Scope scope = 8;
+
+    Status status = 9;
+
+    enum Status {
+        CREATED = 0 [(description) = "Envelope created."];
+        FRAGMENT = 1 [(description) = "Envelope sent to other parties, awaiting responses."];
+        INBOX = 2 [(description) = "Envelope received."];
+        EXECUTED = 3 [(description) = "Envelope executed by non-invoker."];
+        OUTBOX = 4 [(description) = "Envelope response sent from non-invoker to invoker."];
+        SIGNED = 5 [(description) = "Envelope is complete with all signatures."];
+        CHAINCODE = 6 [(description) = "Envelope has been sent to chaincode."];
+        INDEX = 7 [(description) = "Envelope has been returned from chaincode."];
+        COMPLETE = 8 [(description) = "Envelope has been completed."];
+        ERROR = 11 [(description) = "Envelope is in error state."];
+    }
+}
+
+extend google.protobuf.EnumValueOptions {
+    string description = 65533;
+}
