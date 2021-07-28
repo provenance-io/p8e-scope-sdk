@@ -1,13 +1,23 @@
 package io.provenance.scope.sdk
 
+import com.google.protobuf.DescriptorProtos
+import com.google.protobuf.GeneratedMessage
 import com.google.protobuf.Message
+import com.google.protobuf.ProtocolMessageEnum
 import io.provenance.metadata.v1.Session
+import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
+import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
+import io.provenance.scope.contract.proto.Utils.UUID
+import io.provenance.scope.contract.proto.Utils
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.objectstore.util.sha512
+import io.provenance.scope.sdk.ContractSpecMapper.orThrowContractDefinition
+import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import java.security.PublicKey
 import java.util.*
+import java.util.UUID.fromString
 import kotlin.collections.HashMap
 
 class Session(
@@ -33,16 +43,36 @@ class Session(
         //     this.proposedSession = session
         // }
 
-        // TODO (wyatt) pull validation logic from addProposedFact function
-        fun addProposedRecord(name: String, record: Message) {
+        fun addProposedRecord(name: String, record: Message, spec: Specifications.ContractSpec) {
+            val proposedSpec = listOf(
+                spec.conditionSpecsList
+                    .flatMap { it.inputSpecsList }
+                    .filter { it.type == PROPOSED },
+                spec.functionSpecsList
+                    .flatMap { it.inputSpecsList }
+                    .filter { it.type == PROPOSED }
+            )
+                .flatten()
+                .firstOrNull { it.name == name }
+                .orThrowNotFound("Can't find the proposed fact for $name")
 
-            // if valid add record to proposedRecords map
+            require(proposedSpec.resourceLocation.classname == record.defaultInstanceForType.javaClass.name)
+            { "Invalid proto message supplied for $name. Expected: ${proposedSpec.resourceLocation.classname} Received: ${record.defaultInstanceForType.javaClass.name}" }
+
+            proposedRecords[name] = record
         }
 
-        // TODO (wyatt) check if party is already present in the map and if so throw an exception - I think the existing
-        // Contract.kt does this
-        fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PublicKey) = apply {
-            this.participants.put(party, encryptionPublicKey)
+        fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PublicKey, spec: Specifications.ContractSpec) = apply {
+            val recitalSpec = spec.partiesInvolvedList
+                .filter { it == party }
+                .firstOrNull()
+                .orThrowNotFound("Can't find participant for party type ${party}")
+
+            if (participants.get(party) == null) {
+                participants[party] = encryptionPublicKey
+            } else {
+                throw ContractSpecMapper.ContractDefinitionException("Participant for party type $party already exists in the participant list.")
+            }
         }
 
     }
@@ -257,24 +287,22 @@ class Session(
 
     private fun packageContract(): Envelope {
         val contract = populateContract()
+        val executionUuid = UUID.newBuilder().setValueBytes(proposedSession?.sessionId).build()
 
         val permissionUpdater = PermissionUpdater(
             client,
             contract,
             emptySet(), // TODO this is audience list
         )
-
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
-            // TODO (wyatt) the proto Session should have execution uuid
-            // .setExecutionUuid(this.stagedExecutionUuid)
+            .setExecutionUuid(executionUuid)
             .setContract(contract)
             .also {
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
                 // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestampProv() } ?: builder.clearExpirationTime()
                 it.ref = it.refBuilder
-                    // TODO (wyatt) add extension function for Message.base64Sha512()
-                    .setHash(String(Base64.getEncoder().encode(contract.toByteArray().sha512())))
+                    .setHash(String(contract.base64Sha512()))
                     .build()
             }
             .clearSignatures()
@@ -282,11 +310,11 @@ class Session(
 
         permissionUpdater.saveConstructorArguments()
 
-        // TODO (wyatt) the proto Session should have execution uuid
-        // permissionUpdater.saveProposedFacts(this.stagedExecutionUuid.toUuidProv(), this.proposedRecords.values)
+         permissionUpdater.saveProposedFacts(executionUuid, this.proposedRecords.values)
 
         return envelope
     }
+    fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha512())
 }
 
 class PermissionUpdater(
