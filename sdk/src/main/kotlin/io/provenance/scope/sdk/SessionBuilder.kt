@@ -85,40 +85,39 @@ class Session(
         }
     }
 
-    private fun newEventBuilder(className: String, publicKey: PublicKey): Envelopes.EnvelopeEvent.Builder {
-        return Envelopes.EnvelopeEvent.newBuilder()
-            .setClassname(className)
-            .setPublicKey(
-                PK.SigningAndEncryptionPublicKeys.newBuilder()
-                    .setSigningPublicKey(publicKey.toPublicKeyProto())
-            )
-    }
-
-    private fun execute(
-        envelope: Envelope
-    ): Contract {
-        // TODO get public key from client? And the name of the class being sent through?
-        val event = newEventBuilder(this.contractClazz.name, contractManager.keyPair.public)
-            .setAction(Action.EXECUTE)
-            .setEnvelope(envelope)
-            .build()
-
-        return executor(event)
-    }
-    fun PublicKey.toPublicKeyProto(): PK.PublicKey =
-        PK.PublicKey.newBuilder()
-            .setCurve(PK.KeyCurve.SECP256K1)
-            .setType(PK.KeyType.ELLIPTIC)
-            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
-            .setCompressed(false)
-            .build()
-
-    fun ByteArray.toByteString() = ByteString.copyFrom(this)
-
-    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
+//    private fun newEventBuilder(className: String, publicKey: PublicKey): Envelopes.EnvelopeEvent.Builder {
+//        return Envelopes.EnvelopeEvent.newBuilder()
+//            .setClassname(className)
+//            .setPublicKey(
+//                PK.SigningAndEncryptionPublicKeys.newBuilder()
+//                    .setSigningPublicKey(publicKey.toPublicKeyProto())
+//            )
+//    }
+//
+//    private fun execute(
+//        envelope: Envelope
+//    ): Contract {
+//        // TODO get public key from client? And the name of the class being sent through?
+//        val event = newEventBuilder(this.contractClazz.name, contractManager.keyPair.public)
+//            .setAction(Action.EXECUTE)
+//            .setEnvelope(envelope)
+//            .build()
+//
+//        return executor(event)
+//    }
+//    fun PublicKey.toPublicKeyProto(): PK.PublicKey =
+//        PK.PublicKey.newBuilder()
+//            .setCurve(PK.KeyCurve.SECP256K1)
+//            .setType(PK.KeyType.ELLIPTIC)
+//            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
+//            .setCompressed(false)
+//            .build()
+//
+//    fun ByteArray.toByteString() = ByteString.copyFrom(this)
+//
+//    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
     private fun populateContract(): Contract {
-        return execute(packageContract())
-//        return Contract.getDefaultInstance()
+        return Contract.getDefaultInstance()
         //     val builder = envelope.contract.toBuilder()
 
         //     builder.invoker = PK.SigningAndEncryptionPublicKeys.newBuilder()
@@ -323,6 +322,7 @@ class Session(
 
         //     return builder.build()
     }
+
 
     private fun packageContract(): Envelope {
         val contract = populateContract()
