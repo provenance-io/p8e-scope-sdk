@@ -56,6 +56,70 @@ message Envelope {
     }
 }
 
+message EnvelopeEvent {
+    reserved 1;
+    reserved 2;
+
+    string classname = 3;
+
+    Envelope envelope = 4;
+    EnvelopeError error = 5;
+
+    EventType event = 6;
+
+    Action action = 7;
+
+    SigningAndEncryptionPublicKeys public_key = 8;
+
+    enum EventType {
+        UNUSED_TYPE = 0;
+        ENVELOPE_REQUEST = 1;
+        ENVELOPE_RESPONSE = 2;
+        ENVELOPE_ERROR = 3;
+        ENVELOPE_MAILBOX_OUTBOUND = 4;
+        ENVELOPE_ACCEPTED = 5;
+        ENVELOPE_EXECUTION_ERROR = 6;
+    }
+
+    enum Action {
+        UNUSED_ACTION = 0;
+        ACK = 1;
+        REJECT = 2;
+        EXECUTE = 3;
+        EXECUTE_FRAGMENT = 4;
+        HEARTBEAT = 5;
+        CONNECT = 6;
+    }
+
+    google.protobuf.Timestamp timestamp = 99;
+}
+
+message EnvelopeError {
+    UUID uuid = 1;
+    UUID group_uuid = 2;
+    UUID execution_uuid = 3;
+
+    Type type = 4;
+    string message = 5;
+    google.protobuf.Timestamp read_time = 6;
+    UUID scope_uuid = 7;
+
+    Envelope envelope = 8;
+
+    enum Type {
+        NO_ERROR_TYPE = 0;
+        CONTRACT_WHITELIST = 1;
+        TTL_TIMEOUT = 2;
+        CC_INVOCATION = 3;
+        CONTRACT_INVOCATION = 4;
+        CONTRACT_CANCELLED = 5;
+        CONTRACT_REJECTED = 6;
+        PUBLIC_KEY_CHECK = 7;
+    }
+
+    AuditFields audit_fields = 99;
+}
+
 extend google.protobuf.EnumValueOptions {
     string description = 65533;
 }
