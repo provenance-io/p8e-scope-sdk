@@ -3,10 +3,18 @@ package io.provenance.scope.sdk
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import com.google.protobuf.Message
+import io.provenance.objectstore.proto.Objects
+import io.provenance.scope.encryption.crypto.Pen
+import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
+import io.provenance.scope.encryption.model.SmartKeyRef
 import io.provenance.scope.objectstore.client.OsClient
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 import java.lang.reflect.Method
+import java.security.KeyPair
 import java.security.PublicKey
+import java.util.UUID
 
 // TODO add semaphore so that only N objects are queried at a time - add this amount to the config
 
@@ -19,9 +27,23 @@ class CachedOsClient(config: ClientConfig, val osClient: OsClient) {
         .weigher { _: String, value: RecordCacheValue ->  value.bytes.size }
         .build()
 
-    // takes in input stream, audience - return raw response from object-store
-    fun putJar() {
+    // TODO remove content length as nullable if proven jar file size is accurate
+    fun putJar(
+        inputStream: InputStream,
+        affiliate: Affiliate,
+        contentLength: Long? = null,
+        audience: Set<PublicKey> = setOf(),
+        uuid: UUID = UUID.randomUUID(),
+    ): Objects.ObjectResponse {
+        // TODO rework signerimpl and affiliate to signerimpl interface
+        val signer = when (affiliate.signingKeyRef) {
+            is DirectKeyRef -> Pen(KeyPair(affiliate.signingKeyRef.publicKey, affiliate.signingKeyRef.privateKey))
+            is SmartKeyRef -> throw IllegalStateException("TODO SmartKeyRef is not yet supported!")
+        }
+        val (stream: InputStream, length: Long) = contentLength?.let { Pair(inputStream, it) }
+            ?: with (inputStream.use { it.readAllBytes() }) { Pair(ByteArrayInputStream(this), this.size.toLong()) }
 
+        return osClient.put(stream, affiliate.encryptionKeyRef.publicKey, signer, length, audience, uuid = uuid)
     }
 
     fun putRecord() {
