@@ -55,9 +55,9 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
         val protoRef = Commons.ProvenanceReference.newBuilder().setHash(protoHash.getHash()).build()
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
-        return Session.Builder()
+        return Session.Builder(contractSpec)
             .also { it.client = this } // TODO remove when class is moved over
-            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey, contractSpec)
+            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey)
     }
 
     // executes the first session against a non-existent scope

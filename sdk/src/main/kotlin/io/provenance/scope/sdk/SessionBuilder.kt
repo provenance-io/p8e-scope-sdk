@@ -1,46 +1,55 @@
 package io.provenance.scope.sdk
 
 import com.google.protobuf.*
+import io.provenance.metadata.v1.*
 import io.provenance.metadata.v1.Session
-import io.provenance.scope.contract.proto.Commons
+import io.provenance.metadata.v1.p8e.Fact
+import io.provenance.metadata.v1.p8e.Location
+import io.provenance.metadata.v1.p8e.ProvenanceReference
+import io.provenance.metadata.v1.p8e.PublicKey
+import io.provenance.scope.contract.proto.*
+import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
-import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
-import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.contract.proto.Utils.UUID
-import io.provenance.scope.contract.proto.Utils
-import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.proto.PK
 import io.provenance.scope.objectstore.util.sha512
-import io.provenance.scope.sdk.ContractSpecMapper.orThrowContractDefinition
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
-import java.security.PublicKey
+import io.provenance.scope.sdk.extensions.resultHash
+import io.provenance.scope.sdk.extensions.uuid
 import java.util.*
-import java.util.UUID.fromString
-import kotlin.collections.HashMap
 
 class Session(
     val proposedSession: Session?,
-    val participants: HashMap<Specifications.PartyType, PublicKey>,
+    val participants: HashMap<Specifications.PartyType, PublicKeys.PublicKey>,
     val proposedRecords: HashMap<String, Message>,
-    val client: Client, // TODO (wyatt) should probably move this class into the client so we have access to the client
+    val client: Client, // TODO (wyatt) should probably move this class into the client so we have access to the
+    val spec: Specifications.ContractSpec,
+    val affiliate: Affiliate,
+    val scope: ScopeResponse?,
+    val stagedProposedProtos: MutableList<Message> = mutableListOf(),
 ) {
     private constructor(builder: Builder) : this(
         builder.proposedSession,
         builder.participants,
         builder.proposedRecords,
-        builder.client!!
+        builder.client!!,
+        builder.spec,
+        builder.affiliate!!,
+        builder.scope
     )
 
-    class Builder {
+    // TODO perhaps add scope
+    class Builder(val spec: Specifications.ContractSpec, val scope: ScopeResponse?) {
         var proposedSession: Session? = null
             private set
         var proposedRecords: HashMap<String, Message> = HashMap()
             private set
-        var participants: HashMap<Specifications.PartyType, PublicKey> = HashMap()
+        var participants: HashMap<Specifications.PartyType, PublicKeys.PublicKey> = HashMap()
             private set
         var client: Client? = null
+
+        var affiliate: Affiliate? = null
 
         fun build() = Session(this)
 
@@ -48,7 +57,7 @@ class Session(
         //     this.proposedSession = session
         // }
 
-        fun addProposedRecord(name: String, record: Message, spec: Specifications.ContractSpec) {
+        fun addProposedRecord(name: String, record: Message) {
             val proposedSpec = listOf(
                 spec.conditionSpecsList
                     .flatMap { it.inputSpecsList }
@@ -67,11 +76,7 @@ class Session(
             proposedRecords[name] = record
         }
 
-        fun addParticipant(
-            party: Specifications.PartyType,
-            encryptionPublicKey: PublicKey,
-            spec: Specifications.ContractSpec
-        ) = apply {
+        fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PublicKeys.PublicKey) = apply {
             val recitalSpec = spec.partiesInvolvedList
                 .filter { it == party }
                 .firstOrNull()
@@ -85,242 +90,227 @@ class Session(
         }
     }
 
-//    private fun newEventBuilder(className: String, publicKey: PublicKey): Envelopes.EnvelopeEvent.Builder {
-//        return Envelopes.EnvelopeEvent.newBuilder()
-//            .setClassname(className)
-//            .setPublicKey(
-//                PK.SigningAndEncryptionPublicKeys.newBuilder()
-//                    .setSigningPublicKey(publicKey.toPublicKeyProto())
-//            )
-//    }
-//
-//    private fun execute(
-//        envelope: Envelope
-//    ): Contract {
-//        // TODO get public key from client? And the name of the class being sent through?
-//        val event = newEventBuilder(this.contractClazz.name, contractManager.keyPair.public)
-//            .setAction(Action.EXECUTE)
-//            .setEnvelope(envelope)
-//            .build()
-//
-//        return executor(event)
-//    }
-//    fun PublicKey.toPublicKeyProto(): PK.PublicKey =
-//        PK.PublicKey.newBuilder()
-//            .setCurve(PK.KeyCurve.SECP256K1)
-//            .setType(PK.KeyType.ELLIPTIC)
-//            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
-//            .setCompressed(false)
-//            .build()
-//
-//    fun ByteArray.toByteString() = ByteString.copyFrom(this)
-//
-//    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
+    //    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
     private fun populateContract(): Contract {
-        return Contract.getDefaultInstance()
-        //     val builder = envelope.contract.toBuilder()
+//        return Contract.getDefaultInstance()
+        val envelope = Envelope.getDefaultInstance()
+        val builder = Contract.getDefaultInstance().toBuilder()
 
-        //     builder.invoker = PK.SigningAndEncryptionPublicKeys.newBuilder()
-        //         .setEncryptionPublicKey(contractManager.keyPair.public.toPublicKeyProto())
-        //         .setSigningPublicKey(contractManager.keyPair.public.toPublicKeyProto())
-        //         .build()
+        builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
+            // TODO Where can these be retrieved? Try passing in affiliate
+            .setEncryptionPublicKey(affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
+            .setSigningPublicKey(affiliate.signingKeyRef.publicKey.toPublicKeyProtoOS())
+            .build()
 
-        //     // Copy the outputs from previous contract executions to the inputs list.
-        //     spec.conditionSpecsList
-        //         .filter { it.hasOutputSpec() }
-        //         .map { it.outputSpec }
-        //         .map { defSpec ->
-        //             envelope.contract.conditionsList
-        //                 .filter { it.hasResult() }
-        //                 .filter { it.result.output.name == defSpec.spec.name }
-        //                 .map { it.result.output }
-        //                 .singleOrNull()
-        //                 // TODO warn if more than one output with same name.
-        //                 ?.let {
-        //                     // Only add the output to the input list if it hasn't been previously defined.
-        //                     if (builder.inputsList.find { fact -> fact.name == it.name } == null) {
-        //                         builder.addInputs(
-        //                             Fact.newBuilder()
-        //                                 .setName(it.name)
-        //                                 .setDataLocation(
-        //                                     Location.newBuilder()
-        //                                         .setClassname(it.classname)
-        //                                         .setRef(
-        //                                             ProvenanceReference.newBuilder()
-        //                                                 .setHash(it.hash)
-        //                                                 .setGroupUuid(envelope.ref.groupUuid)
-        //                                                 .setScopeUuid(envelope.ref.scopeUuid)
-        //                                                 .build()
-        //                                         )
-        //                                 )
-        //                         )
-        //                     }
-        //                 }
-        //         }
+        // Copy the outputs from previous contract executions to the inputs list.
+//             spec.conditionSpecsList
+//                 .filter { it.hasOutputSpec() }
+//                 .map { it.outputSpec }
+//                 .map { defSpec ->
+//                     envelope.contract.conditionsList
+//                         .filter { it.hasResult() }
+//                         .filter { it.result.output.name == defSpec.spec.name }
+//                         .map { it.result.output }
+//                         .singleOrNull()
+//                         // TODO warn if more than one output with same name.
+//                         ?.let {
+//                             // Only add the output to the input list if it hasn't been previously defined.
+//                             if (builder.inputsList.find { fact -> fact.name == it.name } == null) {
+//                                 builder.addInputs(
+//                                     Fact.newBuilder()
+//                                         .setName(it.name)
+//                                         .setDataLocation(
+//                                             Location.newBuilder()
+//                                                 .setClassname(it.classname)
+//                                                 .setRef(
+//                                                     ProvenanceReference.newBuilder()
+//                                                         .setHash(it.hash)
+//                                                         .setGroupUuid(envelope.ref.groupUuid)
+//                                                         .setScopeUuid(envelope.ref.scopeUuid)
+//                                                         .build()
+//                                                 )
+//                                         )
+//                                 )
+//                             }
+//                         }
+//                 }
+//        builder.addConsiderations(
+//            Contracts.ConsiderationProto.newBuilder()
+//                .addAllInputs(proposedRecords)
+//                .build()
+//        )
 
-        //     spec.considerationSpecsList
-        //         .filter { it.hasOutputSpec() }
-        //         .map { it.outputSpec }
-        //         .map { defSpec ->
-        //             envelope.contract.considerationsList
-        //                 .filter { it.hasResult() }
-        //                 .filter { it.result.output.name == defSpec.spec.name }
-        //                 .map { it.result.output }
-        //                 .singleOrNull()
-        //                 // TODO warn if more than one output with same name.
-        //                 ?.let {
-        //                     // Only add the output to the input list if it hasn't been previously defined.
-        //                     if (builder.inputsList.find { fact -> fact.name == it.name } == null) {
-        //                         builder.addInputs(
-        //                             Fact.newBuilder()
-        //                                 .setName(it.name)
-        //                                 .setDataLocation(
-        //                                     Location.newBuilder()
-        //                                         .setClassname(it.classname)
-        //                                         .setRef(
-        //                                             ProvenanceReference.newBuilder()
-        //                                                 .setHash(it.hash)
-        //                                                 .setGroupUuid(envelope.ref.groupUuid)
-        //                                                 .setScopeUuid(envelope.ref.scopeUuid)
-        //                                                 .build()
-        //                                         )
-        //                                 )
-        //                         )
-        //                     }
-        //                 }
-        //         }
+        spec.functionSpecsList
+            .filter { it.hasOutputSpec() }
+            .map { it.outputSpec }
+            .map { defSpec ->
+                envelope.contract.considerationsList
+                    .filter { it.hasResult() }
+                    .filter { it.result.output.name == defSpec.spec.name }
+                    .map { it.result.output }
+                    .singleOrNull()
+                    // TODO warn if more than one output with same name.
+                    ?.let {
+                        // Only add the output to the input list if it hasn't been previously defined.
+                        if (builder.inputsList.find { fact -> fact.name == it.name } == null) {
+                            builder.addInputs(
+                                Contracts.Record.newBuilder()
+                                    .setName(it.name)
+                                    .setDataLocation(
+                                        Commons.Location.newBuilder()
+                                            .setClassname(it.classname)
+                                            .setRef(
+                                                Commons.ProvenanceReference.newBuilder()
+                                                    .setHash(it.hash)
+                                                    // TODO where can these be retrieved
+                                                    .setGroupUuid(
+                                                        UUID.newBuilder()
+                                                            .setValueBytes(envelope.ref.groupUuid.valueBytes).build()
+                                                    )
+                                                    .setScopeUuid(
+                                                        UUID.newBuilder()
+                                                            .setValueBytes(envelope.ref.scopeUuid.valueBytes).build()
+                                                    )
+                                                    .build()
+                                            )
+                                    )
+                            )
+                        }
+                    }
+            }
 
-        //     // All facts should already be loaded to the system. No need to send them to POS.
-        //     stagedFacts.forEach {
-        //         val msg = it.value.second.second
-        //         val ref = it.value.second.first.takeUnless { ref -> ref == ProvenanceReference.getDefaultInstance() }
-        //             ?: ProvenanceReference.newBuilder().setHash(msg.toByteArray().base64Sha512()).build()
+        // All facts should already be loaded to the system. No need to send them to POS.
+        proposedRecords.map { (name, record) ->
+            val ref = record.takeUnless { ref -> ref == Commons.ProvenanceReference.getDefaultInstance() }
+                ?: Commons.ProvenanceReference.newBuilder().setHash(record.toByteArray().base64Sha512()).build()
 
-        //         builder.addInputs(
-        //             Fact.newBuilder()
-        //                 .setName(it.key)
-        //                 .setDataLocation(
-        //                     Location.newBuilder()
-        //                         .setClassname(msg.javaClass.name)
-        //                         .setRef(ref)
-        //                 )
-        //         )
-        //     }
+            builder.addInputs(
+                Contracts.Record.newBuilder()
+                    .setName(name)
+                    .setDataLocation(
+                        Commons.Location.newBuilder()
+                            .setClassname(record.javaClass.name)
+                        // TODO figure out how to get the provenance ref
+//                            .setRef(ref)
+                    )
+            )
+        }
 
-        //     stagedCrossScopeFacts.forEach { (factName, refMessage) ->
-        //         val (ref, message) = refMessage
+//             stagedCrossScopeFacts.forEach { (factName, refMessage) ->
+//                 val (ref, message) = refMessage
+//
+//                 builder.populateFact(
+//                     Fact.newBuilder()
+//                         .setName(factName)
+//                         .setDataLocation(
+//                             Location.newBuilder()
+//                                 .setClassname(message.javaClass.name)
+//                                 .setRef(ref)
+//                         ).build()
+//                 )
+//             }
+//
+//             stagedCrossScopeCollectionFacts.forEach { (factName, collection) ->
+//                 collection.forEach { (ref, message) ->
+//                     builder.populateFact(
+//                         Fact.newBuilder()
+//                             .setName(factName)
+//                             .setDataLocation(
+//                                 Location.newBuilder()
+//                                     .setClassname(message.javaClass.name)
+//                                     .setRef(ref)
+//                             ).build()
+//                     )
+//                 }
+//             }
 
-        //         builder.populateFact(
-        //             Fact.newBuilder()
-        //                 .setName(factName)
-        //                 .setDataLocation(
-        //                     Location.newBuilder()
-        //                         .setClassname(message.javaClass.name)
-        //                         .setRef(ref)
-        //                 ).build()
-        //         )
-        //     }
+        spec.functionSpecsList
+            .filter { it.inputSpecsList.find { it.type == PROPOSED } != null }
+            .forEach { considerationSpec ->
+                // Find the consideration impl for the spec.
+                val consideration = builder.considerationsBuilderList
+                    .filter { it.considerationName == considerationSpec.funcName }
+                    .single()
+                    .orThrowNotFound("Function not found for ${considerationSpec.funcName}")
 
-        //     stagedCrossScopeCollectionFacts.forEach { (factName, collection) ->
-        //         collection.forEach { (ref, message) ->
-        //             builder.populateFact(
-        //                 Fact.newBuilder()
-        //                     .setName(factName)
-        //                     .setDataLocation(
-        //                         Location.newBuilder()
-        //                             .setClassname(message.javaClass.name)
-        //                             .setRef(ref)
-        //                     ).build()
-        //             )
-        //         }
-        //     }
+                considerationSpec.inputSpecsList.forEach { defSpec ->
+                    // Search the Function for an input that hasn't been previously satisfied
+                    if (consideration.inputsList.find { it.name == defSpec.name } == null) {
+                        proposedRecords[defSpec.name]?.also {
+                            consideration.addInputs(
+                                Contracts.ProposedRecord.newBuilder()
+                                    .setClassname(defSpec.resourceLocation.classname)
+                                    .setHash(it.toByteArray().base64Sha512())
+                                    .setName(defSpec.name)
+                                    .build()
+                            ).also {
+                                // Clear any previous skip result if there is a proposed fact for the consideration.
+                                if (it.result.resultValue == Contracts.ExecutionResult.Result.SKIP_VALUE) {
+                                    it.clearResult()
+                                }
+                            }
 
-        //     spec.considerationSpecsList
-        //         .filter { it.inputSpecsList.find { it.type == PROPOSED } != null }
-        //         .forEach { considerationSpec ->
-        //             // Find the consideration impl for the spec.
-        //             val consideration = builder.considerationsBuilderList
-        //                 .filter { it.considerationName == considerationSpec.funcName }
-        //                 .single()
-        //                 .orThrowNotFound("Function not found for ${considerationSpec.funcName}")
+                            // Prepare for upload
+                            // TODO idk what these are. Add this to the variables that need to be filled.
+                            if (!stagedProposedProtos.contains(it))
+                                stagedProposedProtos.add(it)
+                        }
+                    }
+                }
+            }
 
-        //             considerationSpec.inputSpecsList.forEach { defSpec ->
-        //                 // Search the Function for an input that hasn't been previously satisfied
-        //                 if (consideration.inputsList.find { it.name == defSpec.name } == null) {
-        //                     stagedProposedFacts[defSpec.name]?.also {
-        //                         consideration.addInputs(
-        //                             ProposedFact.newBuilder()
-        //                                 .setClassname(defSpec.resourceLocation.classname)
-        //                                 .setHash(it.second.toByteArray().base64Sha512())
-        //                                 .setName(defSpec.name)
-        //                                 .build()
-        //                         ).also {
-        //                             // Clear any previous skip result if there is a proposed fact for the consideration.
-        //                             if(it.result.resultValue == ExecutionResult.Result.SKIP_VALUE) {
-        //                                 it.clearResult()
-        //                             }
-        //                         }
+        // TODO (Steve/Pierce) This is probably wrong. I took a stab at it.
+//        val scope = envelope.scope.takeUnless { it == Scope.getDefaultInstance() }
+        if (scope != null) {
+            scope.recordsList
+                .associateBy { it.record.name }
+                .forEach { (factName, scopeFact) ->
+                    builder.populateFact(
+                        Fact.newBuilder()
+                            .setName(factName)
+                            .setDataLocation(
+                                Location.newBuilder()
+                                    .setClassname(scopeFact.record.name)
+                                    .setRef(
+                                        ProvenanceReference.newBuilder()
+                                            .setScopeUuid(io.provenance.metadata.v1.p8e.UUID.newBuilder()
+                                                .setValue(scope.uuid()))
+                                            .setHash(scopeFact.record.resultHash().base64Sha512())
+                                    )
+                            ).build()
+                    )
+                }
+        }
 
-        //                         // Prepare for upload
-        //                         if (!stagedProposedProtos.contains(it.second))
-        //                             stagedProposedProtos.add(it.second)
-        //                     }
-        //                 }
-        //             }
-        //         }
+        val formattedStagedRecitals = participants.map { (partyType, publicKey) ->
+            Contracts.Recital.newBuilder()
+                .setSignerRole(partyType)
+                .also { recitalBuilder ->
+                    recitalBuilder
+                        .setSigner(
+                            // Setting single key for both Signing and Encryption key fields, service will handle updating key fields.
+                            PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
+                                .setSigningPublicKey(publicKey)
+                                .setEncryptionPublicKey(publicKey)
+                                .build()
+                        )
+                }
+                .build()
+        }
 
-        //     val scope = envelope.scope.takeUnless { it == Scope.getDefaultInstance() }
-        //     if (scope != null) {
-        //         scope.recordGroupList
-        //             .flatMap { it.recordsList }
-        //             .associateBy { it.resultName }
-        //             .forEach { (factName, scopeFact) ->
-        //                 builder.populateFact(
-        //                     Fact.newBuilder()
-        //                         .setName(factName)
-        //                         .setDataLocation(
-        //                             Location.newBuilder()
-        //                                 .setClassname(scopeFact.classname)
-        //                                 .setRef(
-        //                                     ProvenanceReference.newBuilder()
-        //                                         .setScopeUuid(scope.uuid)
-        //                                         .setHash(scopeFact.resultHash)
-        //                                 )
-        //                         ).build()
-        //                 )
-        //             }
-        //     }
+        builder.clearRecitals()
+        //TODO How should partieslist be handled? There doesn't seem to be an equivalent in the scope being used
+        if (scope != null) {
+            builder.addAllRecitals(
+                formattedStagedRecitals.plus(scope.partiesList).distinctBy { recital -> recital.signerRole })
+        } else {
+            builder.addAllRecitals(formattedStagedRecitals)
+        }
+        builder.addAllRecitals(formattedStagedRecitals)
 
-        //     val formattedStagedRecitals = stagedRecital.map { (partyType, data) ->
-        //         Recital.newBuilder()
-        //             .setSignerRole(partyType)
-        //             .also { recitalBuilder ->
-        //                 when (data) {
-        //                     is RecitalAddress -> recitalBuilder
-        //                         .setAddress(data.address.toByteString())
-        //                     is RecitalPublicKey -> recitalBuilder
-        //                         .setSigner(
-        //                             // Setting single key for both Signing and Encryption key fields, service will handle updating key fields.
-        //                             PK.SigningAndEncryptionPublicKeys.newBuilder()
-        //                                 .setSigningPublicKey(data.key.toPublicKeyProto())
-        //                                 .setEncryptionPublicKey(data.key.toPublicKeyProto())
-        //                                 .build()
-        //                         )
-        //                 } as Recital.Builder
-        //             }
-        //             .build()
-        //     }
+        builder.timesExecuted++
 
-        //     builder.clearRecitals()
-        //     if (scope != null) {
-        //         builder.addAllRecitals(formattedStagedRecitals.plus(scope.partiesList).distinctBy { it.signerRole })
-        //     } else {
-        //         builder.addAllRecitals(formattedStagedRecitals)
-        //     }
-
-        //     builder.timesExecuted ++
-
-        //     return builder.build()
+        return builder.build()
     }
 
 
@@ -354,33 +344,76 @@ class Session(
         return envelope
     }
 
-    fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha512())
-}
+    private fun Contract.Builder.populateFact(fact: Fact) {
+        inputsBuilderList.firstOrNull {
+            isMatchingFact(it, fact.name)
+        }?.apply {
+            dataLocation = Commons.Location.newBuilder()
+                .setClassname(fact.dataLocation.classname)
+                .setRef(
+                    Commons.ProvenanceReference.newBuilder()
+                        .setGroupUuid(
+                            UUID.newBuilder().setValueBytes(fact.dataLocation.ref.groupUuid.valueBytes).build()
+                        )
+                        .setHash(fact.dataLocation.ref.hash)
+                        .setScopeUuid(
+                            UUID.newBuilder().setValueBytes(fact.dataLocation.ref.scopeUuid.valueBytes).build()
+                        )
+                        .setName(fact.dataLocation.ref.name)
+                        .build()
+                )
 
-class PermissionUpdater(
-    private val client: Client,
-    private val contract: Contract,
-    private val audience: Set<PublicKey>
-) {
-
-    fun saveConstructorArguments() {
-        // TODO (later) this can be optimized by checking the recitals and record groups and determining what subset, if any,
-        // of input facts need to be fetched and stored in order only save the objects that are needed by some of
-        // the recitals
-        contract.inputsList.map { fact ->
-            with(client) {
-                // val obj = this.loadObject(fact.dataLocation.ref.hash)
-                // val inputStream = ByteArrayInputStream(obj)
-
-                // this.storeObject(inputStream, audience)
-            }
+                .build()
         }
     }
 
-    // TODO (steve) for later convert to async with ListenableFutures
-    fun saveProposedFacts(stagedExecutionUuid: UUID, stagedProposedProtos: Collection<Message>) {
-        stagedProposedProtos.map {
-            // client.saveProto(it, stagedExecutionUuid, audience)
+    private fun isMatchingFact(inputFact: Contracts.Record.Builder, factName: String): Boolean {
+        return inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
+    }
+
+    fun ByteArray.base64String() = String(Base64.getEncoder().encode(this))
+    fun ByteArray.base64Sha512() = this.sha512().base64String()
+    fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha512())
+    fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
+        PublicKeys.PublicKey.newBuilder()
+            .setCurve(PublicKeys.KeyCurve.SECP256K1)
+            .setType(PublicKeys.KeyType.ELLIPTIC)
+            .setPublicKeyBytes(this.toByteString())
+            .setCompressed(false)
+            .build()
+
+    fun java.security.PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
+        PublicKeys.PublicKey.newBuilder()
+            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
+            .build()
+
+    fun ByteArray.toByteString() = ByteString.copyFrom(this)
+
+    class PermissionUpdater(
+        private val client: Client,
+        private val contract: Contract,
+        private val audience: Set<PublicKey>
+    ) {
+
+        fun saveConstructorArguments() {
+            // TODO (later) this can be optimized by checking the recitals and record groups and determining what subset, if any,
+            // of input facts need to be fetched and stored in order only save the objects that are needed by some of
+            // the recitals
+            contract.inputsList.map { fact ->
+                with(client) {
+                    // val obj = this.loadObject(fact.dataLocation.ref.hash)
+                    // val inputStream = ByteArrayInputStream(obj)
+
+                    // this.storeObject(inputStream, audience)
+                }
+            }
+        }
+
+        // TODO (steve) for later convert to async with ListenableFutures
+        fun saveProposedFacts(stagedExecutionUuid: UUID, stagedProposedProtos: Collection<Message>) {
+            stagedProposedProtos.map {
+                // client.saveProto(it, stagedExecutionUuid, audience)
+            }
         }
     }
 }
