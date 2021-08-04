@@ -1,5 +1,6 @@
 package io.provenance.scope.sdk
 
+import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.metadata.v1.ScopeSpecification
@@ -8,7 +9,9 @@ import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.contracts.ContractHash
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.ProtoHash
+import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
+import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.ContractSpecMapper.dehydrateSpec
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowContractDefinition
@@ -55,10 +58,17 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
         val protoRef = Commons.ProvenanceReference.newBuilder().setHash(protoHash.getHash()).build()
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
-        return Session.Builder(contractSpec)
+        return Session.Builder(contractSpec, null)
             .also { it.client = this } // TODO remove when class is moved over
-            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey)
+            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }
+
+    fun java.security.PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
+        PublicKeys.PublicKey.newBuilder()
+            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
+            .build()
+
+    fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
     // executes the first session against a non-existent scope
     fun<T: P8eContract> newSession(clazz: Class<T>, scopeSpecification: ScopeSpecification, session: Session) {

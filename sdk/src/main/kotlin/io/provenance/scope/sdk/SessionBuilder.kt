@@ -300,12 +300,12 @@ class Session(
 
         builder.clearRecitals()
         //TODO How should partieslist be handled? There doesn't seem to be an equivalent in the scope being used
-        if (scope != null) {
-            builder.addAllRecitals(
-                formattedStagedRecitals.plus(scope.partiesList).distinctBy { recital -> recital.signerRole })
-        } else {
-            builder.addAllRecitals(formattedStagedRecitals)
-        }
+//        if (scope != null) {
+//            builder.addAllRecitals(
+//                formattedStagedRecitals.plus(scope.partiesList).distinctBy { recital -> recital.signerRole })
+//        } else {
+//            builder.addAllRecitals(formattedStagedRecitals)
+//        }
         builder.addAllRecitals(formattedStagedRecitals)
 
         builder.timesExecuted++
