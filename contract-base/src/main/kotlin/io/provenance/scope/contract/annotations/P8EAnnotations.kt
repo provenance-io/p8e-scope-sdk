@@ -59,6 +59,7 @@ annotation class ScopeSpecification(val names: Array<String>)
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
 annotation class ScopeSpecificationDefinition(
+    val uuid: String,
     val name: String,
     val description: String,
     val partiesInvolved: Array<PartyType>,

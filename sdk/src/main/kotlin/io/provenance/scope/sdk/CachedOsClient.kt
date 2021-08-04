@@ -46,8 +46,20 @@ class CachedOsClient(config: ClientConfig, val osClient: OsClient) {
         return osClient.put(stream, affiliate.encryptionKeyRef.publicKey, signer, length, audience, uuid = uuid)
     }
 
-    fun putRecord() {
+    // TODO add optional field that specifies hash length
+    fun putRecord(
+        message: Message,
+        affiliate: Affiliate,
+        audience: Set<PublicKey> = setOf(),
+        uuid: UUID = UUID.randomUUID(),
+    ): Objects.ObjectResponse {
+        // TODO rework signerimpl and affiliate to signerimpl interface
+        val signer = when (affiliate.signingKeyRef) {
+            is DirectKeyRef -> Pen(KeyPair(affiliate.signingKeyRef.publicKey, affiliate.signingKeyRef.privateKey))
+            is SmartKeyRef -> throw IllegalStateException("TODO SmartKeyRef is not yet supported!")
+        }
 
+        return osClient.put(message, affiliate.encryptionKeyRef.publicKey, signer, audience, uuid = uuid)
     }
 
     // TODO for now just forward all requests but this needs to get cached
