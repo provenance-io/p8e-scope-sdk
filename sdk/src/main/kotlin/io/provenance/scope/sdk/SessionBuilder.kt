@@ -25,22 +25,22 @@ class Session(
     val proposedRecords: HashMap<String, Message>,
     val client: Client, // TODO (wyatt) should probably move this class into the client so we have access to the
     val spec: Specifications.ContractSpec,
-    val affiliate: Affiliate,
+    val provenanceReference: Commons.ProvenanceReference,
     val scope: ScopeResponse?,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
-) {
+    ) {
     private constructor(builder: Builder) : this(
         builder.proposedSession,
         builder.participants,
         builder.proposedRecords,
         builder.client!!,
-        builder.spec,
-        builder.affiliate!!,
-        builder.scope
+        builder.spec!!,
+        builder.provenanceReference!!,
+        builder.scope,
     )
 
     // TODO perhaps add scope
-    class Builder(val spec: Specifications.ContractSpec, val scope: ScopeResponse?) {
+    class Builder() {
         var proposedSession: Session? = null
             private set
         var proposedRecords: HashMap<String, Message> = HashMap()
@@ -49,20 +49,36 @@ class Session(
             private set
         var client: Client? = null
 
-        var affiliate: Affiliate? = null
+        var spec: Specifications.ContractSpec? = null
+
+        var provenanceReference: Commons.ProvenanceReference? = null
+
+        var scope: ScopeResponse? = null
 
         fun build() = Session(this)
 
-        // fun addProposedSession(session: Session) = apply {
-        //     this.proposedSession = session
-        // }
+         fun addProposedSession(session: Session) = apply {
+             this.proposedSession = session
+         }
 
-        fun addProposedRecord(name: String, record: Message) {
+        fun addContractSpec(contractSpec: Specifications.ContractSpec) = apply {
+            spec = contractSpec
+        }
+
+        fun addProvenanceReference(provReference: Commons.ProvenanceReference) = apply {
+            provenanceReference = provReference
+        }
+
+        fun addScope(scopeResponse: ScopeResponse) = apply {
+            scope = scopeResponse
+        }
+
+        fun addProposedRecord(name: String, record: Message) = apply {
             val proposedSpec = listOf(
-                spec.conditionSpecsList
+                spec!!.conditionSpecsList
                     .flatMap { it.inputSpecsList }
                     .filter { it.type == PROPOSED },
-                spec.functionSpecsList
+                spec!!.functionSpecsList
                     .flatMap { it.inputSpecsList }
                     .filter { it.type == PROPOSED }
             )
@@ -77,7 +93,7 @@ class Session(
         }
 
         fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PublicKeys.PublicKey) = apply {
-            val recitalSpec = spec.partiesInvolvedList
+            val recitalSpec = spec!!.partiesInvolvedList
                 .filter { it == party }
                 .firstOrNull()
                 .orThrowNotFound("Can't find participant for party type ${party}")
@@ -92,14 +108,13 @@ class Session(
 
     //    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
     private fun populateContract(): Contract {
-//        return Contract.getDefaultInstance()
         val envelope = Envelope.getDefaultInstance()
         val builder = Contract.getDefaultInstance().toBuilder()
 
         builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
             // TODO Where can these be retrieved? Try passing in affiliate
-            .setEncryptionPublicKey(affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
-            .setSigningPublicKey(affiliate.signingKeyRef.publicKey.toPublicKeyProtoOS())
+            .setEncryptionPublicKey(client.affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
+            .setSigningPublicKey(client.affiliate.signingKeyRef.publicKey.toPublicKeyProtoOS())
             .build()
 
         // Copy the outputs from previous contract executions to the inputs list.
@@ -189,9 +204,10 @@ class Session(
                     .setName(name)
                     .setDataLocation(
                         Commons.Location.newBuilder()
-                            .setClassname(record.javaClass.name)
+                                // TODO not sure about classname
+                            .setClassname(name)
                         // TODO figure out how to get the provenance ref
-//                            .setRef(ref)
+                            .setRef(provenanceReference)
                     )
             )
         }
@@ -314,7 +330,7 @@ class Session(
     }
 
 
-    private fun packageContract(): Envelope {
+     fun packageContract(): Envelope {
         val contract = populateContract()
         val executionUuid = UUID.newBuilder().setValueBytes(proposedSession?.sessionId).build()
 
@@ -339,7 +355,7 @@ class Session(
 
         permissionUpdater.saveConstructorArguments()
 
-        permissionUpdater.saveProposedFacts(executionUuid, this.proposedRecords.values)
+        permissionUpdater.saveProposedFacts(java.util.UUID.nameUUIDFromBytes(proposedSession?.sessionId?.toByteArray()), this.proposedRecords.values)
 
         return envelope
     }
@@ -392,27 +408,27 @@ class Session(
     class PermissionUpdater(
         private val client: Client,
         private val contract: Contract,
-        private val audience: Set<PublicKey>
+        private val audience: Set<java.security.PublicKey>
     ) {
 
         fun saveConstructorArguments() {
             // TODO (later) this can be optimized by checking the recitals and record groups and determining what subset, if any,
             // of input facts need to be fetched and stored in order only save the objects that are needed by some of
             // the recitals
-            contract.inputsList.map { fact ->
+            contract.inputsList.map { record ->
                 with(client) {
-                    // val obj = this.loadObject(fact.dataLocation.ref.hash)
-                    // val inputStream = ByteArrayInputStream(obj)
-
-                    // this.storeObject(inputStream, audience)
+//                     val obj = this.loadObject(record.dataLocation.ref.hash)
+//                     val inputStream = ByteArrayInputStream(obj)
+//
+//                     this.storeObject(inputStream, audience)
                 }
             }
         }
 
         // TODO (steve) for later convert to async with ListenableFutures
-        fun saveProposedFacts(stagedExecutionUuid: UUID, stagedProposedProtos: Collection<Message>) {
+        fun saveProposedFacts(stagedExecutionUuid: java.util.UUID, stagedProposedProtos: Collection<Message>) {
             stagedProposedProtos.map {
-                // client.saveProto(it, stagedExecutionUuid, audience)
+                client.osClient.putRecord(it, client.affiliate, audience, stagedExecutionUuid)
             }
         }
     }

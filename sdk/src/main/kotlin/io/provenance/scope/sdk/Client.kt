@@ -58,8 +58,11 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
         val protoRef = Commons.ProvenanceReference.newBuilder().setHash(protoHash.getHash()).build()
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
-        return Session.Builder(contractSpec, null)
+        // TODO I am unsure if the provenanceReference being passed in is correct
+        return Session.Builder()
             .also { it.client = this } // TODO remove when class is moved over
+            .addContractSpec(contractSpec)
+            .addProvenanceReference(contractRef)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }
 

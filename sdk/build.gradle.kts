@@ -10,4 +10,5 @@ dependencies {
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
     implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
     implementation("com.google.guava", "guava", Version.guava)
+    testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
 }
