@@ -6,3 +6,4 @@ build
 
 # Ignore idea
 .idea
+.DS_Store
