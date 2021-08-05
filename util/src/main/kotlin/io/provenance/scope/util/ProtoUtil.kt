@@ -1,4 +1,4 @@
-package io.provenance.scope.sdk
+package io.provenance.scope.util
 
 import com.google.protobuf.Message
 import com.google.protobuf.Message.Builder
@@ -63,7 +63,7 @@ object ProtoUtil {
 //    message.javaClass.name,
 //    scope?.uuid?.toUuidProv(),
 //    ancestorHash
-    fun ProposedRecordOf(name: String, hash: String, classname: String, scopeUuid: UUID? = null, ancestorHash: String? = null) =
+    fun proposedRecordOf(name: String, hash: String, classname: String, scopeUuid: UUID? = null, ancestorHash: String? = null) =
         ProposedRecord.newBuilder()
             .setClassname(classname)
             .setName(name)

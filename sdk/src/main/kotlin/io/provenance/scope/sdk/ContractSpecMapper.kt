@@ -2,7 +2,6 @@ package io.provenance.scope.sdk
 
 import com.google.common.hash.Hashing
 import com.google.protobuf.Message
-import io.provenance.scope.contract.annotations.Prerequisite
 import io.provenance.scope.contract.annotations.Function
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.annotations.Input
@@ -23,6 +22,7 @@ import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Contracts.ConditionProto
 import io.provenance.scope.contract.proto.Contracts.ConsiderationProto
 import io.provenance.scope.contract.proto.Contracts.Contract
+import io.provenance.scope.util.ProtoUtil
 import io.provenance.scope.contract.proto.Contracts.Record as RecordProto
 import java.lang.reflect.ParameterizedType
 import java.util.Base64
@@ -162,12 +162,6 @@ object ContractSpecMapper {
             .let(spec::addAllPartiesInvolved)
 
         clazz.functions
-            .filter { it.findAnnotation<Prerequisite>() != null }
-            .map { func ->
-                buildConditionSpec(protoRef, func)
-            }.let(spec::addAllConditionSpecs)
-
-        clazz.functions
             .filter { it.findAnnotation<Function>() != null }
             .map { func ->
                 buildFunctionSpec(protoRef, func)
@@ -176,70 +170,6 @@ object ContractSpecMapper {
             }
 
         return spec.build()
-    }
-
-    private fun buildConditionSpec(
-        protoRef: ProvenanceReference,
-        func: KFunction<*>
-    ): ConditionSpec {
-        val builder = ConditionSpec.newBuilder()
-
-        builder.funcName = func.name
-
-        func.valueParameters
-            .forEach { param ->
-                param.findAnnotation<Record>()
-                    ?.also {
-                        with(ProtoUtil) {
-                            builder.addInputSpecs(
-                                defSpecBuilderOf(
-                                    it.name,
-                                    locationBuilderOf(
-                                        param.type.javaType.typeName,
-                                        protoRef
-                                    ),
-                                    FACT
-                                )
-                            )
-                        }
-                    } ?: param.findAnnotation<Input>()
-                    .orThrowNotFound("No @Input or @Record Found for Param ${param}")
-                    .also {
-                        with(ProtoUtil) {
-                            builder.addInputSpecs(
-                                defSpecBuilderOf(
-                                    it.name,
-                                    locationBuilderOf(
-                                        param.type.javaType.typeName,
-                                        protoRef
-                                    ),
-                                    PROPOSED
-                                )
-                            )
-                        }
-                    }
-            }
-
-        func.findAnnotation<Record>()
-            .orThrowNotFound("No @Record Found for Function ${func}")
-            .also { fact ->
-                with(ProtoUtil) {
-                    builder.setOutputSpec(
-                        outputSpecBuilderOf(
-                            defSpecBuilderOf(
-                                fact.name,
-                                locationBuilderOf(
-                                    func.returnType.javaType.typeName,
-                                    protoRef
-                                ),
-                                PROPOSED
-                            )
-                        )
-                    )
-                }
-            }
-
-        return builder.build()
     }
 
     private fun buildFunctionSpec(
