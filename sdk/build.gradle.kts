@@ -9,6 +9,7 @@ dependencies {
     api(project(":encryption"))
     api(project(":engine"))
     implementation(project(":util"))
+    implementation(project(":engine"))
     api("io.provenance.protobuf", "pb-proto-java", Version.provenanceProtos)
 
     implementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
@@ -24,8 +25,7 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-
-
+    
     testLogging {
         showStandardStreams = true
         events = setOf(PASSED, FAILED, SKIPPED, STANDARD_ERROR)
