@@ -12,4 +12,5 @@ object Version {
     const val javax_annotation_version = "1.3.2"
     const val os_proto_version = "0.5.0"
     const val jackson_version = "2.12.2"
+    const val arrow = "0.13.1"
 }

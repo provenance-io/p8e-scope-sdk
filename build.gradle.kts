@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 buildscript {
     repositories {
         mavenCentral()
@@ -31,6 +33,12 @@ subprojects {
 
     repositories {
         mavenCentral()
+    }
+
+    tasks.withType<KotlinCompile>().all {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
     }
 
     java {

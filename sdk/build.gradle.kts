@@ -4,6 +4,7 @@ dependencies {
     api(project(":contract-base"))
     api(project(":contract-proto"))
     api(project(":encryption"))
+    implementation(project(":util"))
     api("io.provenance.protobuf", "pb-proto-java", Version.provenanceProtos)
 
     implementation("org.jetbrains.kotlin", "kotlin-reflect", Version.kotlin)

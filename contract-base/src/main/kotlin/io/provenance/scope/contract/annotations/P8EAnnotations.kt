@@ -3,16 +3,6 @@ package io.provenance.scope.contract.annotations
 import io.provenance.scope.contract.proto.Specifications.PartyType
 
 /**
- * Prerequisites are always executed by all parties and the location provided via uri is an executable location.
- *
- * Prerequisites must be satisfied before any further steps are evaluated on a contract during recording.
- */
-@Target(AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.RUNTIME)
-@MustBeDocumented
-annotation class Prerequisite
-
-/**
  * Functions are executed by all parties if all provided Records/Inputs are available.
  * The location provided via uri is an executable location.
  *

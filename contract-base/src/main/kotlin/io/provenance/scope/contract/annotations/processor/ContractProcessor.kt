@@ -21,7 +21,6 @@ import javax.tools.Diagnostic.Kind.WARNING
 
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.annotations.Input
-import io.provenance.scope.contract.annotations.processor.P8eAnnotations.PREREQUISITE
 import io.provenance.scope.contract.annotations.processor.P8eAnnotations.FUNCTION
 import io.provenance.scope.contract.annotations.processor.P8eAnnotations.FACT
 import io.provenance.scope.contract.annotations.processor.P8eAnnotations.INPUT
@@ -87,19 +86,6 @@ open class ContractProcessor: AbstractProcessor() {
             "${element.simpleName} must not be marked final to allow for proxying." to element
         }
 
-        val prerequisites = element.enclosedElements
-            .filter { it.kind == METHOD && it.getAnnotation(PREREQUISITE.clazz) != null }
-            .map { it as ExecutableElement }
-            .also { methods ->
-                methods.forEach { method ->
-                    handleConsideration(
-                        elements,
-                        types,
-                        method
-                    )
-                }
-            }
-
         val considerations = element.enclosedElements
             .filter { it.kind == METHOD && it.getAnnotation(FUNCTION.clazz) != null }
             .map { it as ExecutableElement }
@@ -113,9 +99,7 @@ open class ContractProcessor: AbstractProcessor() {
                 }
             }
 
-        val allOutputMethods = (prerequisites + considerations)
-
-        val facts = allOutputMethods
+        val facts = considerations
             .mapNotNull { it.getAnnotation(FACT.clazz) as? Record }
         val factNames = facts.map { it.name }
             .toSet()
