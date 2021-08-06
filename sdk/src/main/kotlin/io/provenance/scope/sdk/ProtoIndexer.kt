@@ -6,6 +6,7 @@ import com.google.protobuf.Descriptors.*
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType.*
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.Record
+import io.provenance.metadata.v1.RecordWrapper
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.metadata.v1.SessionWrapper
 import io.provenance.metadata.v1.p8e.ContractSpec
@@ -35,54 +36,68 @@ class ProtoIndexer(
     private val messageIndexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
     private val _definitionService = DefinitionService(osClient)
 
-    fun indexFields(scope: ScopeResponse, keyPairs: Collection<KeyPair>, contractSpecHashLookup: Map<String, String>): Map<String, Any> {
+    fun indexFields(scope: ScopeResponse,
+                    keyPairs: Collection<KeyPair>,
+                    contractSpecHashLookup: Map<String, String>): Map<String, Any> {
         // find all record groups where there's at least one party member that's an affiliate on this p8e instance
-        val sessionMap = makeSessionIdMap(scope.sessionsList)
-        val addressMap: Map<String, KeyPair> = keyPairs.associateBy{ it.public.getAddress(mainNet) }    //Address to KeyPair map
+        val sessionMap: Map<ByteString, SessionWrapper> = makeSessionIdMap(scope.sessionsList)
+        val addressMap: Map<String, KeyPair> = keyPairs.associateBy{ it.public.getAddress(mainNet) }
 
         return scope.recordsList
+            //Filter to just the records that we have addresses for from the partiesList
             .filter { recordWrapper ->
                 val sessionWrapper = sessionMap.getValue(recordWrapper.record.sessionId)
                 sessionWrapper.session.partiesList.any { addressMap.containsKey(it.address) }
             }
+            //Get list of record_name - Map pairs
             .map { recordWrapper ->
-                val sessionWrapper = sessionMap.getValue(recordWrapper.record.sessionId)
-                val keyPair: KeyPair =  sessionWrapper.session.partiesList
-                        .map { it.address } //This partiesList is different type from the original, so this needs to be changed
-                        .first { addressMap.containsKey(it) }
-                        .let { addressMap.getValue(it) }
-
-                // Need a reference of the signer that is used to verify signatures.
-                //TODO: Add smartkey implementation/handling
-                val signer = Pen(keyPair)
-                val encryptionKeyRef = DirectKeyRef(keyPair.public, keyPair.private)
-
-                // Try to re-use MemoryClassLoader if possible for caching reasons
-                val spec = _definitionService.loadProto(
-                    encryptionKeyRef,
-                    contractSpecHashLookup.get(sessionWrapper.contractSpecIdInfo.contractSpecAddr)!!,   //TODO: figure out session hash lookup
-                    ContractSpec::class.java.name,
-                    signer
-                ) as ContractSpec
-
-                val classLoaderKey =
-                    "${spec.definition.resourceLocation.ref.hash}-${spec.considerationSpecsList.first().outputSpec.spec.resourceLocation.ref.hash}"
-                val memoryClassLoader = ClassLoaderCache.classLoaderCache.get(classLoaderKey) {
-                    MemoryClassLoader("", ByteArrayInputStream(ByteArray(0)))
-                }
-
-                val definitionService = DefinitionService(osClient, memoryClassLoader)
-                loadAllJars(encryptionKeyRef, definitionService, spec, signer)
-
-                recordWrapper.record.name to indexFields(
-                    definitionService,
-                    encryptionKeyRef,
-                    recordWrapper,
-                    signer
-                )
-            }.filter { it.second != null }
+                recordNameToIndexFields(recordWrapper, sessionMap, addressMap, contractSpecHashLookup)
+            }
+            //Filter out null maps and then convert list to a map
+            .filter { it.second != null }
             .map { it.first to it.second!! }
             .toMap()
+    }
+
+    //Helper function that makes a Pair of a record's name to a map
+    private fun recordNameToIndexFields(recordWrapper: RecordWrapper,
+                                        sessionMap: Map<ByteString, SessionWrapper>,
+                                        addressMap: Map<String, KeyPair>,
+                                        contractSpecHashLookup: Map<String, String>): Pair<String, Map<String, Any>?>{
+        val sessionWrapper = sessionMap.getValue(recordWrapper.record.sessionId)
+        val keyPair: KeyPair =  sessionWrapper.session.partiesList
+            .map { it.address }
+            .first { addressMap.containsKey(it) }
+            .let { addressMap.getValue(it) }
+
+        // Need a reference of the signer that is used to verify signatures.
+        //TODO: Add smartkey implementation/handling
+        val signer = Pen(keyPair)
+        val encryptionKeyRef = DirectKeyRef(keyPair.public, keyPair.private)
+
+        // Try to re-use MemoryClassLoader if possible for caching reasons
+        val spec = _definitionService.loadProto(
+            encryptionKeyRef,
+            contractSpecHashLookup[sessionWrapper.contractSpecIdInfo.contractSpecAddr]!!,   //TODO: figure out session hash lookup
+            ContractSpec::class.java.name,
+            signer
+        ) as ContractSpec
+
+        val classLoaderKey =
+            "${spec.definition.resourceLocation.ref.hash}-${spec.considerationSpecsList.first().outputSpec.spec.resourceLocation.ref.hash}"
+        val memoryClassLoader = ClassLoaderCache.classLoaderCache.get(classLoaderKey) {
+            MemoryClassLoader("", ByteArrayInputStream(ByteArray(0)))
+        }
+
+        val definitionService = DefinitionService(osClient, memoryClassLoader)
+        loadAllJars(encryptionKeyRef, definitionService, spec, signer)
+
+        return recordWrapper.record.name to indexFields(
+            definitionService,
+            encryptionKeyRef,
+            recordWrapper,
+            signer
+        )
     }
 
     @Suppress("UNCHECKED_CAST")
