@@ -1,6 +1,5 @@
 package io.provenance.scope.sdk
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.protobuf.ByteString
 import com.google.protobuf.Descriptors.*
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType.*
@@ -28,8 +27,7 @@ import java.io.ByteArrayInputStream
 import java.security.KeyPair
 
 class ProtoIndexer(
-    private val objectMapper: ObjectMapper,
-    private val osClient: OsClient,
+    private val osClient: /*Cached*/OsClient,
     private val mainNet: Boolean    //TODO: Might change where we pull this from.  Figure out later
 ) {
     private val indexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("index")
