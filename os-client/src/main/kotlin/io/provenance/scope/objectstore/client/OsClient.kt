@@ -1,9 +1,11 @@
 package io.provenance.scope.objectstore.client
 
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.grpc.ManagedChannelBuilder
-import io.grpc.stub.StreamObserver
 import io.provenance.scope.encryption.dime.ProvenanceDIME
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.crypto.CertificateUtil
@@ -12,6 +14,7 @@ import io.provenance.objectstore.proto.MailboxServiceGrpc
 import io.provenance.objectstore.proto.Mailboxes
 import io.provenance.objectstore.proto.ObjectServiceGrpc
 import io.provenance.objectstore.proto.Objects
+import io.provenance.objectstore.proto.Objects.ChunkBidi
 import io.provenance.objectstore.proto.PublicKeyServiceGrpc
 import io.provenance.objectstore.proto.PublicKeys
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
@@ -25,7 +28,6 @@ import java.io.InputStream
 import java.net.URI
 import java.security.PublicKey
 import java.util.UUID
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 const val CREATED_BY_HEADER = "x-created-by"
@@ -39,7 +41,6 @@ open class OsClient(
     private val deadlineMs: Long
 ) {
 
-    private val objectBlockingClient: ObjectServiceGrpc.ObjectServiceBlockingStub
     private val objectAsyncClient: ObjectServiceGrpc.ObjectServiceStub
     private val objectFutureClient: ObjectServiceGrpc.ObjectServiceFutureStub
     private val publicKeyBlockingClient: PublicKeyServiceGrpc.PublicKeyServiceBlockingStub
@@ -61,7 +62,6 @@ open class OsClient(
 
         objectAsyncClient = ObjectServiceGrpc.newStub(channel)
         objectFutureClient = ObjectServiceGrpc.newFutureStub(channel)
-        objectBlockingClient = ObjectServiceGrpc.newBlockingStub(channel)
         publicKeyBlockingClient = PublicKeyServiceGrpc.newBlockingStub(channel)
         mailboxBlockingClient = MailboxServiceGrpc.newBlockingStub(channel)
     }
@@ -90,22 +90,8 @@ open class OsClient(
             }
     }
 
-    // TODO move to futures based stub
-    fun get(hash: ByteArray, publicKey: PublicKey): DIMEInputStream {
-        if (hash.size < 16) {
-            throw IllegalArgumentException("Provided hash must be byte array of at least size 16, found size: ${hash.size}")
-        }
-
+    private fun getInner(iterator: Iterator<ChunkBidi>): DIMEInputStream {
         val bytes = ByteArrayOutputStream()
-        val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
-
-        // TODO wrap this call in try and return previous error on 404
-        val iterator = objectBlockingClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).get(
-            Objects.HashRequest.newBuilder()
-                .setHash(ByteString.copyFrom(hash))
-                .setPublicKey(ByteString.copyFrom(ecPublicKey))
-                .build()
-        )
 
         if (!iterator.hasNext()) {
             throw MalformedStreamException("MultiStream has no header")
@@ -148,6 +134,30 @@ open class OsClient(
         return DIMEInputStream.parse(ByteArrayInputStream(bytes.toByteArray()))
     }
 
+    fun get(hash: ByteArray, publicKey: PublicKey): ListenableFuture<DIMEInputStream> {
+        if (hash.size < 16) {
+            throw IllegalArgumentException("Provided hash must be byte array of at least size 16, found size: ${hash.size}")
+        }
+
+        val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
+        val responseObserver = BufferedResponseFutureObserver<ChunkBidi>()
+        // TODO wrap this call in try and return previous error on 404
+        objectAsyncClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).get(
+            Objects.HashRequest.newBuilder()
+                .setHash(ByteString.copyFrom(hash))
+                .setPublicKey(ByteString.copyFrom(ecPublicKey))
+                .build(),
+            responseObserver,
+        )
+
+        return Futures.transform(
+            responseObserver.future,
+            { iterator -> iterator?.let { this.getInner(it) }}, // TODO figure out what happens when this is null?
+            // TODO use the threadpool that exists
+            MoreExecutors.directExecutor(),
+        )
+    }
+
     fun put(
         message: Message,
         encryptionPublicKey: PublicKey,
@@ -155,7 +165,7 @@ open class OsClient(
         additionalAudiences: Set<PublicKey> = setOf(),
         metadata: Map<String, String> = mapOf(),
         uuid: UUID = UUID.randomUUID()
-    ): Objects.ObjectResponse {
+    ): ListenableFuture<Objects.ObjectResponse> {
         val bytes = message.toByteArray()
 
         return put(
@@ -177,11 +187,12 @@ open class OsClient(
         additionalAudiences: Set<PublicKey> = setOf(),
         metadata: Map<String, String> = mapOf(),
         uuid: UUID = UUID.randomUUID(),
-    ): Objects.ObjectResponse {
+    ): ListenableFuture<Objects.ObjectResponse> {
         val signerPublicKey = signer.getPublicKey()
         val signatureInputStream = inputStream.sign(signer)
         val signingPublicKey = CertificateUtil.publicKeyToPem(signerPublicKey)
 
+        // TODO should this be performed in the thread pool in the background?
         val dime = ProvenanceDIME.createDIME(
             payload = signatureInputStream,
             ownerEncryptionPublicKey = encryptionPublicKey,
@@ -196,7 +207,7 @@ open class OsClient(
             internalHash = true,
             externalHash = false
         )
-        val responseObserver = SingleResponseObserver<Objects.ObjectResponse>()
+        val responseObserver = SingleResponseFutureObserver<Objects.ObjectResponse>()
         // TODO test that deadline works on async requests like this
         val requestObserver = objectAsyncClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).put(responseObserver)
         val header = Objects.MultiStreamHeader.newBuilder()
@@ -225,14 +236,14 @@ open class OsClient(
         }
 
         // TODO change this up if deadline functions correctly
-        if (!responseObserver.finishLatch.await(deadlineMs, TimeUnit.MILLISECONDS)) {
-            throw TimeoutException("No response received")
-        }
-        if (responseObserver.error != null) {
-            throw responseObserver.error!!
-        }
+        // if (!responseObserver.finishLatch.await(deadlineMs, TimeUnit.MILLISECONDS)) {
+        //     throw TimeoutException("No response received")
+        // }
+        // if (responseObserver.error != null) {
+        //     throw responseObserver.error!!
+        // }
 
-        return responseObserver.get()
+        return responseObserver.future
     }
 
     fun createPublicKey(publicKey: PublicKey): PublicKeys.PublicKeyResponse? =
@@ -243,27 +254,6 @@ open class OsClient(
                     .setUrl("http://localhost") // todo: what is this supposed to be?
                     .build()
             )
-}
-
-class SingleResponseObserver<T> : StreamObserver<T> {
-    val finishLatch: CountDownLatch = CountDownLatch(1)
-    var error: Throwable? = null
-    private var item: T? = null
-
-    fun get(): T = item ?: throw IllegalStateException("Attempting to get result before it was received")
-
-    override fun onNext(item: T) {
-        this.item = item
-    }
-
-    override fun onError(t: Throwable) {
-        error = t
-        finishLatch.countDown()
-    }
-
-    override fun onCompleted() {
-        finishLatch.countDown()
-    }
 }
 
 fun propertyChunkRequest(pair: Pair<String, ByteArray>): Objects.ChunkBidi =

@@ -18,37 +18,38 @@ import io.provenance.scope.sdk.ContractSpecMapper.orThrowContractDefinition
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
-import java.util.*
+import java.io.Closeable
+import java.util.ServiceLoader
 
 // TODO (@steve)
-// add Client class that takes in a config
 // how does signer fit in?
+// support multiple size hashes in the sdk - object-store should already support hashes of any length
 
-// TODO pair with Wyatt
-// add notion of keypair/signer for client
-// - java key pair
-// - smart key reference
-// add config for that keypair such as invoker
-
-
-class Client(config: ClientConfig, val affiliate: Affiliate) {
-
-    // TODO make this a singleton shared across Clients
+class SharedClient(config: ClientConfig) : Closeable {
     val osClient: CachedOsClient = CachedOsClient(config, OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs))
+
+    override fun close() {
+        TODO("Implement Closeable and close osClient channel - needs to shutdown and wait for shutdown or timeout")
+    }
+}
+
+class Client(val inner: SharedClient, val affiliate: Affiliate) {
+
+    companion object {
+        // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
+        private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList()
+        private val protoHashes = ServiceLoader.load(ProtoHash::class.java).toList()
+    }
 
     // TODO
     // add error handling and start with extensions present here
     // finish this function implementation
     // make resolver that can go from byte array to Message class
 
-    // TODO return type of both of these will be a Builder that accepts functions like .addRecord(...) / .addProposedRecord(...)
-    // contractManager.newContract(...).addProposedFact(...)
-    // executes a new session against an existing scope
     fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse, session: SessionProto): Session.Builder {
-        // dehydrate clazz into ContractSpec
         val contractHash = getContractHash(clazz)
         val protoHash = clazz.methods
-            .find { it.returnType != null && Message::class.java.isAssignableFrom(it.returnType) }
+            .find { Message::class.java.isAssignableFrom(it.returnType) }
             ?.returnType
             ?.let { getProtoHash(contractHash, it) }
             .orThrow {
@@ -68,13 +69,11 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
 
     fun java.security.PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
         PublicKeys.PublicKey.newBuilder()
-            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
+            .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(this)))
             .build()
 
-    fun ByteArray.toByteString() = ByteString.copyFrom(this)
-
     // executes the first session against a non-existent scope
-    fun<T: P8eContract> newSession(clazz: Class<T>, scopeSpecification: ScopeSpecification, session: Session) {
+    fun<T: P8eContract> newSession(clazz: Class<T>, scopeSpecification: ScopeSpecification, session: SessionProto) {
 
     }
 
@@ -107,7 +106,7 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
                     wrapper.record.name == name && wrapper.record.resultType() == type.name
                 }.record to type
             }.map { (record, type) ->
-                osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
+                inner.osClient.getRecord(type.name, record.resultHash(), affiliate)
             }
 
         return clazz.cast(constructor.newInstance(*params.toList().toTypedArray()))
@@ -125,8 +124,5 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
         }.orThrow { IllegalStateException("Unable to find ProtoHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
     }
 
-    private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList()
-    private val protoHashes = ServiceLoader.load(ProtoHash::class.java).toList()
-
-    fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this?.let { it } ?: throw supplier()
+    fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()
 }

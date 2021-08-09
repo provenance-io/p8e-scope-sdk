@@ -1,5 +1,6 @@
 dependencies {
     implementation(project(":contract-proto"))
+    // TODO imo a subproject like util should not pull in something like encryption
     implementation(project(":encryption"))
 
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)

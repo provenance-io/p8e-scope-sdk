@@ -199,7 +199,7 @@ class DefinitionService(
     ): InputStream {
         return byteCache.get(ByteCacheKey(encryptionKeyRef.publicKey, hash)) {
             val item = try {
-                osClient.get(hash.base64Decode(), encryptionKeyRef.publicKey)
+                osClient.get(hash.base64Decode(), encryptionKeyRef.publicKey).get()
             } catch (e: StatusRuntimeException) {
                 if (e.status.code == Status.Code.NOT_FOUND) {
                     throw NotFoundException(
@@ -288,7 +288,7 @@ class DefinitionService(
             audience
         ).also {
             putCache.put(PutCacheKey(audience.toMutableSet().plus(encryptionPublicKey), msg.base64Sha512()), true)
-        }.hash.toByteArray()
+        }.get().hash.toByteArray()
     }
 
     fun <T : Message> save(
@@ -308,7 +308,7 @@ class DefinitionService(
             additionalAudiences = audience
         ).also {
             putCache.put(putCacheKey, true)
-        }.hash.toByteArray()
+        }.get().hash.toByteArray()
     }
 
     fun <T> forThread(fn: () -> T): T {
