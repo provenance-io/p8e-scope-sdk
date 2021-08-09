@@ -2,6 +2,9 @@ package io.provenance.scope.util
 
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.proto.PK
+import org.bouncycastle.util.encoders.Hex
+import java.security.PrivateKey
 import java.security.PublicKey
 
 fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
@@ -15,3 +18,23 @@ fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
 fun PublicKeys.PublicKey.toHex() = this.toByteArray().toHexString()
 
 fun PublicKey.toHex() = toPublicKeyProto().toHex()
+
+fun PK.PublicKey.toPublicKey(): PublicKey =
+    this.let {
+        require(it.curve == PK.KeyCurve.SECP256K1) {"Unsupported Key Curve"}
+        ECUtils.convertBytesToPublicKey(it.publicKeyBytes.toByteArray())
+    }
+
+fun String.toPublicKeyProto(): PK.PublicKey = PK.PublicKey.parseFrom(Hex.decode(this))
+
+fun String.toJavaPublicKey(): PublicKey = toPublicKeyProto().toPublicKey()
+
+fun PK.PrivateKey.toPrivateKey(): PrivateKey =
+    this.let {
+        require(it.curve == PK.KeyCurve.SECP256K1) {"Unsupported Key Curve"}
+        ECUtils.convertBytesToPrivateKey(it.keyBytes.toByteArray())
+    }
+
+fun String.toPrivateKeyProto(): PK.PrivateKey = PK.PrivateKey.parseFrom(Hex.decode(this))
+
+fun String.toJavaPrivateKey() = toPrivateKeyProto().toPrivateKey()
