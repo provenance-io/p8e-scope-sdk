@@ -61,8 +61,8 @@ class Client(config: ClientConfig, val affiliate: Affiliate) {
         // TODO I am unsure if the provenanceReference being passed in is correct
         return Session.Builder()
             .also { it.client = this } // TODO remove when class is moved over
-            .addContractSpec(contractSpec)
-            .addProvenanceReference(contractRef)
+            .setContractSpec(contractSpec)
+            .setProvenanceReference(contractRef)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }
 

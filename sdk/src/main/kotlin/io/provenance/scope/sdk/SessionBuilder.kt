@@ -57,19 +57,23 @@ class Session(
 
         fun build() = Session(this)
 
-         fun addProposedSession(session: Session) = apply {
+         fun setProposedSession(session: Session) = apply {
              this.proposedSession = session
          }
 
-        fun addContractSpec(contractSpec: Specifications.ContractSpec) = apply {
+        fun setContractSpec(contractSpec: Specifications.ContractSpec) = apply {
             spec = contractSpec
         }
 
-        fun addProvenanceReference(provReference: Commons.ProvenanceReference) = apply {
+        fun setProvenanceReference(provReference: Commons.ProvenanceReference) = apply {
             provenanceReference = provReference
         }
 
-        fun addScope(scopeResponse: ScopeResponse) = apply {
+        fun setClient(client: Client) = apply {
+            this.client = client
+        }
+
+        fun setScope(scopeResponse: ScopeResponse) = apply {
             scope = scopeResponse
         }
 
@@ -87,7 +91,7 @@ class Session(
                 .orThrowNotFound("Can't find the proposed fact for $name")
 
             require(proposedSpec.resourceLocation.classname == record.defaultInstanceForType.javaClass.name)
-            { "Invalid proto message supplied for $name. Expected: ${proposedSpec.resourceLocation.classname} Received: ${record.defaultInstanceForType.javaClass.name}" }
+            { "Invalid proto message supplied for $name. Expected: ${proposedSpec.resourceLocation.classname} Received: ${name}" }
 
             proposedRecords[name] = record
         }
@@ -428,7 +432,7 @@ class Session(
         // TODO (steve) for later convert to async with ListenableFutures
         fun saveProposedFacts(stagedExecutionUuid: java.util.UUID, stagedProposedProtos: Collection<Message>) {
             stagedProposedProtos.map {
-                client.osClient.putRecord(it, client.affiliate, audience, stagedExecutionUuid)
+//                client.osClient.putRecord(it, client.affiliate, audience, stagedExecutionUuid)
             }
         }
     }
