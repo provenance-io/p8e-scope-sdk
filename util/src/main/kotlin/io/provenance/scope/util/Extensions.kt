@@ -12,6 +12,7 @@ fun ByteArray.toHexString() = BaseEncoding.base16().encode(this)
 
 fun <T: Any> T?.or(supplier: () -> T) = this?.let { it } ?: supplier()
 
+// TODO we should be able to deprecate 512 size
 fun ByteArray.sha512(): ByteArray = Hashing.sha512().hashBytes(this).asBytes()
 
 fun ByteArray.base64Sha512() = this.sha512().base64String()
@@ -21,6 +22,10 @@ fun ByteArray.base64String() = String(Base64.getEncoder().encode(this))
 fun Utils.UUIDOrBuilder.toUuidProv(): UUID = UUID.fromString(value)
 
 fun String.toUuidProv(): UUID = UUID.fromString(this)
+
+// TODO add 16 byte hash support
+fun ByteArray.sha256(): ByteArray = Hashing.sha256().hashBytes(this).asBytes()
+fun ByteArray.sha256String(): String = this.sha256().base64String()
 
 /**
  * Stack trace from exception for logging purposes

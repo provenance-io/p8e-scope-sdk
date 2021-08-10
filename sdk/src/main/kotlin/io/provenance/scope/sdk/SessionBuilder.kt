@@ -432,8 +432,8 @@ class Session(
         // TODO (steve) for later convert to async with ListenableFutures
         fun saveProposedFacts(stagedExecutionUuid: java.util.UUID, stagedProposedProtos: Collection<Message>) {
             stagedProposedProtos.map {
-//                client.osClient.putRecord(it, client.affiliate, audience, stagedExecutionUuid)
-            }
+                client.inner.osClient.putRecord(it, client.affiliate, audience, stagedExecutionUuid)
+            }.map { it.get() } // TODO is this the best way to await N items?
         }
     }
 }

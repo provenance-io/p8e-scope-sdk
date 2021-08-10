@@ -4,11 +4,13 @@ import java.net.URI
 
 data class ClientConfig(
     // caching
-    val jarCacheSizeInBytes: Long,
-    val specCacheSizeInBytes: Long,
-    val recordCacheSizeInBytes: Long,
+    val cacheJarSizeInBytes: Long,
+    val cacheSpecSizeInBytes: Long,
+    val cacheRecordSizeInBytes: Long,
 
     // object-store
     val osGrpcUrl: URI,
-    val osGrpcDeadlineMs: Long,
+    val osGrpcDeadlineMs: Long = 30_000L,
+    val osConcurrencySize: Short = 4,
+    val osDecryptionWorkerThreads: Short = 2,
 )

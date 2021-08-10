@@ -3,9 +3,9 @@ package io.provenance.scope.util
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.proto.PK
+import org.bouncycastle.util.encoders.Hex
 import java.security.PrivateKey
 import java.security.PublicKey
-import org.bouncycastle.util.encoders.Hex
 
 
 fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
