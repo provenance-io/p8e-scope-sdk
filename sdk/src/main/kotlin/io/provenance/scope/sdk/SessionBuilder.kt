@@ -113,7 +113,7 @@ class Session(
     //    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
     private fun populateContract(): Contract {
         val envelope = Envelope.getDefaultInstance()
-        val builder = Contract.getDefaultInstance().toBuilder()
+        val builder = Contract.newBuilder()
 
         builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
             // TODO Where can these be retrieved? Try passing in affiliate
