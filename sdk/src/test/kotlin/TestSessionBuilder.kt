@@ -6,12 +6,9 @@ import com.google.protobuf.TextFormat.parse
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldBe
 import io.provenance.scope.contract.proto.*
-import io.provenance.scope.sdk.Session
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.encryption.model.DirectKeyRef
-import io.provenance.scope.sdk.Affiliate
-import io.provenance.scope.sdk.Client
-import io.provenance.scope.sdk.ClientConfig
+import io.provenance.scope.sdk.*
 import io.provenance.scope.util.toJavaPrivateKey
 import java.net.URI
 import java.security.KeyPair
@@ -44,7 +41,8 @@ class UtilsTest : WordSpec({
         val osGrpcUri = URI.create("https://localhost:5000")
 
         val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs )
-        val osClient = Client(clientConfig, affiliate)
+
+        val osClient = Client(SharedClient(clientConfig), affiliate)
         val defSpec = Commons.DefinitionSpec.newBuilder()
             .setTypeValue(PROPOSED.ordinal)
             .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record"))
