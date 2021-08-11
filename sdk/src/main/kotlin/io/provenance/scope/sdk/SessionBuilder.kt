@@ -357,8 +357,6 @@ class Session(
     }
 
     private fun Contract.Builder.populateFact(fact: Fact) {
-        val test = this.inputsBuilderList
-        test.toString()
         inputsBuilderList.firstOrNull {
             isMatchingFact(it, fact.name)
         }?.apply {
@@ -382,12 +380,6 @@ class Session(
     }
 
     private fun isMatchingFact(inputFact: Contracts.Record.Builder, factName: String): Boolean {
-        val hello = Commons.ProvenanceReference.getDefaultInstance()
-        val inputFactRef = inputFact.dataLocation.ref
-        hello.toString()
-        inputFactRef.toString()
-        val testing = inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
-        testing.toString()
         return inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
     }
 
