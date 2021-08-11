@@ -4,11 +4,10 @@ import com.google.common.hash.Hashing
 import com.google.protobuf.ByteString
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.objectstore.proto.Utils
-import java.io.InputStream
+import java.nio.ByteBuffer
 import java.security.PublicKey
 import java.util.Base64
-
-const val CHUNK_SIZE = 2 * 1024 * 1024
+import java.util.UUID
 
 fun <T : Any> T?.orThrowNotFound(message: String) = this ?: throw NotFoundException(message)
 
@@ -16,31 +15,40 @@ class NotFoundException(message: String) : RuntimeException(message)
 
 class FileExistsException: RuntimeException()
 
-fun ByteArray.toHexString() = map { String.format("%02X", it) }.reduce { acc, s -> "$acc$s" }
-
 fun <T: Any, X: Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()
 
 fun <T: Any?> T?.orGet(supplier: () -> T) = this ?: supplier()
 
-fun ByteArray.base64Encode() = Base64.getEncoder().encode(this)
+fun ByteArray.base64Encode(): ByteArray = Base64.getEncoder().encode(this)
+fun ByteArray.base64EncodeString(): String = String(this.base64Encode())
+fun String.base64Decode(): ByteArray = Base64.getDecoder().decode(this)
 
-fun String.base64Encode() = String(Base64.getEncoder().encode(toByteArray()))
+fun ByteArray.sha256() = Hashing.sha256().hashBytes(this).asBytes()
+fun ByteArray.sha256LoBytes(): ByteArray {
+    return Hashing.sha256().hashBytes(this)
+        .asBytes()
+        .slice(0..16)
+        .toByteArray()
+}
 
-fun String.base64Decode() = Base64.getDecoder().decode(this)
+// TODO add test to go to byte array and back to uuid
+fun ByteArray.toUuid(): UUID {
+    require(size == 16) { "ByteArray must be size 16" }
 
-fun ByteArray.sha512() = Hashing.sha512().hashBytes(this).asBytes()!!
+    val buffer = ByteBuffer.wrap(this)
 
-fun ByteArray.crc32c() = Hashing.crc32c().hashBytes(this).asBytes()!!
+    val first = buffer.long
+    val second = buffer.long
 
-fun InputStream.readAllBytes(contentLength: Int) = use { inputStream ->
-    ByteArray(contentLength).also { bytes ->
-        var pos = 0
-        var read: Int
-        do {
-            read = inputStream.read(bytes, pos, CHUNK_SIZE)
-            pos += read
-        } while (read > 0)
-    }
+    return UUID(first, second)
+}
+fun UUID.toByteArray(): ByteArray {
+    val buffer = ByteBuffer.wrap(ByteArray(16))
+
+    buffer.putLong(this.leastSignificantBits)
+    buffer.putLong(this.mostSignificantBits)
+
+    return buffer.array()
 }
 
 fun PublicKey.toPublicKeyProtoOS(): Utils.PublicKey =

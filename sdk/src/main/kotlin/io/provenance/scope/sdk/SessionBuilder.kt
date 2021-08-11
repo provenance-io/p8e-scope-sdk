@@ -6,20 +6,19 @@ import io.provenance.metadata.v1.Session
 import io.provenance.metadata.v1.p8e.Fact
 import io.provenance.metadata.v1.p8e.Location
 import io.provenance.metadata.v1.p8e.ProvenanceReference
-import io.provenance.metadata.v1.p8e.PublicKey
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Utils.UUID
-import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.objectstore.util.sha512
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuidProv
 import io.provenance.scope.util.toPublicKeyProtoOS
+import io.provenance.scope.objectstore.util.base64EncodeString
+import io.provenance.scope.objectstore.util.sha256
 import java.util.*
 import java.util.UUID.randomUUID
 
@@ -253,7 +252,7 @@ class Session(
                             consideration.addInputs(
                                 Contracts.ProposedRecord.newBuilder()
                                     .setClassname(defSpec.resourceLocation.classname)
-                                    .setHash(it.toByteArray().base64Sha512())
+                                    .setHash(it.toByteArray().sha256().base64EncodeString())
                                     .setName(defSpec.name)
                                     .build()
                             ).also {
@@ -288,7 +287,7 @@ class Session(
                                         ProvenanceReference.newBuilder()
                                             .setScopeUuid(io.provenance.metadata.v1.p8e.UUID.newBuilder()
                                                 .setValue(scope.uuid()))
-                                            .setHash(scopeFact.record.resultHash().base64Sha512())
+                                            .setHash(scopeFact.record.resultHash().sha256().base64EncodeString())
                                     )
                             ).build()
                     )
@@ -344,7 +343,7 @@ class Session(
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
                 // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestampProv() } ?: builder.clearExpirationTime()
                 it.ref = it.refBuilder
-                    .setHash(String(contract.base64Sha512()))
+                    .setHash(contract.toByteArray().sha256().base64EncodeString())
                     .build()
             }
             .clearSignatures()
@@ -393,8 +392,8 @@ class Session(
     }
 
     fun ByteArray.base64String() = String(Base64.getEncoder().encode(this))
-    fun ByteArray.base64Sha512() = this.sha512().base64String()
-    fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha512())
+    fun ByteArray.base64Sha512() = this.sha256().base64String()
+    fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha256())
 
     class PermissionUpdater(
         private val client: Client,
