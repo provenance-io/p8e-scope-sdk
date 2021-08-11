@@ -14,10 +14,14 @@ import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Utils.UUID
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.objectstore.util.sha512
+import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
+import io.provenance.scope.util.toProtoUuidProv
+import io.provenance.scope.util.toPublicKeyProtoOS
 import java.util.*
+import java.util.UUID.randomUUID
 
 class Session(
     val proposedSession: Session?,
@@ -27,6 +31,7 @@ class Session(
     val spec: Specifications.ContractSpec,
     val provenanceReference: Commons.ProvenanceReference,
     val scope: ScopeResponse?,
+    val executionUUID: UUID,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
     ) {
     private constructor(builder: Builder) : this(
@@ -37,6 +42,7 @@ class Session(
         builder.spec!!,
         builder.provenanceReference!!,
         builder.scope,
+        builder.executionUUID!!,
     )
 
     // TODO perhaps add scope
@@ -55,11 +61,17 @@ class Session(
 
         var scope: ScopeResponse? = null
 
+        var executionUUID: UUID? = randomUUID().toProtoUuidProv()
+
         fun build() = Session(this)
 
-         fun setProposedSession(session: Session) = apply {
-             this.proposedSession = session
-         }
+        fun setExecutionUUID(uuid: UUID) = apply {
+            executionUUID = uuid
+        }
+
+        fun setProposedSession(session: Session) = apply {
+            this.proposedSession = session
+        }
 
         fun setContractSpec(contractSpec: Specifications.ContractSpec) = apply {
             spec = contractSpec
@@ -113,10 +125,9 @@ class Session(
     //    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
     private fun populateContract(): Contract {
         val envelope = Envelope.getDefaultInstance()
-        val builder = Contract.newBuilder()
+        val builder = spec.newContract()
 
         builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
-            // TODO Where can these be retrieved? Try passing in affiliate
             .setEncryptionPublicKey(client.affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
             .setSigningPublicKey(client.affiliate.signingKeyRef.publicKey.toPublicKeyProtoOS())
             .build()
@@ -197,24 +208,6 @@ class Session(
                         }
                     }
             }
-
-        // All facts should already be loaded to the system. No need to send them to POS.
-        proposedRecords.map { (name, record) ->
-            val ref = record.takeUnless { ref -> ref == Commons.ProvenanceReference.getDefaultInstance() }
-                ?: Commons.ProvenanceReference.newBuilder().setHash(record.toByteArray().base64Sha512()).build()
-
-            builder.addInputs(
-                Contracts.Record.newBuilder()
-                    .setName(name)
-                    .setDataLocation(
-                        Commons.Location.newBuilder()
-                                // TODO not sure about classname
-                            .setClassname(name)
-                        // TODO figure out how to get the provenance ref
-                            .setRef(provenanceReference)
-                    )
-            )
-        }
 
 //             stagedCrossScopeFacts.forEach { (factName, refMessage) ->
 //                 val (ref, message) = refMessage
@@ -336,7 +329,7 @@ class Session(
 
      fun packageContract(): Envelope {
         val contract = populateContract()
-        val executionUuid = UUID.newBuilder().setValueBytes(proposedSession?.sessionId).build()
+        //TODO Different executionID
 
         val permissionUpdater = PermissionUpdater(
             client,
@@ -345,7 +338,7 @@ class Session(
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
-            .setExecutionUuid(executionUuid)
+            .setExecutionUuid(executionUUID)
             .setContract(contract)
             .also {
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
@@ -365,6 +358,8 @@ class Session(
     }
 
     private fun Contract.Builder.populateFact(fact: Fact) {
+        val test = this.inputsBuilderList
+        test.toString()
         inputsBuilderList.firstOrNull {
             isMatchingFact(it, fact.name)
         }?.apply {
@@ -388,26 +383,18 @@ class Session(
     }
 
     private fun isMatchingFact(inputFact: Contracts.Record.Builder, factName: String): Boolean {
+        val hello = Commons.ProvenanceReference.getDefaultInstance()
+        val inputFactRef = inputFact.dataLocation.ref
+        hello.toString()
+        inputFactRef.toString()
+        val testing = inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
+        testing.toString()
         return inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
     }
 
     fun ByteArray.base64String() = String(Base64.getEncoder().encode(this))
     fun ByteArray.base64Sha512() = this.sha512().base64String()
     fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha512())
-    fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
-        PublicKeys.PublicKey.newBuilder()
-            .setCurve(PublicKeys.KeyCurve.SECP256K1)
-            .setType(PublicKeys.KeyType.ELLIPTIC)
-            .setPublicKeyBytes(this.toByteString())
-            .setCompressed(false)
-            .build()
-
-    fun java.security.PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
-        PublicKeys.PublicKey.newBuilder()
-            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
-            .build()
-
-    fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
     class PermissionUpdater(
         private val client: Client,

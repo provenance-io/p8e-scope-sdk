@@ -18,6 +18,11 @@ fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
 
 fun PublicKeys.PublicKey.toHex() = this.toByteArray().toHexString()
 
+fun PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
+    PublicKeys.PublicKey.newBuilder()
+        .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
+        .build()
+
 fun PK.PrivateKey.toPrivateKey(): PrivateKey =
     this.let {
         require(it.curve == PK.KeyCurve.SECP256K1) { "Unsupported Key Curve" }

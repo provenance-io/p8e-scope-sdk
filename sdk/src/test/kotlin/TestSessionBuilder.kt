@@ -5,14 +5,17 @@ import com.google.protobuf.Message
 import com.google.protobuf.TextFormat.parse
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldBe
+import io.provenance.metadata.v1.*
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.sdk.*
+import io.provenance.scope.sdk.Session
 import io.provenance.scope.util.toJavaPrivateKey
 import java.net.URI
 import java.security.KeyPair
 import io.provenance.scope.util.toJavaPublicKey
+import io.provenance.scope.util.toPublicKeyProtoOS
 //import org.mockito.Mockito
 import java.util.*
 
@@ -29,132 +32,165 @@ class UtilsTest : WordSpec({
 
 
     "SessionBuilder.Builder tests" should {
-        //Setting up single empty record test
-        val encryptionKeyRef = DirectKeyRef(localKeys[0].public, localKeys[0].private)
-        val signingKeyRef = DirectKeyRef(localKeys[1].public, localKeys[1].private)
-        val partyType = Specifications.PartyType.OWNER
-        val affiliate = Affiliate(signingKeyRef, encryptionKeyRef, partyType)
-        val jarCacheSizeInBytes = 20000L
-        val osGrpcDeadlineMs = 20000L
-        val specCacheSizeInBytes = 20000L
-        val recordCacheSizeInBytes = 20000L
-        val osGrpcUri = URI.create("https://localhost:5000")
+        "Package Contract Single Record" {
+            //Setting up single record test
+            val encryptionKeyRef = DirectKeyRef(localKeys[0].public, localKeys[0].private)
+            val signingKeyRef = DirectKeyRef(localKeys[1].public, localKeys[1].private)
+            val partyType = Specifications.PartyType.OWNER
+            val affiliate = Affiliate(signingKeyRef, encryptionKeyRef, partyType)
+            val jarCacheSizeInBytes = 20000L
+            val osGrpcDeadlineMs = 20000L
+            val specCacheSizeInBytes = 20000L
+            val recordCacheSizeInBytes = 20000L
+            val osGrpcUri = URI.create("https://localhost:5000")
 
-        val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs )
-
-        val osClient = Client(SharedClient(clientConfig), affiliate)
-        val defSpec = Commons.DefinitionSpec.newBuilder()
-            .setTypeValue(PROPOSED.ordinal)
-            .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record"))
-            .setName("record1")
-        val conditionSpec = Specifications.ConditionSpec.newBuilder()
-            .addInputSpecs(defSpec)
-            .setFuncName("record1")
-            .build()
-        val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
-            .setSessionId(ByteString.copyFromUtf8("1234567890"))
-            .build()
-        val participants = HashMap<Specifications.PartyType, PublicKeys.PublicKey>()
-        participants[Specifications.PartyType.OWNER] = PublicKeys.PublicKey.newBuilder().build()
-        val spec = Specifications.ContractSpec.newBuilder()
-            .addConditionSpecs(conditionSpec)
-            .addFunctionSpecs(Specifications.FunctionSpec.getDefaultInstance())
-            .build()
-        val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
-
-        val builder = Session.Builder()
-            .setProposedSession(proposedSession)
-            .setContractSpec(spec)
-            .setProvenanceReference(provenanceReference)
-            .setClient(osClient)
-
-        builder.addProposedRecord("record1", Contracts.Record.getDefaultInstance())
-
-        val session = builder.build()
-
-        "Package Contract" {
-            val envelope = session.packageContract()
-            val classString = envelope.javaClass
-            classString shouldBe Envelopes.Envelope.getDefaultInstance().javaClass
-
-            val expectedJson = "ref {\n" +
-                    "  hash: \"XvbWuMiSKI7XD3gri1ZQopT9yvv/6oMJD/OxxIUjc1FwrhzWbfPJ+Lr5hhcmI5Qq7gq0X0YpMW+S83B7RLgJQQ==\"\n" +
-                    "}\n" +
-                    "contract {\n" +
-                    "  invoker {\n" +
-                    "    signing_public_key {\n" +
-                    "      public_key_bytes: \"\\004\\3260\\003#x\\325b)\\335 \\320\\215\\274\\306\\323\\037D\\240}\\230\\027Yf\\365\\323,\\322\\030\\237\\327H\\203\\037\\313I&a\$6.V\\314\\037\\257*\\240\\323\\363b\\277\\204\\312\\313\\301\\300\\307IE\\004\\036\\2672}T\"\n" +
-                    "    }\n" +
-                    "    encryption_public_key {\n" +
-                    "      public_key_bytes: \"\\004lW\\351\\342Q\\001\\325\\345S\\256\\000>/y\\002^8\\233QIV\\a\\307\\226\\264\\351\\\\\\n\\224\\000\\037\\274\$\\330L\\320x\\b\\031a%)\\270\\003\\350\\255\\n9\\177GL\\226]\\225}3\\335d\\346B\\267V\\373\\304\"\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "  inputs {\n" +
-                    "    name: \"record1\"\n" +
-                    "    data_location {\n" +
-                    "      ref {\n" +
-                    "      }\n" +
-                    "      classname: \"record1\"\n" +
-                    "    }\n" +
-                    "  }\n" +
-                    "  times_executed: 1\n" +
-                    "}\n" +
-                    "execution_uuid {\n" +
-                    "value: \"1234567890\"\n" +
-                    "}\n"
-
-            val expectedObj = parse(expectedJson, Envelopes.Envelope.getDefaultInstance().javaClass)
-
-            expectedObj.toString()
-            envelope shouldBe expectedObj
-
-            //Setting up single empty record test
-//            val encryptionKeyRef = DirectKeyRef(localKeys[0].public, localKeys[0].private)
-//            val signingKeyRef = DirectKeyRef(localKeys[1].public, localKeys[1].private)
-//            val partyType = Specifications.PartyType.OWNER
-//            val affiliate = Affiliate(signingKeyRef, encryptionKeyRef, partyType)
-//            val jarCacheSizeInBytes = 20000L
-//            val osGrpcDeadlineMs = 20000L
-//            val specCacheSizeInBytes = 20000L
-//            val recordCacheSizeInBytes = 20000L
-//            val osGrpcUri = URI.create("https://localhost:5000")
-//
-//            val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs )
-//            val osClient = Client(clientConfig, affiliate)
-//            val defSpec = Commons.DefinitionSpec.newBuilder()
-//                .setType(PROPOSED)
-//                .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record"))
-//                .setName("record2")
-//            val conditionSpec = Specifications.ConditionSpec.newBuilder()
+            val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs )
+            val osClient = Client(SharedClient(clientConfig), affiliate)
+            val defSpec = Commons.DefinitionSpec.newBuilder()
+                .setType(PROPOSED)
+                .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record"))
+                .setName("record2")
+            val conditionSpec = Specifications.ConditionSpec.newBuilder()
+                .addInputSpecs(defSpec)
+                .setFuncName("record2")
+                .build()
+            val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
+                .build()
+            val participants = HashMap<Specifications.PartyType, PublicKeys.PublicKey>()
+            participants[Specifications.PartyType.OWNER] = PublicKeys.PublicKey.newBuilder().build()
+            val spec = Specifications.ContractSpec.newBuilder()
+                .addConditionSpecs(conditionSpec)
+                .addFunctionSpecs(Specifications.FunctionSpec.newBuilder().setFuncName("record2").addInputSpecs(defSpec).setInvokerParty(Specifications.PartyType.OWNER))
+                //TODO this shouldn't be here. put on when adding existing scope. v
 //                .addInputSpecs(defSpec)
-//                .setFuncName("record2")
-//                .build()
-//            val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
-//                .setSessionId(ByteString.copyFromUtf8("1234567890"))
-//                .build()
-//            val participants = HashMap<Specifications.PartyType, PublicKeys.PublicKey>()
-//            participants[Specifications.PartyType.OWNER] = PublicKeys.PublicKey.newBuilder().build()
-//            val spec = Specifications.ContractSpec.newBuilder()
-//                .addConditionSpecs(conditionSpec)
-//                .addFunctionSpecs(Specifications.FunctionSpec.newBuilder().setFuncName("record2").addInputSpecs(defSpec).setInvokerParty(Specifications.PartyType.OWNER))
-//                .addInputSpecs(defSpec)
-//                .build()
-//            val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
-//
-//            val builder = Session.Builder()
-//                .setProposedSession(proposedSession)
-//                .setContractSpec(spec)
-//                .setProvenanceReference(provenanceReference)
-//                .setClient(osClient)
-//
-//            val dataLocation = Commons.Location.newBuilder().setClassname("record2").setRef(provenanceReference).build()
-//            val record = Contracts.Record.newBuilder().setDataLocation(dataLocation).setName("record2").build()
-//            builder.addProposedRecord("record2", record)
-//            builder.proposedRecords.size shouldBe 1
-//
-//            val session = builder.build()
-//            val envelopePopulatedRecord = session.packageContract()
-//            envelopePopulatedRecord.toString()
+                .build()
+            val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
+
+            val builder = Session.Builder()
+                .setProposedSession(proposedSession)
+                .setContractSpec(spec)
+                .setProvenanceReference(provenanceReference)
+                .setClient(osClient)
+
+            val dataLocation = Commons.Location.newBuilder().setClassname("record2").setRef(provenanceReference).build()
+            val record = Contracts.Record.newBuilder().setDataLocation(dataLocation).setName("record2").build()
+            builder.addProposedRecord("record2", record)
+            builder.proposedRecords.size shouldBe 1
+
+            val session = builder.build()
+            val envelopePopulatedRecord = session.packageContract()
+            envelopePopulatedRecord.toString()
+
+            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe signingKeyRef.publicKey.toPublicKeyProtoOS()
+            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe encryptionKeyRef.publicKey.toPublicKeyProtoOS()
+
+            envelopePopulatedRecord.contract.considerationsCount shouldBe 1
+            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
+            envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 1
+            envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.Contracts\$Record"
+        }
+        "Package Contract Existing Scope" {
+            //Setting up single record test
+            val encryptionKeyRef = DirectKeyRef(localKeys[0].public, localKeys[0].private)
+            val signingKeyRef = DirectKeyRef(localKeys[1].public, localKeys[1].private)
+            val partyType = Specifications.PartyType.OWNER
+            val affiliate = Affiliate(signingKeyRef, encryptionKeyRef, partyType)
+            val jarCacheSizeInBytes = 20000L
+            val osGrpcDeadlineMs = 20000L
+            val specCacheSizeInBytes = 20000L
+            val recordCacheSizeInBytes = 20000L
+            val osGrpcUri = URI.create("https://localhost:5000")
+
+            val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs )
+            val osClient = Client(SharedClient(clientConfig), affiliate)
+
+            val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
+                .build()
+
+            val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
+            val dataLocation = Commons.Location.newBuilder().setClassname("record2").setRef(provenanceReference).build()
+            val record = Contracts.Record.newBuilder().setDataLocation(dataLocation).setName("record2") .build()
+
+//            val record = Contracts.Record.newBuilder()
+//                .setName(it.name)
+//                .setDataLocation(
+//                    Commons.Location.newBuilder()
+//                        .setClassname(it.classname)
+//                        .setRef(
+//                            Commons.ProvenanceReference.newBuilder()
+//                                .setHash(it.hash)
+//                                // TODO where can these be retrieved
+//                                .setGroupUuid(
+//                                    Utils.UUID.newBuilder()
+//                                        .setValueBytes(envelope.ref.groupUuid.valueBytes).build()
+//                                )
+//                                .setScopeUuid(
+//                                    Utils.UUID.newBuilder()
+//                                        .setValueBytes(envelope.ref.scopeUuid.valueBytes).build()
+//                                )
+//                                .build()
+//                        )
+//                )
+
+            val scopeRecord = Record.newBuilder()
+                .addInputs(RecordInput.newBuilder()
+                    .setName("record2")
+                    .setHash("1234567890")
+                    .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED))
+                .addOutputs(RecordOutput.newBuilder().setHash("234567834567").build())
+                .setName("record2")
+            val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
+            val scope = Scope.newBuilder()
+                .addDataAccess("tp1w837rynvaoweyawnvo3ry77wno37r")
+                .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER))
+                .setScopeId(ByteString.copyFromUtf8("1234567801234567890"))
+                .setValueOwnerAddress("ownerAddress")
+                .setSpecificationId(ByteString.copyFromUtf8("09876543210987654321"))
+                .build()
+            val scopeWrapper = ScopeWrapper.newBuilder()
+                .setScope(scope)
+                .build()
+            val scopeResponse = ScopeResponse.newBuilder()
+                .setScope(scopeWrapper)
+                .addRecords(recordWrapper)
+                .build()
+
+            val defSpec = Commons.DefinitionSpec.newBuilder()
+                .setType(PROPOSED)
+                .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record"))
+                .setName("record2")
+            val conditionSpec = Specifications.ConditionSpec.newBuilder()
+                .addInputSpecs(defSpec)
+                .setFuncName("record2")
+                .build()
+            val spec = Specifications.ContractSpec.newBuilder()
+                .addConditionSpecs(conditionSpec)
+                .addFunctionSpecs(Specifications.FunctionSpec.newBuilder().setFuncName("record2").addInputSpecs(defSpec).setInvokerParty(Specifications.PartyType.OWNER))
+                //TODO this shouldn't be here. put on when adding existing scope. v
+                .addInputSpecs(defSpec)
+                .build()
+
+            val builder = Session.Builder()
+                .setProposedSession(proposedSession)
+                .setContractSpec(spec)
+                .setProvenanceReference(provenanceReference)
+                .setClient(osClient)
+                .setScope(scopeResponse)
+
+            builder.addProposedRecord("record2", record)
+            builder.proposedRecords.size shouldBe 1
+
+            val session = builder.build()
+            val envelopePopulatedRecord = session.packageContract()
+            envelopePopulatedRecord.toString()
+
+            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe signingKeyRef.publicKey.toPublicKeyProtoOS()
+            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe encryptionKeyRef.publicKey.toPublicKeyProtoOS()
+
+            envelopePopulatedRecord.contract.considerationsCount shouldBe 1
+            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
+            envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 1
+            envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.Contracts\$Record"
         }
     }
 })
