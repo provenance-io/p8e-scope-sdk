@@ -67,7 +67,7 @@ class CachedOsClient(config: ClientConfig, val osClient: OsClient) {
 
         return Futures.transform(
             future,
-            { _object -> _object?.let { ObjectHash(it.hash.toStringUtf8()) }},
+            { _object -> _object?.let { ObjectHash(it.hash.toByteArray().base64String()) }},
             MoreExecutors.directExecutor(),
         )
     }
@@ -163,7 +163,7 @@ class CachedOsClient(config: ClientConfig, val osClient: OsClient) {
                     dime?.use { dimeInputStream ->
                         // TODO per audience cache used to happen right here
                         // dimeInputStream.dime.audienceList
-                        //     .map { ECUtils.convertBytesToPublicKey(it.publicKey.toStringUtf8().base64Decode()) }
+                        //     .map { ECUtils.convertBytesToPublicKey(it.publicKey.toByteArray().base64String()) }
 
                         dimeInputStream.getDecryptedPayload(affiliate.encryptionKeyRef).use { signatureInputStream ->
                             signatureInputStream.readAllBytes().also {

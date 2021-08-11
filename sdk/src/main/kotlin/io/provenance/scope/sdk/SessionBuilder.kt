@@ -6,17 +6,17 @@ import io.provenance.metadata.v1.Session
 import io.provenance.metadata.v1.p8e.Fact
 import io.provenance.metadata.v1.p8e.Location
 import io.provenance.metadata.v1.p8e.ProvenanceReference
-import io.provenance.metadata.v1.p8e.PublicKey
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Utils.UUID
-import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.objectstore.util.sha512
+import io.provenance.scope.objectstore.util.base64EncodeString
+import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
+import io.provenance.scope.util.toPublicKeyProto
 import java.util.*
 
 class Session(
@@ -117,8 +117,8 @@ class Session(
 
         builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
             // TODO Where can these be retrieved? Try passing in affiliate
-            .setEncryptionPublicKey(client.affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
-            .setSigningPublicKey(client.affiliate.signingKeyRef.publicKey.toPublicKeyProtoOS())
+            .setEncryptionPublicKey(client.affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
+            .setSigningPublicKey(client.affiliate.signingKeyRef.publicKey.toPublicKeyProto())
             .build()
 
         // Copy the outputs from previous contract executions to the inputs list.
@@ -201,7 +201,7 @@ class Session(
         // All facts should already be loaded to the system. No need to send them to POS.
         proposedRecords.map { (name, record) ->
             val ref = record.takeUnless { ref -> ref == Commons.ProvenanceReference.getDefaultInstance() }
-                ?: Commons.ProvenanceReference.newBuilder().setHash(record.toByteArray().base64Sha512()).build()
+                ?: Commons.ProvenanceReference.newBuilder().setHash(record.toByteArray().sha256().base64EncodeString()).build()
 
             builder.addInputs(
                 Contracts.Record.newBuilder()
@@ -260,7 +260,7 @@ class Session(
                             consideration.addInputs(
                                 Contracts.ProposedRecord.newBuilder()
                                     .setClassname(defSpec.resourceLocation.classname)
-                                    .setHash(it.toByteArray().base64Sha512())
+                                    .setHash(it.toByteArray().sha256().base64EncodeString())
                                     .setName(defSpec.name)
                                     .build()
                             ).also {
@@ -295,7 +295,7 @@ class Session(
                                         ProvenanceReference.newBuilder()
                                             .setScopeUuid(io.provenance.metadata.v1.p8e.UUID.newBuilder()
                                                 .setValue(scope.uuid()))
-                                            .setHash(scopeFact.record.resultHash().base64Sha512())
+                                            .setHash(scopeFact.record.resultHash().sha256().base64EncodeString())
                                     )
                             ).build()
                     )
@@ -351,7 +351,7 @@ class Session(
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
                 // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestampProv() } ?: builder.clearExpirationTime()
                 it.ref = it.refBuilder
-                    .setHash(String(contract.base64Sha512()))
+                    .setHash(contract.toByteArray().sha256().base64EncodeString())
                     .build()
             }
             .clearSignatures()
@@ -390,24 +390,6 @@ class Session(
     private fun isMatchingFact(inputFact: Contracts.Record.Builder, factName: String): Boolean {
         return inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
     }
-
-    fun ByteArray.base64String() = String(Base64.getEncoder().encode(this))
-    fun ByteArray.base64Sha512() = this.sha512().base64String()
-    fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha512())
-    fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
-        PublicKeys.PublicKey.newBuilder()
-            .setCurve(PublicKeys.KeyCurve.SECP256K1)
-            .setType(PublicKeys.KeyType.ELLIPTIC)
-            .setPublicKeyBytes(this.toByteString())
-            .setCompressed(false)
-            .build()
-
-    fun java.security.PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
-        PublicKeys.PublicKey.newBuilder()
-            .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
-            .build()
-
-    fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
     class PermissionUpdater(
         private val client: Client,

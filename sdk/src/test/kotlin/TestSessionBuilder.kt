@@ -78,7 +78,7 @@ class UtilsTest : WordSpec({
             classString shouldBe Envelopes.Envelope.getDefaultInstance().javaClass
 
             val expectedJson = "ref {\n" +
-                    "  hash: \"XvbWuMiSKI7XD3gri1ZQopT9yvv/6oMJD/OxxIUjc1FwrhzWbfPJ+Lr5hhcmI5Qq7gq0X0YpMW+S83B7RLgJQQ==\"\n" +
+                    "  hash: \"lCQUO56LZHQsVRE617DZtA7tpAMneKn4NfRmMi54mx8=\"\n" +
                     "}\n" +
                     "contract {\n" +
                     "  invoker {\n" +
