@@ -11,7 +11,6 @@ import com.google.common.io.BaseEncoding
 import com.google.protobuf.ByteString
 import io.provenance.scope.encryption.crypto.verify
 import io.provenance.scope.encryption.crypto.SignatureInputStream
-import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.dime.ProvenanceDIME
 import io.provenance.scope.encryption.util.ByteUtil
 import io.provenance.scope.encryption.util.ByteUtil.writeUInt16
@@ -96,7 +95,7 @@ class DIMEInputStream(
             System.arraycopy(dimeBytes, 0, this, 4 + 2 + 4 + uuidBytes.size + 4 + metadataBytes.size + 4 + uriBytes.size + 4 + signaturesBytes.size + 4, dimeBytes.size)
         }
 
-    private val internalDigest = MessageDigest.getInstance("SHA-512")
+    private val internalDigest = MessageDigest.getInstance("SHA-256")
     private val externalDigest = MessageDigest.getInstance("SHA-512")
         .apply {
             update(header, 0, header.size)

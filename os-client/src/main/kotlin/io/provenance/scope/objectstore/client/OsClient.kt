@@ -164,7 +164,8 @@ open class OsClient(
         signer: SignerImpl,
         additionalAudiences: Set<PublicKey> = setOf(),
         metadata: Map<String, String> = mapOf(),
-        uuid: UUID = UUID.randomUUID()
+        uuid: UUID = UUID.randomUUID(),
+        loHash: Boolean = false,
     ): ListenableFuture<Objects.ObjectResponse> {
         val bytes = message.toByteArray()
 
@@ -175,7 +176,8 @@ open class OsClient(
             bytes.size.toLong(),
             additionalAudiences,
             metadata,
-            uuid
+            uuid,
+            loHash,
         )
     }
 
@@ -187,6 +189,7 @@ open class OsClient(
         additionalAudiences: Set<PublicKey> = setOf(),
         metadata: Map<String, String> = mapOf(),
         uuid: UUID = UUID.randomUUID(),
+        loHash: Boolean = false,
     ): ListenableFuture<Objects.ObjectResponse> {
         val signerPublicKey = signer.getPublicKey()
         val signatureInputStream = inputStream.sign(signer)
@@ -217,14 +220,19 @@ open class OsClient(
 
         dimeInputStream.use {
             try {
-                requestObserver.onNext(Objects.ChunkBidi.newBuilder().setMultiStreamHeader(header).build())
+                requestObserver.onNext(ChunkBidi.newBuilder().setMultiStreamHeader(header).build())
 
                 val iterator = InputStreamChunkedIterator(it, DIME_FIELD_NAME, contentLength)
                 while (iterator.hasNext()) {
                     requestObserver.onNext(iterator.next())
                 }
 
-                requestObserver.onNext(propertyChunkRequest(HASH_FIELD_NAME to dimeInputStream.internalHash()))
+                val hash = if (loHash) {
+                    dimeInputStream.internalHash().slice(0..16).toByteArray()
+                } else {
+                    dimeInputStream.internalHash()
+                }
+                requestObserver.onNext(propertyChunkRequest(HASH_FIELD_NAME to hash))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_FIELD_NAME to signatureInputStream.sign()))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_PUBLIC_KEY_FIELD_NAME to signingPublicKey.toByteArray(Charsets.UTF_8)))
 

@@ -19,10 +19,11 @@ import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.proto.Common
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.objectstore.util.base64Encode
+import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
 import io.provenance.scope.util.ThreadPoolFactory
-import io.provenance.scope.util.toHex
+import io.provenance.scope.util.toHexString
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuidProv
 import org.slf4j.LoggerFactory
@@ -31,6 +32,9 @@ import java.security.PublicKey
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import kotlin.concurrent.thread
+
+// TODO move somewhere else
+fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
 class ContractEngine(
     private val osClient: OsClient,

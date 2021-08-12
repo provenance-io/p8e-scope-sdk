@@ -11,15 +11,14 @@ import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Utils.UUID
+import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuidProv
-import io.provenance.scope.util.toPublicKeyProtoOS
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
-import java.util.*
 import java.util.UUID.randomUUID
 
 class Session(
@@ -127,9 +126,13 @@ class Session(
         val builder = spec.newContract()
 
         builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
-            .setEncryptionPublicKey(client.affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
-            .setSigningPublicKey(client.affiliate.signingKeyRef.publicKey.toPublicKeyProtoOS())
-            .build()
+            .setEncryptionPublicKey(PublicKeys.PublicKey.newBuilder()
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.encryptionKeyRef.publicKey)))
+                .build()
+            ).setSigningPublicKey(PublicKeys.PublicKey.newBuilder()
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.signingKeyRef.publicKey)))
+                .build()
+            ).build()
 
         // Copy the outputs from previous contract executions to the inputs list.
 //             spec.conditionSpecsList
@@ -382,10 +385,6 @@ class Session(
     private fun isMatchingFact(inputFact: Contracts.Record.Builder, factName: String): Boolean {
         return inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
     }
-
-    fun ByteArray.base64String() = String(Base64.getEncoder().encode(this))
-    fun ByteArray.base64Sha512() = this.sha256().base64String()
-    fun Message.base64Sha512() = Base64.getEncoder().encode(this.toByteArray().sha256())
 
     class PermissionUpdater(
         private val client: Client,

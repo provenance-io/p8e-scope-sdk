@@ -7,10 +7,12 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.common.util.concurrent.SettableFuture
 import com.google.protobuf.Message
+import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.SmartKeyRef
 import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.objectstore.util.sha256LoBytes
 import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.base64String
 import io.provenance.scope.util.sha256String
@@ -83,25 +85,38 @@ class CachedOsClient(config: ClientConfig, val osClient: OsClient) {
         )
     }
 
-    // TODO add optional field that specifies hash length
+    fun putRecord(
+        contractSpec: ContractSpec,
+        affiliate: Affiliate,
+        audience: Set<PublicKey>,
+        uuid: UUID = UUID.randomUUID(),
+    ): ListenableFuture<ObjectHash> {
+        return putRecord(contractSpec, affiliate, audience, uuid, loHash = true)
+    }
+
     fun putRecord(
         message: Message,
         affiliate: Affiliate,
         audience: Set<PublicKey> = setOf(),
         uuid: UUID = UUID.randomUUID(),
+        loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
         // TODO rework signerimpl and affiliate to signerimpl interface
         val signer = when (affiliate.signingKeyRef) {
             is DirectKeyRef -> Pen(KeyPair(affiliate.signingKeyRef.publicKey, affiliate.signingKeyRef.privateKey))
             is SmartKeyRef -> throw IllegalStateException("TODO SmartKeyRef is not yet supported!")
         }
-        val cacheKey = RecordCacheKey(affiliate.encryptionKeyRef.publicKey, message.toByteArray().sha256String())
+        val cacheKey = if (loHash) {
+            RecordCacheKey(affiliate.encryptionKeyRef.publicKey, message.toByteArray().sha256LoBytes().base64String())
+        } else {
+            RecordCacheKey(affiliate.encryptionKeyRef.publicKey, message.toByteArray().sha256String())
+        }
 
         return if (recordCache.asMap().containsKey(cacheKey)) {
             SettableFuture.create<ObjectHash>().also { it.set(ObjectHash(cacheKey.hash)) }
         } else {
             val future = withFutureSemaphore(semaphore) {
-                osClient.put(message, affiliate.encryptionKeyRef.publicKey, signer, audience, uuid = uuid)
+                osClient.put(message, affiliate.encryptionKeyRef.publicKey, signer, audience, uuid = uuid, loHash = loHash)
             }
 
             Futures.transform(
@@ -144,6 +159,7 @@ class CachedOsClient(config: ClientConfig, val osClient: OsClient) {
         )
     }
 
+    // TODO cache these as well
     private fun getRawBytes(
         hash: ByteArray,
         affiliate: Affiliate,

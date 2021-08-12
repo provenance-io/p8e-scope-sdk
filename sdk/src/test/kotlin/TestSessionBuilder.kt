@@ -1,22 +1,19 @@
 package io.provenance.p8e.testframework
 
 import com.google.protobuf.ByteString
-import com.google.protobuf.Message
-import com.google.protobuf.TextFormat.parse
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldBe
 import io.provenance.metadata.v1.*
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
+import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.DirectKeyRef
+import io.provenance.scope.encryption.toJavaPrivateKey
+import io.provenance.scope.encryption.toJavaPublicKey
 import io.provenance.scope.sdk.*
 import io.provenance.scope.sdk.Session
-import io.provenance.scope.util.toJavaPrivateKey
 import java.net.URI
 import java.security.KeyPair
-import io.provenance.scope.util.toJavaPublicKey
-import io.provenance.scope.util.toPublicKeyProtoOS
-//import org.mockito.Mockito
 import java.util.*
 
 
@@ -81,8 +78,12 @@ class UtilsTest : WordSpec({
             val envelopePopulatedRecord = session.packageContract()
             envelopePopulatedRecord.toString()
 
-            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe signingKeyRef.publicKey.toPublicKeyProtoOS()
-            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe encryptionKeyRef.publicKey.toPublicKeyProtoOS()
+            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(signingKeyRef.publicKey)))
+                .build()
+            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(encryptionKeyRef.publicKey)))
+                .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
             envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
@@ -184,8 +185,12 @@ class UtilsTest : WordSpec({
             val envelopePopulatedRecord = session.packageContract()
             envelopePopulatedRecord.toString()
 
-            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe signingKeyRef.publicKey.toPublicKeyProtoOS()
-            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe encryptionKeyRef.publicKey.toPublicKeyProtoOS()
+            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(signingKeyRef.publicKey)))
+                .build()
+            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(encryptionKeyRef.publicKey)))
+                .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
             envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"

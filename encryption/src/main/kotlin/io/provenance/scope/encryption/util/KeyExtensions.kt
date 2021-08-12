@@ -1,6 +1,6 @@
-package io.provenance.scope.util
+package io.provenance.scope.encryption
 
-import io.provenance.scope.contract.proto.PublicKeys
+// import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.proto.PK
 import org.bouncycastle.util.encoders.Hex
@@ -8,20 +8,20 @@ import java.security.PrivateKey
 import java.security.PublicKey
 
 
-fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
-    PublicKeys.PublicKey.newBuilder()
-        .setCurve(PublicKeys.KeyCurve.SECP256K1)
-        .setType(PublicKeys.KeyType.ELLIPTIC)
-        .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
-        .setCompressed(false)
-        .build()
-
-fun PublicKeys.PublicKey.toHex() = this.toByteArray().toHexString()
-
-fun PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
-    PublicKeys.PublicKey.newBuilder()
-        .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
-        .build()
+// fun PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
+//     PublicKeys.PublicKey.newBuilder()
+//         .setCurve(PublicKeys.KeyCurve.SECP256K1)
+//         .setType(PublicKeys.KeyType.ELLIPTIC)
+//         .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
+//         .setCompressed(false)
+//         .build()
+// 
+// fun PublicKeys.PublicKey.toHex() = this.toByteArray().toHexString()
+// 
+// fun PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
+//     PublicKeys.PublicKey.newBuilder()
+//         .setPublicKeyBytes(ECUtils.convertPublicKeyToBytes(this).toByteString())
+//         .build()
 
 fun PK.PrivateKey.toPrivateKey(): PrivateKey =
     this.let {
@@ -35,7 +35,7 @@ fun PK.PublicKey.toPublicKey(): PublicKey =
         ECUtils.convertBytesToPublicKey(it.publicKeyBytes.toByteArray())
     }
 
-fun PublicKey.toHex() = toPublicKeyProto().toHex()
+// fun PublicKey.toHex() = toPublicKeyProto().toHex()
 
 fun String.toPublicKeyProto(): PK.PublicKey = PK.PublicKey.parseFrom(Hex.decode(this))
 

@@ -17,18 +17,21 @@ import io.provenance.scope.encryption.util.orThrow
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.objectstore.util.NotFoundException
 import io.provenance.scope.objectstore.util.base64Decode
+import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.base64Sha512
 import io.provenance.scope.util.or
-import io.provenance.scope.util.sha512
-import io.provenance.scope.util.toHex
+import io.provenance.scope.util.sha256
+import io.provenance.scope.util.toHexString
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.StringWriter
 import java.lang.reflect.Method
 import java.security.PublicKey
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
+
+// TODO move somewhere else
+fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
 class DefinitionService(
     private val osClient: OsClient,
@@ -206,7 +209,7 @@ class DefinitionService(
                         """
                             Unable to find object
                             [classname: $classname]
-                            [public key: ${encryptionKeyRef.publicKey.toHex()}]
+                            [public key: ${encryptionKeyRef.publicKey.toPublicKeyProtoOS().toByteArray().toHexString()}]
                             [hash: $hash]
                         """.trimIndent()
                     )
@@ -278,7 +281,7 @@ class DefinitionService(
     ): ByteArray {
         val putCacheKey = PutCacheKey(audience.toMutableSet().plus(encryptionPublicKey), msg.base64Sha512())
         if (putCache.getIfPresent(putCacheKey) == true) {
-            return msg.sha512()
+            return msg.sha256()
         }
         return osClient.put(
             ByteArrayInputStream(msg),
@@ -299,7 +302,7 @@ class DefinitionService(
     ): ByteArray {
         val putCacheKey = PutCacheKey(audience.toMutableSet().plus(encryptionPublicKey), msg.toByteArray().base64Sha512())
         if (putCache.getIfPresent(putCacheKey) == true) {
-            return msg.toByteArray().sha512()
+            return msg.toByteArray().sha256()
         }
         return osClient.put(
             msg,

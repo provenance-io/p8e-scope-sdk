@@ -73,8 +73,8 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .build()
 
     // executes the first session against a non-existent scope
-    fun<T: P8eContract> newSession(clazz: Class<T>, scopeSpecification: ScopeSpecification, session: SessionProto) {
-
+    fun<T: P8eContract> newSession(clazz: Class<T>, scopeSpecification: ScopeSpecification, session: SessionProto): Session.Builder {
+        TODO("implement")
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {

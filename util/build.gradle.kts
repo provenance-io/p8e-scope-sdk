@@ -1,7 +1,5 @@
 dependencies {
     implementation(project(":contract-proto"))
-    // TODO imo a subproject like util should not pull in something like encryption
-    implementation(project(":encryption"))
 
     implementation("org.bouncycastle", "bcprov-jdk15on", Version.bouncy_castle)
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
