@@ -200,7 +200,8 @@ open class OsClient(
             payload = signatureInputStream,
             ownerEncryptionPublicKey = encryptionPublicKey,
             additionalAudience = mapOf(Pair(RETRIEVAL, additionalAudiences)),
-            processingAudienceKeys = listOf()
+            processingAudienceKeys = listOf(),
+            sha256 = loHash
         )
         val dimeInputStream = DIMEInputStream(
             dime.dime,

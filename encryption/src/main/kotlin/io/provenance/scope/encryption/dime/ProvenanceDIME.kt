@@ -329,7 +329,8 @@ object ProvenanceDIME {
                    additionalAudience: Map<ContextType, Set<PublicKey>> = emptyMap(),
                    additionalAudienceAuthenticatedData: Map<ContextType, Set<Pair<PublicKey, String>>> = emptyMap(),
                    processingAudienceKeys: List<PublicKey>,
-                   providedDEK: SecretKeySpec? = null
+                   providedDEK: SecretKeySpec? = null,
+                   sha256: Boolean = false,
     ): DIMEStreamProcessingModel {
 
         val messageDIME = DIME.newBuilder()
@@ -341,7 +342,8 @@ object ProvenanceDIME {
         val encryptedPayload = ProvenanceAESCrypt.encrypt(
                 payload,
                 key = key,
-                useZeroIV = false
+                useZeroIV = false,
+                sha256 = sha256
         )
 
         processingAudienceKeys.forEach { keyRef ->
