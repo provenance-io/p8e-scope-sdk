@@ -8,16 +8,17 @@ import io.provenance.scope.classloader.ClassLoaderCache
 import io.provenance.scope.classloader.MemoryClassLoader
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Contracts
-import io.provenance.scope.contract.proto.Contracts.ExecutionResult.Result.SKIP
 import io.provenance.scope.contract.proto.Contracts.Contract
+import io.provenance.scope.contract.proto.Contracts.ExecutionResult.Result.SKIP
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.definition.DefinitionService
-import io.provenance.scope.encryption.crypto.SignerImpl
+import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.proto.Common
-import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.base64Encode
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.ContractDefinitionException
@@ -37,7 +38,8 @@ import kotlin.concurrent.thread
 fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
 class ContractEngine(
-    private val osClient: OsClient,
+    private val osClient: CachedOsClient,
+    private val signerFactory: SignerFactory,
 ) {
     companion object {
         private val executor = ThreadPoolFactory.newFixedThreadPool(
@@ -54,16 +56,16 @@ class ContractEngine(
 
     fun handle(
         encryptionKeyRef: KeyRef,
+        signingKeyRef: KeyRef,
         envelope: Envelope,
-        scope: ScopeResponse,
-        signer: SignerImpl,
+        scope: ScopeResponse?,
         affiliateSharePublicKeys: Collection<PublicKey>, // todo: separate array for other scope parties that are not on the contract, or just have them all supplied here?
     ): Envelope {
         log.info("Running contract engine")
 
         val contract = envelope.contract
 
-        val spec = _definitionService.loadProto(encryptionKeyRef, contract.spec.dataLocation, signer) as? ContractSpec
+        val spec = osClient.getRecord(contract.spec.dataLocation.classname, contract.spec.dataLocation.ref.hash.base64Decode(), encryptionKeyRef).get() as? ContractSpec
                 ?: throw ContractDefinitionException("Spec stored at contract.spec.dataLocation is not of type ${ContractSpec::class.java.name}")
 
         val classLoaderKey = "${spec.definition.resourceLocation.ref.hash}-${contract.definition.resourceLocation.ref.hash}-${spec.functionSpecsList.first().outputSpec.spec.resourceLocation.ref.hash}"
@@ -76,8 +78,8 @@ class ContractEngine(
                 contract,
                 envelope,
                 encryptionKeyRef,
+                signingKeyRef,
                 memoryClassLoader,
-                signer,
                 affiliateSharePublicKeys,
                 scope,
                 spec
@@ -89,17 +91,18 @@ class ContractEngine(
         contract: Contracts.Contract,
         envelope: Envelope,
         encryptionKeyRef: KeyRef,
+        signingKeyRef: KeyRef,
         memoryClassLoader: MemoryClassLoader,
-        signer: SignerImpl,
         shares: Collection<PublicKey>,
         scope: ScopeResponse?,
         spec: ContractSpec
     ): Envelope {
         val definitionService = DefinitionService(osClient, memoryClassLoader)
+        val signer = signerFactory.getSigner(signingKeyRef)
 
         // Load contract spec class
         val contractSpecClass = try {
-                definitionService.loadClass(encryptionKeyRef, spec.definition, signer)
+                definitionService.loadClass(encryptionKeyRef, spec.definition)
             } catch (e: StatusRuntimeException) {
                 if (e.status.code == Status.Code.NOT_FOUND) {
                     throw ContractDefinitionException(
@@ -118,8 +121,7 @@ class ContractEngine(
         loadAllClasses(
             encryptionKeyRef,
             definitionService,
-            spec,
-            signer
+            spec
         )
 
         // validate contract
@@ -154,8 +156,8 @@ class ContractEngine(
             contractSpecClass,
             encryptionKeyRef,
             definitionService,
+            osClient,
             contractBuilder,
-            signer
         )
 
         val (execList, skipList) = contractWrapper.functions.partition { it.canExecute() }
@@ -191,8 +193,8 @@ class ContractEngine(
                             function.fact.name,
                             result,
                             contract.toAudience(scope, shares),
-                            signer,
-                            encryptionKeyRef.publicKey,
+                            encryptionKeyRef,
+                            signingKeyRef,
                             scope
                         )
                     }
@@ -231,8 +233,7 @@ class ContractEngine(
     private fun loadAllClasses(
         encryptionKeyRef: KeyRef,
         definitionService: DefinitionService,
-        spec: ContractSpec,
-        signer: SignerImpl
+        spec: ContractSpec
     ) {
         mutableListOf(spec.definition)
             .apply {
@@ -242,11 +243,15 @@ class ContractEngine(
                         .outputSpec
                         .spec
                 )
-            }.threadedMap(executor) { definition ->
+            }.map { definition ->
                 with (definition.resourceLocation) {
-                    this to definitionService.get(encryptionKeyRef = encryptionKeyRef, hash = this.ref.hash, classname = this.classname, signer)
+                    this to osClient.getJar(
+                        this.ref.hash.base64Decode(),
+                        encryptionKeyRef,
+                    )
                 }
             }.toList()
+            .map { (resourceLocation, future) -> resourceLocation to future.get() }
             .forEach { (location, inputStream) ->  definitionService.addJar(location.ref.hash, inputStream) }
     }
 
@@ -255,16 +260,16 @@ class ContractEngine(
         name: String,
         message: Message,
         audiences: Set<PublicKey>,
-        signer: SignerImpl,
-        encryptionPublicKey: PublicKey,
+        encryptionKeyRef: KeyRef,
+        signingKeyRef: KeyRef,
         scope: ScopeResponse?
     ): Contracts.ExecutionResult {
-        val sha512 = definitionService.save(
-            encryptionPublicKey,
+        val sha512 = osClient.putRecord(
             message,
-            signer,
+            signingKeyRef,
+            encryptionKeyRef,
             audiences
-        )
+        ).get().value.toByteArray() // todo: is this the correct decode here? Appears to be utf-8 encoded hash (not base64'd as well)
 
         val ancestorHash = scope?.recordsList
             ?.map { it.record }

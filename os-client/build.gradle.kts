@@ -22,6 +22,7 @@ sourceSets {
 
 dependencies {
     implementation(project(":encryption"))
+    implementation(project(":util"))
 
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
     implementation("io.grpc", "grpc-protobuf", Version.grpc_version)

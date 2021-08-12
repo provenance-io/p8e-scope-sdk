@@ -8,8 +8,8 @@ import io.provenance.scope.contract.proto.*
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.DirectKeyRef
-import io.provenance.scope.encryption.toJavaPrivateKey
-import io.provenance.scope.encryption.toJavaPublicKey
+import io.provenance.scope.encryption.util.toJavaPrivateKey
+import io.provenance.scope.encryption.util.toJavaPublicKey
 import io.provenance.scope.sdk.*
 import io.provenance.scope.sdk.Session
 import java.net.URI
@@ -41,7 +41,7 @@ class UtilsTest : WordSpec({
             val recordCacheSizeInBytes = 20000L
             val osGrpcUri = URI.create("https://localhost:5000")
 
-            val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs )
+            val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs, mainNet = false)
             val osClient = Client(SharedClient(clientConfig), affiliate)
             val defSpec = Commons.DefinitionSpec.newBuilder()
                 .setType(PROPOSED)
@@ -102,7 +102,7 @@ class UtilsTest : WordSpec({
             val recordCacheSizeInBytes = 20000L
             val osGrpcUri = URI.create("https://localhost:5000")
 
-            val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs )
+            val clientConfig = ClientConfig(jarCacheSizeInBytes, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs, mainNet = false)
             val osClient = Client(SharedClient(clientConfig), affiliate)
 
             val proposedSession = io.provenance.metadata.v1.Session.newBuilder()

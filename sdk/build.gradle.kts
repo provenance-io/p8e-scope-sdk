@@ -7,6 +7,7 @@ dependencies {
     api(project(":contract-base"))
     api(project(":contract-proto"))
     api(project(":encryption"))
+    api(project(":engine"))
     implementation(project(":util"))
     api("io.provenance.protobuf", "pb-proto-java", Version.provenanceProtos)
 

@@ -13,4 +13,7 @@ data class ClientConfig(
     val osGrpcDeadlineMs: Long = 30_000L,
     val osConcurrencySize: Short = 4,
     val osDecryptionWorkerThreads: Short = 2,
+
+    // provenance
+    val mainNet: Boolean
 )
