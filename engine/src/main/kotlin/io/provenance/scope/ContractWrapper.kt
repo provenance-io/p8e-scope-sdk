@@ -10,6 +10,8 @@ import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.model.KeyRef
+import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
 import io.provenance.scope.util.toOffsetDateTimeProv
 import java.lang.reflect.Constructor
@@ -24,8 +26,8 @@ class ContractWrapper(
     private val contractSpecClass: Class<out Any>,
     private val encryptionKeyRef: KeyRef,
     private val definitionService: DefinitionService,
+    private val osClient: CachedOsClient,
     private val contractBuilder: Contract.Builder,
-    private val signer: SignerImpl
 ) {
     private val records = buildRecords()
 
@@ -46,7 +48,7 @@ class ContractWrapper(
     val functions = contractBuilder.considerationsBuilderList
         .filter { it.result == ExecutionResult.getDefaultInstance() }
         .map { consideration -> consideration to getConsiderationMethod(contract.javaClass, consideration.considerationName) }
-        .map { (consideration, method) -> Function(encryptionKeyRef, signer, definitionService, contract, consideration, method, records) }
+        .map { (consideration, method) -> Function(encryptionKeyRef, osClient, contract, consideration, method, records) }
 
     private fun getConstructor(
         clazz: Class<*>
@@ -97,23 +99,11 @@ class ContractWrapper(
         encryptionKeyRef: KeyRef
     ): List<RecordInstance> {
         val recordMap: Map<String, List<Message>> = groupByTo(mutableMapOf(), { it.name }) { record ->
-            val completableFuture = CompletableFuture<Message>()
-            thread(start = false) {
-                definitionService.forThread {
-                    try {
-                        completableFuture.complete(
-                            definitionService.loadProto(
-                                encryptionKeyRef,
-                                record,
-                                signer
-                            )
-                        )
-                    } catch (t: Throwable) {
-                        completableFuture.completeExceptionally(t)
-                    }
-                }
-            }.let(executor::submit)
-            completableFuture
+            osClient.getRecord(
+                record.dataLocation.classname,
+                record.dataLocation.ref.hash.base64Decode(),
+                encryptionKeyRef,
+            )
         }.map { (name, futures) ->
             name to futures.map { it.get() }
         }.toMap()

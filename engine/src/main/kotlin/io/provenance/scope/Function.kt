@@ -12,6 +12,8 @@ import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.model.KeyRef
+import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil
 import java.lang.reflect.Method
@@ -20,8 +22,7 @@ import kotlin.Function
 
 class Function<T: P8eContract>(
     private val encryptionKeyRef: KeyRef,
-    private val signer: SignerImpl,
-    definitionService: DefinitionService,
+    osClient: CachedOsClient,
     private val contract: T,
     val considerationBuilder: ConsiderationProto.Builder,
     val method: Method,
@@ -36,7 +37,7 @@ class Function<T: P8eContract>(
         considerationBuilder,
         method,
         records,
-        definitionService
+        osClient
     )
 
     fun canExecute(): Boolean {
@@ -52,16 +53,17 @@ class Function<T: P8eContract>(
         considerationProto: ConsiderationProto.Builder,
         method: Method,
         records: List<RecordInstance>,
-        definitionService: DefinitionService
+        osClient: CachedOsClient
     ): List<Message> {
         val proposed = considerationProto.inputsList
             .map { proposedFact ->
-                val message = definitionService.loadProto(
+                val contractSpec = proposedFact.let(::proposedRecordToDef)
+                val message = osClient.getRecord(
+                    contractSpec.resourceLocation.classname,
+                    contractSpec.resourceLocation.ref.hash.base64Decode(),
+//                    signaturePublicKey = signer.getPublicKey() // todo: was optional in DefinitionService.loadProto (via DefintionService.get)... is this every necessary and does it need to be accounted for in CachedOsClient?
                     encryptionKeyRef,
-                    proposedFact.let(::proposedRecordToDef),
-                    signer = signer,
-                    signaturePublicKey = signer.getPublicKey()
-                )
+                ).get()
                 RecordInstance(
                     proposedFact.name,
                     message.javaClass,

@@ -4,6 +4,7 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.metadata.v1.ScopeSpecification
+import io.provenance.scope.ContractEngine
 import io.provenance.metadata.v1.Session as SessionProto
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.contracts.ContractHash
@@ -11,22 +12,30 @@ import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
+import io.provenance.scope.encryption.crypto.Pen
+import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.ContractSpecMapper.dehydrateSpec
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowContractDefinition
+import io.provenance.scope.sdk.extensions.isSigned
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
 import java.io.Closeable
 import java.util.ServiceLoader
+import java.security.PublicKey
+import java.util.*
 
 // TODO (@steve)
 // how does signer fit in?
 // support multiple size hashes in the sdk - object-store should already support hashes of any length
 
-class SharedClient(config: ClientConfig) : Closeable {
-    val osClient: CachedOsClient = CachedOsClient(config, OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs))
+class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = SignerFactory()) : Closeable {
+    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
+    
+    val contractEngine: ContractEngine = ContractEngine(osClient, signerFactory)
 
     override fun close() {
         TODO("Implement Closeable and close osClient channel - needs to shutdown and wait for shutdown or timeout")
@@ -64,6 +73,8 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
+            .setProposedSession(session)
+            .setScope(scope)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }
 
@@ -75,6 +86,16 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     // executes the first session against a non-existent scope
     fun<T: P8eContract> newSession(clazz: Class<T>, scopeSpecification: ScopeSpecification, session: SessionProto) {
 
+    }
+
+    fun execute(session: Session, affiliateSharePublicKeys: Collection<PublicKey> = listOf()): ExecutionResult {
+        val input = session.packageContract()
+        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
+
+        return when (result.isSigned(session.scope, inner.config.mainNet)) {
+            true -> SignedResult(result)
+            false -> throw NotImplementedError("Multi-party contract support not yet implemented")
+        }
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
@@ -106,7 +127,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
                     wrapper.record.name == name && wrapper.record.resultType() == type.name
                 }.record to type
             }.map { (record, type) ->
-                inner.osClient.getRecord(type.name, record.resultHash(), affiliate)
+                inner.osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
             }
 
         return clazz.cast(constructor.newInstance(*params.toList().toTypedArray()))

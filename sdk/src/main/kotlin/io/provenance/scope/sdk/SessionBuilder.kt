@@ -19,6 +19,7 @@ import io.provenance.scope.util.toProtoUuidProv
 import io.provenance.scope.util.toPublicKeyProtoOS
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
+import io.provenance.scope.util.ProtoUtil
 import java.util.*
 import java.util.UUID.randomUUID
 
@@ -125,6 +126,7 @@ class Session(
     private fun populateContract(): Contract {
         val envelope = Envelope.getDefaultInstance()
         val builder = spec.newContract()
+            .setDefinition(spec.definition)
 
         builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
             .setEncryptionPublicKey(client.affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
