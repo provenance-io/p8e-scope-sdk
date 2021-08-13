@@ -12,156 +12,28 @@ import io.provenance.scope.contract.proto.TestProtos
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.util.getAddress
 import io.provenance.scope.util.toByteString
-
-import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.spec.style.AnnotationSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.kotest.matchers.types.shouldBeTypeOf
 import java.security.KeyPair
-
-//@IncludeTags("Test")
-//class ProtoIndexerTest {
-//    lateinit var mockDefinitionService: DefinitionService
-//    lateinit var mockOsClient: OsClient
-//    lateinit var protoIndexer: ProtoIndexer
-//
-//    @BeforeAll
-//    fun setUp(){
-//        mockDefinitionService = mockk<DefinitionService>()
-//        mockOsClient = mockk<OsClient>()
-//        protoIndexer = ProtoIndexer(mockOsClient, false) { mockOsClient, memoryClassLoader -> mockDefinitionService }
-//    }
-//
-//    @Test
-////    @Tag("Test")
-//    fun oneIndexableOneNot(){
-//        // set up fake data
-//        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
-//        val testScope = ScopeResponse.newBuilder()
-//            // set up the scope response with whatever is needed
-//            .addSessions(SessionWrapper.newBuilder()
-//                .setSession(Session.newBuilder()
-//                    .setSessionId("sessionid".toByteString())
-//                    .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
-//                )
-//                .setContractSpecIdInfo(ContractSpecIdInfo.newBuilder()
-//                    .setContractSpecAddr("contractspecaddr")
-//                )
-//            )
-//            .addRecords(RecordWrapper.newBuilder().setRecord(Record.newBuilder()
-//                .setSessionId("sessionid".toByteString())
-//                .addOutputs(RecordOutput.newBuilder()
-//                    .setHash("outputhash")
-//                    .build()
-//                )
-//                .build()
-//            ))
-//            .build()
-//        val testProto = TestProtos.TestProto.newBuilder()
-//            .setName("cool name")
-//            .setSsn("123-456-7890")
-//            .build()
-//
-//        // set up mockDefinitionService call(s) so that the proper data is returned
-//        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-//            ContractSpec.newBuilder()
-////                .apply {
-////                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-////                    considerationSpecsList.add(0, ConsiderationSpec.newBuilder()
-////                        .outputSpecBuilder.specb.resource
-////                        .build()
-////                    )
-////                }
-//                .build(),
-//            testProto
-//        )
-//
-//        // perform indexing
-//        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
-//
-//        assert(indexFields.size == 1)
-//        assert(indexFields.containsKey("name"))
-//        assert(indexFields.get("name") == testProto.name)
-//    }
-//
-////    @Test
-////    fun noneIndexable(){
-////
-////    }
-////
-////    @Test
-////    fun allIndexable(){
-////
-////    }
-////
-////    @Test
-////    fun someIndexableSomeNot(){
-////
-////    }
-//}
-
-//class ProtoIndexerTests: WordSpec({
-//
-//    "Various Indexable Protos:" should {
-//
-//        "One Indexable One Not Should Work"{
-//            //        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
-//            val testScope = ScopeResponse.newBuilder()
-//                // set up the scope response with whatever is needed
-//                .addSessions(SessionWrapper.newBuilder()
-//                    .setSession(Session.newBuilder()
-//                        .setSessionId("sessionid".toByteString())
-//                        .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
-//                    )
-//                    .setContractSpecIdInfo(ContractSpecIdInfo.newBuilder()
-//                        .setContractSpecAddr("contractspecaddr")
-//                    )
-//                )
-//                .addRecords(RecordWrapper.newBuilder().setRecord(Record.newBuilder()
-//                    .setSessionId("sessionid".toByteString())
-//                    .addOutputs(RecordOutput.newBuilder()
-//                        .setHash("outputhash")
-//                        .build()
-//                    )
-//                    .build()
-//                ))
-//                .build()
-//            val testProto = TestProtos.TestProto.newBuilder()
-//                .setName("cool name")
-//                .setSsn("123-456-7890")
-//                .build()
-//
-//            // set up mockDefinitionService call(s) so that the proper data is returned
-//            every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-//                ContractSpec.newBuilder()
-//    //                .apply {
-//    //                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-//    //                    considerationSpecsList.add(0, ConsiderationSpec.newBuilder()
-//    //                        .outputSpecBuilder.specb.resource
-//    //                        .build()
-//    //                    )
-//    //                }
-//                    .build(),
-//                testProto
-//            )
-//
-//            // perform indexing
-//            val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
-//
-//            assert(indexFields.size == 1)
-//            assert(indexFields.containsKey("name"))
-//            assert(indexFields.get("name") == testProto.name)
-//        }
-//    }
-//
-//})
 
 class ProtoIndexerTests: AnnotationSpec(){
 
     lateinit var mockDefinitionService: DefinitionService
     lateinit var mockOsClient: OsClient
     lateinit var protoIndexer: ProtoIndexer
+
+    fun createContractSpec(): ContractSpec{
+        return ContractSpec.newBuilder()
+            .apply {
+//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
+                addConsiderationSpecs(ConsiderationSpec.newBuilder()
+//                                        .outputSpecBuilder.specb.resource
+                    .build()
+                )
+            }
+            .build()
+    }
 
     fun createSingleRecordScope(keyPair: KeyPair): ScopeResponse{
         return ScopeResponse.newBuilder()
@@ -239,15 +111,7 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                                        .build()
-                                    )
-                                }
-                .build(),
+            createContractSpec(),
             testProto
         )
 
@@ -295,15 +159,7 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             testProto
         )
 
@@ -329,15 +185,7 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             testProto
         )
 
@@ -369,15 +217,7 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             testProto
         )
 
@@ -412,25 +252,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             catProto
         )
 
@@ -469,25 +293,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             catProto
         )
 
@@ -519,25 +327,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             catProto
         )
 
@@ -580,25 +372,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-//                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             catProto
         )
 
@@ -637,25 +413,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-    //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-                    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-                        //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             insideProto
         )
 
@@ -692,25 +452,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-                    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-                        //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-                    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-                        //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             insideProto
         )
 
@@ -742,25 +486,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-                    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-                        //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-                    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-                        //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             insideProto
         )
 
@@ -798,25 +526,9 @@ class ProtoIndexerTests: AnnotationSpec(){
 
         // set up mockDefinitionService call(s) so that the proper data is returned
         every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
-            ContractSpec.newBuilder()
-                .apply {
-                    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-                        //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             personProto,
-            ContractSpec.newBuilder()
-                .apply {
-                    //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                    addConsiderationSpecs(ConsiderationSpec.newBuilder()
-                        //                                        .outputSpecBuilder.specb.resource
-                        .build()
-                    )
-                }
-                .build(),
+            createContractSpec(),
             insideProto
         )
 
@@ -834,26 +546,225 @@ class ProtoIndexerTests: AnnotationSpec(){
         (proto.get("nestedProto") as Map<String, Any>).get("food") shouldBe "Bagel"
     }
 
-//    //TODO: Create multi record Scope with nested messages tests
-//    @Test
-//    fun multiRecordNestedOneIndexable(){
-//
-//    }
-//
-//    @Test
-//    fun multiRecordNestedestedNoneIndexable(){
-//
-//    }
-//
-//    @Test
-//    fun multiRecordNestedestedAllIndexable(){
-//
-//    }
-//
-//    @Test
-//    fun multiRecordNestedestedSomeIndexableSomeNot(){
-//
-//    }
+    //TODO: Create multi record Scope with nested messages tests
+    @Test
+    fun multiRecordNestedOneIndexable(){
+        // set up fake data
+        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
+        val testScope = createMultiRecordScope(keyPair)
+        val innerPersonProto = TestProtos.OneIndexableOneNot.newBuilder()
+            .setName("cool name")
+            .setSsn("123-456-7890")
+            .build()
+        val innerCatProto = TestProtos.OneIndexableOneNot.newBuilder()
+            .setName("Luna")
+            .setSsn("098-765-4321")
+            .build()
+        val personProto = TestProtos.ParentOneIndexable.newBuilder()
+            .setDrink("soda")
+            .setOs("Windows")
+            .setNestedProto(innerPersonProto)
+            .build()
+        val catProto = TestProtos.ParentOneIndexable.newBuilder()
+            .setDrink("water")
+            .setOs("Linux")
+            .setNestedProto(innerCatProto)
+            .build()
+
+        // set up mockDefinitionService call(s) so that the proper data is returned
+        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+            createContractSpec(),
+            personProto,
+            createContractSpec(),
+            catProto,
+            createContractSpec(),
+            innerPersonProto,
+            createContractSpec(),
+            innerCatProto
+        )
+
+        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+
+        // perform indexing
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+
+//        throw Exception("indexFields is $indexFields")
+        indexFields.size shouldBe 2
+        val personInfo = indexFields.get("person") as Map<String, Any>
+        val catInfo = indexFields.get("cat") as Map<String, Any>
+        personInfo.size shouldBe 2
+        (personInfo.get("nestedProto") as Map<String, Any>).size shouldBe 1
+        (personInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "cool name"
+        catInfo.size shouldBe 2
+        (catInfo.get("nestedProto") as Map<String, Any>).size shouldBe 1
+        (catInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "Luna"
+    }
+
+    @Test
+    fun multiRecordNestedestedNoneIndexable(){
+        // set up fake data
+        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
+        val testScope = createMultiRecordScope(keyPair)
+        val innerPersonProto = TestProtos.NoneIndexable.newBuilder()
+            .setName("cool name")
+            .setSsn("123-456-7890")
+            .setFood("sandwich")
+            .build()
+        val innerCatProto = TestProtos.NoneIndexable.newBuilder()
+            .setName("Luna")
+            .setSsn("098-765-4321")
+            .setFood("treats")
+            .build()
+        val personProto = TestProtos.ParentNoneIndexable.newBuilder()
+            .setDrink("soda")
+            .setOs("Windows")
+            .setNestedProto(innerPersonProto)
+            .build()
+        val catProto = TestProtos.ParentNoneIndexable.newBuilder()
+            .setDrink("water")
+            .setOs("Linux")
+            .setNestedProto(innerCatProto)
+            .build()
+
+        // set up mockDefinitionService call(s) so that the proper data is returned
+        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+            createContractSpec(),
+            personProto,
+            createContractSpec(),
+            catProto,
+            createContractSpec(),
+            innerPersonProto,
+            createContractSpec(),
+            innerCatProto
+        )
+
+        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+
+        // perform indexing
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+
+        indexFields.size shouldBe 0
+    }
+
+    @Test
+    fun multiRecordNestedestedAllIndexable(){
+        // set up fake data
+        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
+        val testScope = createMultiRecordScope(keyPair)
+        val innerPersonProto = TestProtos.AllIndexable.newBuilder()
+            .setName("cool name")
+            .setSsn("123-456-7890")
+            .setFood("sandwich")
+            .build()
+        val innerCatProto = TestProtos.AllIndexable.newBuilder()
+            .setName("Luna")
+            .setSsn("098-765-4321")
+            .setFood("treats")
+            .build()
+        val personProto = TestProtos.ParentAllIndexable.newBuilder()
+            .setDrink("soda")
+            .setOs("Windows")
+            .setNestedProto(innerPersonProto)
+            .build()
+        val catProto = TestProtos.ParentAllIndexable.newBuilder()
+            .setDrink("water")
+            .setOs("Linux")
+            .setNestedProto(innerCatProto)
+            .build()
+
+        // set up mockDefinitionService call(s) so that the proper data is returned
+        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+            createContractSpec(),
+            personProto,
+            createContractSpec(),
+            catProto,
+            createContractSpec(),
+            innerPersonProto,
+            createContractSpec(),
+            innerCatProto
+        )
+
+        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+
+        // perform indexing
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+
+        indexFields.size shouldBe 2
+        val personInfo = indexFields.get("person") as Map<String, Any>
+        val catInfo = indexFields.get("cat") as Map<String, Any>
+        personInfo.size shouldBe 2
+        (personInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
+        (personInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "cool name"
+        catInfo.size shouldBe 2
+        (catInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
+        (catInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "Luna"
+    }
+
+    @Test
+    fun multiRecordNestedestedSomeIndexableSomeNot(){
+        // set up fake data
+        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
+        val testScope = createMultiRecordScope(keyPair)
+        val innerPersonProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+            .setName("cool name")
+            .setSsn("123-456-7890")
+            .setFood("sandwich")
+            .setShape("circle")
+            .setMaterial("metal")
+            .build()
+        val innerCatProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+            .setName("Luna")
+            .setSsn("098-765-4321")
+            .setFood("treats")
+            .setShape("dodecahedron")
+            .setMaterial("wood")
+            .build()
+        val personProto = TestProtos.ParentSomeIndexable.newBuilder()
+            .setDrink("soda")
+            .setOs("Windows")
+            .setNestedProto(innerPersonProto)
+            .build()
+        val catProto = TestProtos.ParentSomeIndexable.newBuilder()
+            .setDrink("water")
+            .setOs("Linux")
+            .setNestedProto(innerCatProto)
+            .build()
+
+        // set up mockDefinitionService call(s) so that the proper data is returned
+        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+            createContractSpec(),
+            personProto,
+            createContractSpec(),
+            catProto,
+            createContractSpec(),
+            innerPersonProto,
+            createContractSpec(),
+            innerCatProto
+        )
+
+        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+
+        // perform indexing
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+
+        indexFields.size shouldBe 2
+        val personInfo = indexFields.get("person") as Map<String, Any>
+        val catInfo = indexFields.get("cat") as Map<String, Any>
+        personInfo.size shouldBe 2
+        (personInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
+        (personInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "cool name"
+        catInfo.size shouldBe 2
+        (catInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
+        (catInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "Luna"
+    }
 
 
 }

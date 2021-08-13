@@ -8,7 +8,6 @@ option java_outer_classname = "TestProtos";
 import "io/provenance/scope/contract/index.proto";
 
 
-//TODO: Make sure to test with inherited protos
 
 message ParentOneIndexable{
   string drink = 1 [(index) = {index: ALWAYS}];
