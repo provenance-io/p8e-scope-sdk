@@ -24,7 +24,7 @@ fun Envelope.isSigned(scope: ScopeResponse?, mainNet: Boolean): Boolean {
         ).let {
             val signatureAddresses = signaturesList.map {
                 val keyProto = PublicKeys.PublicKey.parseFrom(it.signer.signingPublicKey.toByteArray())
-                ECUtils.convertBytesToPublicKey(keyProto.toByteArray()).getAddress(mainNet)
+                ECUtils.convertBytesToPublicKey(keyProto.publicKeyBytes.toByteArray()).getAddress(mainNet)
             }.toSet()
             it.all { address -> signatureAddresses.contains(address) }
         }
