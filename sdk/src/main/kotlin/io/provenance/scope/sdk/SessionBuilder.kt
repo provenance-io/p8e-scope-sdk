@@ -356,7 +356,7 @@ class Session(
 
         permissionUpdater.saveConstructorArguments()
 
-        permissionUpdater.saveProposedFacts(java.util.UUID.nameUUIDFromBytes(proposedSession?.sessionId?.toByteArray()), this.proposedRecords.values)
+        permissionUpdater.saveProposedFacts(this.proposedRecords.values)
 
         return envelope
     }
@@ -409,10 +409,10 @@ class Session(
         }
 
         // TODO (steve) for later convert to async with ListenableFutures
-        fun saveProposedFacts(stagedExecutionUuid: java.util.UUID, stagedProposedProtos: Collection<Message>) {
-//            stagedProposedProtos.map {
-//                client.inner.osClient.putRecord(it, client.affiliate, audience, stagedExecutionUuid)
-//            }.map { it.get() } // TODO is this the best way to await N items?
+        fun saveProposedFacts(stagedProposedProtos: Collection<Message>) {
+            stagedProposedProtos.map {
+                client.inner.osClient.putRecord(it, client.affiliate.signingKeyRef, client.affiliate.encryptionKeyRef, audience)
+            }.map { it.get() } // TODO is this the best way to await N items?
         }
     }
 }
