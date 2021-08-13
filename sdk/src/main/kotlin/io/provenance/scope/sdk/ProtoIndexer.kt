@@ -28,11 +28,13 @@ import java.security.KeyPair
 
 class ProtoIndexer(
     private val osClient: /*Cached*/OsClient,
-    private val mainNet: Boolean    //TODO: Might change where we pull this from.  Figure out later
+    private val mainNet: Boolean,    //TODO: Might change where we pull this from.  Figure out later
+    private val definitionServiceFactory: (OsClient, MemoryClassLoader) -> DefinitionService =
+        { osClient, memoryClassLoader -> DefinitionService(osClient, memoryClassLoader) }
 ) {
     private val indexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("index")
     private val messageIndexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
-    private val _definitionService = DefinitionService(osClient)
+    private val _definitionService = definitionServiceFactory(osClient, MemoryClassLoader("", ByteArrayInputStream(ByteArray(0))))
 
     fun indexFields(scope: ScopeResponse,
                     keyPairs: Collection<KeyPair>,
@@ -87,7 +89,7 @@ class ProtoIndexer(
             MemoryClassLoader("", ByteArrayInputStream(ByteArray(0)))
         }
 
-        val definitionService = DefinitionService(osClient, memoryClassLoader)
+        val definitionService = definitionServiceFactory(osClient, memoryClassLoader)
         loadAllJars(encryptionKeyRef, definitionService, spec, signer)
 
         return recordWrapper.record.name to indexFields(
@@ -107,15 +109,15 @@ class ProtoIndexer(
         indexParent: Boolean? = null
     ): Map<String, Any>? {
         val message = when(t) {
-            is Record ->
-                if (t.outputsList.first().hash.isEmpty()) {
+            is RecordWrapper ->
+                if (t.record.outputsList.first().hash.isEmpty()) {
                     return mapOf()
                 } else {
                     definitionService.forThread {
                         definitionService.loadProto(
                             encryptionKeyRef,
-                            t.outputsList.first().hash,
-                            t.process.name, //TODO: Verify that this is equivalent to original code's t.classname(Message.classname)
+                            t.record.outputsList.first().hash,
+                            t.record.process.name, //TODO: Verify that this is equivalent to original code's t.classname(Message.classname)
                             signer
                         )
                     }

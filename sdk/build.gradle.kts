@@ -21,7 +21,10 @@ dependencies {
     testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
     testImplementation("io.mockk:mockk:1.12.0")
+    testImplementation(project(":contract-proto", "testArtifacts"))
+    testImplementation("org.junit.platform:junit-platform-commons:1.5.2")
 }
+
 
 tasks.withType<Test> {
     useJUnitPlatform()
@@ -32,3 +35,4 @@ tasks.withType<Test> {
         exceptionFormat = FULL
     }
 }
+
