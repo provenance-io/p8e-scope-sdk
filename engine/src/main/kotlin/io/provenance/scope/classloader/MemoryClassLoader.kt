@@ -49,7 +49,7 @@ class MemoryClassLoader(
         val clazz = try {
             when {
                 (name.startsWith("com.google.protobuf") ||
-                        name.startsWith("io.p8e") ||
+                        name.startsWith("io.provenance.scope") ||
                         name.startsWith("io.p8e.proto.Util\$Index") ||
                         name.startsWith("io.provenance.proto.Util\$Index")) &&
                         !name.startsWith("io.p8e.proto.contract") &&
@@ -63,7 +63,7 @@ class MemoryClassLoader(
                     try {
                         when {
                             (name.startsWith("com.google.protobuf") ||
-                                    name.startsWith("io.p8e") ||
+                                    name.startsWith("io.provenance.scope") ||
                                     name.startsWith("io.p8e.proto.Util\$Index") ||
                                     name.startsWith("io.provenance.proto.Util\$Index")) &&
                                     !name.startsWith("io.p8e.proto.contract") &&
