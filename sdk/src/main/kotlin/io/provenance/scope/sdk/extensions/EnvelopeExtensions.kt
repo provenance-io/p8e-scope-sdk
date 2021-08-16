@@ -14,17 +14,15 @@ fun Envelope.isSigned(scope: ScopeResponse?, mainNet: Boolean): Boolean {
         .filter { it.hasSigner() }
         .map {
             val keyProto = PublicKeys.PublicKey.parseFrom(it.signer.signingPublicKey.toByteArray())
-            ECUtils.convertBytesToPublicKey(keyProto.toByteArray()).getAddress(mainNet)
+            ECUtils.convertBytesToPublicKey(keyProto.publicKeyBytes.toByteArray()).getAddress(mainNet)
         }
-        .toSet()
         .plus(
             scope?.scope?.scope?.ownersList
-                ?.map { it.address }
-                ?.toSet()
-        ).let {
+                ?.map { it.address } ?: listOf()
+        ).toSet().let {
             val signatureAddresses = signaturesList.map {
                 val keyProto = PublicKeys.PublicKey.parseFrom(it.signer.signingPublicKey.toByteArray())
-                ECUtils.convertBytesToPublicKey(keyProto.toByteArray()).getAddress(mainNet)
+                ECUtils.convertBytesToPublicKey(keyProto.publicKeyBytes.toByteArray()).getAddress(mainNet)
             }.toSet()
             it.all { address -> signatureAddresses.contains(address) }
         }

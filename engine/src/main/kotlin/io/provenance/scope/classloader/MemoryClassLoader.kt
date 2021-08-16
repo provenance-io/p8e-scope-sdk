@@ -49,7 +49,10 @@ class MemoryClassLoader(
         val clazz = try {
             when {
                 (name.startsWith("com.google.protobuf") ||
+                        // todo: it doesn't seem very extensible to check for all these hardcoded namespaces... how else can we determine if we should load/not from parent classloader?
+                        // todo: what are the core criteria for loading from parent or not, given that we are now running this engine in a process that will have contracts imported via gradle?
                         name.startsWith("io.p8e") ||
+                        name.startsWith("io.provenance.scope") ||
                         name.startsWith("io.p8e.proto.Util\$Index") ||
                         name.startsWith("io.provenance.proto.Util\$Index")) &&
                         !name.startsWith("io.p8e.proto.contract") &&
@@ -63,6 +66,7 @@ class MemoryClassLoader(
                     try {
                         when {
                             (name.startsWith("com.google.protobuf") ||
+                                    name.startsWith("io.provenance.scope") ||
                                     name.startsWith("io.p8e") ||
                                     name.startsWith("io.p8e.proto.Util\$Index") ||
                                     name.startsWith("io.provenance.proto.Util\$Index")) &&

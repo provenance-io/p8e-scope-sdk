@@ -13,6 +13,7 @@ import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.model.SmartKeyRef
 import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256LoBytes
 import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.base64String
@@ -128,7 +129,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                 {
                     if (it != null) {
                         recordCache.put(cacheKey, message.toByteArray())
-                        ObjectHash(it.hash.toByteArray().sha256String())
+                        ObjectHash(it.hash.toByteArray().base64EncodeString())
                     } else {
                         // TODO fix
                         throw Exception("placeholder")

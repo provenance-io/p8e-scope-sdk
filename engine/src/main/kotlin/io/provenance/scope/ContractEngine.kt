@@ -269,7 +269,7 @@ class ContractEngine(
             signingKeyRef,
             encryptionKeyRef,
             audiences
-        ).get().value.toByteArray() // todo: is this the correct decode here? Appears to be utf-8 encoded hash (not base64'd as well)
+        ).get().value
 
         val ancestorHash = scope?.recordsList
             ?.map { it.record }
@@ -282,7 +282,7 @@ class ContractEngine(
             .setResult(Contracts.ExecutionResult.Result.PASS)
             .setOutput(proposedRecordOf(
                 name,
-                String(sha512.base64Encode()),
+                sha512,
                 message.javaClass.name,
                 scope?.scope?.scopeIdInfo?.scopeUuid?.toUuidProv(),
                 ancestorHash

@@ -34,9 +34,11 @@ class ContractWrapper(
     val contractClass = definitionService.loadClass(
         contractBuilder.definition
     ).takeIf {
-        contractSpecClass.isAssignableFrom(it) &&
-                P8eContract::class.java.isAssignableFrom(it)
-    }.orThrowContractDefinition("Contract class ${contractBuilder.definition.resourceLocation.classname} must implement ${contractSpecClass.name} and extend ${P8eContract::class.java.name}")
+        contractSpecClass.isAssignableFrom(it)
+    }.orThrowContractDefinition("Contract class ${contractBuilder.definition.resourceLocation.classname} must implement ${contractSpecClass.name}")
+    .takeIf {
+        P8eContract::class.java.isAssignableFrom(it)
+    }.orThrowContractDefinition("Contract class ${contractBuilder.definition.resourceLocation.classname} must extend ${P8eContract::class.java.name}")
 
     private val constructor = getConstructor(contractClass)
 

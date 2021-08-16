@@ -22,7 +22,9 @@ import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Contracts.ConditionProto
 import io.provenance.scope.contract.proto.Contracts.ConsiderationProto
 import io.provenance.scope.contract.proto.Contracts.Contract
+import io.provenance.scope.objectstore.util.sha256LoBytes
 import io.provenance.scope.util.ProtoUtil
+import io.provenance.scope.util.base64String
 import io.provenance.scope.contract.proto.Contracts.Record as RecordProto
 import java.lang.reflect.ParameterizedType
 import java.util.Base64
@@ -47,12 +49,7 @@ object ContractSpecMapper {
                             .setClassname(ContractSpec::class.java.name)
                             .setRef(
                                 ProvenanceReference.newBuilder()
-                                    .setHash(
-                                        String(
-                                            Base64.getEncoder()
-                                                .encode(Hashing.sha256().hashBytes(this.toByteArray()).asBytes())
-                                        )
-                                    )
+                                    .setHash(toByteArray().sha256LoBytes().base64String())
                             )
                     )
             )
