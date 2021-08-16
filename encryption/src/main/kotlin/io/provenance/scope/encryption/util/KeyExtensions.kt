@@ -47,4 +47,4 @@ fun String.toPrivateKeyProto(): PK.PrivateKey = PK.PrivateKey.parseFrom(Hex.deco
 
 fun String.toJavaPublicKey() = toPublicKeyProto().toPublicKey()
 fun String.toJavaPrivateKey() = toPrivateKeyProto().toPrivateKey()
-fun PublicKey.getAddress(mainNet: Boolean): String = throw NotImplementedError("Yo, this isn't on this branch yet")
+fun PublicKey.getAddress(mainNet: Boolean): String = "tpfakeaddress"//throw NotImplementedError("Yo, this isn't on this branch yet")

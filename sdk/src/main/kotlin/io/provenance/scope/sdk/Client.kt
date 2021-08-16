@@ -46,7 +46,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     companion object {
         // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
-        private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList()
+        private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList() // todo: can we use the contract/proto hashes to generate a dynamic list of what should/should not be loaded from memory vs. system class loader
         private val protoHashes = ServiceLoader.load(ProtoHash::class.java).toList()
     }
 
