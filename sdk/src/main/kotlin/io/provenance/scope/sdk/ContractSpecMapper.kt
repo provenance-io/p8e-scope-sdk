@@ -50,7 +50,7 @@ object ContractSpecMapper {
                                     .setHash(
                                         String(
                                             Base64.getEncoder()
-                                                .encode(Hashing.sha512().hashBytes(this.toByteArray()).asBytes())
+                                                .encode(Hashing.sha256().hashBytes(this.toByteArray()).asBytes())
                                         )
                                     )
                             )

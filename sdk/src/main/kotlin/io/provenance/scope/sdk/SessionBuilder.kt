@@ -276,8 +276,6 @@ class Session(
                 }
             }
 
-        // TODO (Steve/Pierce) This is probably wrong. I took a stab at it.
-//        val scope = envelope.scope.takeUnless { it == Scope.getDefaultInstance() }
         if (scope != null) {
             scope.recordsList
                 .associateBy { it.record.name }
@@ -287,7 +285,7 @@ class Session(
                             .setName(factName)
                             .setDataLocation(
                                 Location.newBuilder()
-                                    .setClassname(scopeFact.record.name)
+                                    .setClassname(scopeFact.record.process.name)
                                     .setRef(
                                         ProvenanceReference.newBuilder()
                                             .setScopeUuid(io.provenance.metadata.v1.p8e.UUID.newBuilder()
@@ -398,14 +396,14 @@ class Session(
             // TODO (later) this can be optimized by checking the recitals and record groups and determining what subset, if any,
             // of input facts need to be fetched and stored in order only save the objects that are needed by some of
             // the recitals
-            contract.inputsList.map { record ->
-                with(client) {
-//                     val obj = this.loadObject(record.dataLocation.ref.hash)
-//                     val inputStream = ByteArrayInputStream(obj)
-//
-//                     this.storeObject(inputStream, audience)
-                }
-            }
+//            contract.inputsList.map { record ->
+//                with(client) {
+////                     val obj = this.loadObject(record.dataLocation.ref.hash)
+////                     val inputStream = ByteArrayInputStream(obj)
+////
+////                     this.storeObject(inputStream, audience)
+//                }
+//            }
         }
 
         // TODO (steve) for later convert to async with ListenableFutures

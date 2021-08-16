@@ -16,10 +16,10 @@ dependencies {
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
     implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
     implementation("com.google.guava", "guava", Version.guava)
+
     testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
-    testImplementation("org.mockito", "mockito-core", "3.8.0")
-    testImplementation("com.nhaarman.mockitokotlin2", "mockito-kotlin", "2.2.0")
-    testImplementation("org.mockito", "mockito-inline", "3.8.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
+    testImplementation("io.mockk:mockk:1.12.0")
 }
 
 tasks.withType<Test> {
