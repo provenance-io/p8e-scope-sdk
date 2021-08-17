@@ -1,4 +1,4 @@
-package io.provenance.scope.encryption.crypto
+package io.provenance.scope.util.crypto
 
 /*
 DIRECT COPY

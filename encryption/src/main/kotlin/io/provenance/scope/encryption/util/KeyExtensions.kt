@@ -1,11 +1,11 @@
 package io.provenance.scope.encryption.util
 
 // import io.provenance.scope.contract.proto.PublicKeys
-import io.provenance.engine.crypto.Bech32
-import io.provenance.engine.crypto.toBech32Data
-import io.provenance.scope.encryption.crypto.Hash
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.proto.PK
+import io.provenance.scope.util.crypto.Bech32
+import io.provenance.scope.util.crypto.Hash
+import io.provenance.scope.util.crypto.toBech32Data
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.bouncycastle.util.encoders.Hex
 import java.security.PrivateKey

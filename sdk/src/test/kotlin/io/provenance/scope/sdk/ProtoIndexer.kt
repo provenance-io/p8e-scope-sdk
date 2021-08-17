@@ -118,7 +118,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setName("cool name")
             .setSsn("123-456-7890")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             testProto,
@@ -165,7 +165,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setName("cool name")
             .setSsn("123-456-7890")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             testProto,
@@ -190,7 +190,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setSsn("123-456-7890")
             .setFood("Bagel")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             testProto,
@@ -221,7 +221,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setShape("Circle")
             .setMaterial("Metal")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             testProto,
@@ -255,7 +255,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setName("Luna")
             .setSsn("098-765-4321")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -295,7 +295,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setSsn("098-765-4321")
             .setFood("Treats")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -328,7 +328,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setSsn("098-765-4321")
             .setFood("Treats")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -372,7 +372,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setShape("Loaf")
             .setMaterial("Wood")
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -413,7 +413,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setNestedProto(insideProto)
             .build()
 
-    
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -451,7 +451,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Windows")
             .setNestedProto(insideProto)
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -484,7 +484,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Windows")
             .setNestedProto(insideProto)
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -523,7 +523,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Windows")
             .setNestedProto(insideProto)
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -569,7 +569,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -625,7 +625,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -672,7 +672,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,
@@ -731,7 +731,7 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-        
+
         queueOsResponses(
             createContractSpec(),
             personProto,

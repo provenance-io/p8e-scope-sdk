@@ -1,4 +1,4 @@
-package io.provenance.engine.crypto
+package io.provenance.scope.util.crypto
 
 // Copyright (c) 2020 Figure Technologies Inc.
 // The contents of this file were derived from an implementation
