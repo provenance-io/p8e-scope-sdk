@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "TestProtos";
+
+import "io/provenance/scope/contract/index.proto";
+
+
+
+message ParentOneIndexable{
+  string drink = 1 [(index) = {index: ALWAYS}];
+  string os = 2 [(index) = {index: NEVER}];
+  OneIndexableOneNot nestedProto = 3 [(index) = {index: ALWAYS}];
+}
+
+message ParentNoneIndexable{
+  string drink = 1 [(index) = {index: NEVER}];
+  string os = 2 [(index) = {index: NEVER}];
+  NoneIndexable nestedProto = 3 [(index) = {index: NEVER}];
+}
+
+message ParentAllIndexable{
+  string drink = 1 [(index) = {index: ALWAYS}];
+  string os = 2 [(index) = {index: NEVER}];
+  AllIndexable nestedProto = 3 [(index) = {index: ALWAYS}];
+}
+
+message ParentSomeIndexable{
+  string drink = 1 [(index) = {index: ALWAYS}];
+  string os = 2 [(index) = {index: NEVER}];
+  SomeIndexableSomeNot nestedProto = 3 [(index) = {index: ALWAYS}];
+}
+
+message OneIndexableOneNot {
+  string name = 1 [(index) = {index: ALWAYS}];
+  string ssn = 2 [(index) = {index: NEVER}];
+//  Address address = 3 [(index) = { index: ALWAYS }];
+}
+
+//
+//message Address {
+//    option index = { index: NO_INDEX_DEFER_PARENT };
+//
+//    string street = 1 [(index) = { index: NEVER }];
+//    string city = 2;
+//    string state = 3;
+//}
+
+message NoneIndexable {
+  string name = 1 [(index) = {index: NEVER}];
+  string ssn = 2 [(index) = {index: NEVER}];
+  string food = 3 [(index) = {index: NEVER}];
+}
+
+message AllIndexable{
+  string name = 1 [(index) = {index: ALWAYS}];
+  string ssn = 2 [(index) = {index: ALWAYS}];
+  string food = 3 [(index) = {index: ALWAYS}];
+}
+
+message SomeIndexableSomeNot{
+  string name = 1 [(index) = {index: ALWAYS}];
+  string ssn = 2 [(index) = {index: ALWAYS}];
+  string food = 3 [(index) = {index: ALWAYS}];
+  string shape = 4 [(index) = {index: NEVER}];
+  string material = 5 [(index) = {index: NEVER}];
+}

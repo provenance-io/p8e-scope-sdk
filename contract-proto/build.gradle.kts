@@ -15,6 +15,14 @@ sourceSets {
             srcDir("build/generated/source/proto/main/java")
         }
     }
+    test {
+        java {
+            srcDir("build/generated/source/proto/test/java")
+        }
+        proto {
+            srcDir("src/main/proto")
+        }
+    }
 }
 
 dependencies {
@@ -42,4 +50,18 @@ protobuf {
             }
         }
     }
+}
+
+val testConfig = configurations.create("testArtifacts") {
+    extendsFrom(configurations["testCompile"])
+}
+
+tasks.register("testJar", Jar::class.java) {
+    dependsOn("testClasses")
+    classifier += "test"
+    from(sourceSets["test"].output)
+}
+
+artifacts {
+    add("testArtifacts", tasks.named<Jar>("testJar") )
 }

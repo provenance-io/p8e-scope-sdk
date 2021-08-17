@@ -9,6 +9,7 @@ dependencies {
     api(project(":encryption"))
     api(project(":engine"))
     implementation(project(":util"))
+    implementation(project(":engine"))
     api("io.provenance.protobuf", "pb-proto-java", Version.provenanceProtos)
 
     implementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
@@ -20,15 +21,18 @@ dependencies {
     testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
     testImplementation("io.mockk:mockk:1.12.0")
+    testImplementation(project(":contract-proto", "testArtifacts"))
+    testImplementation("org.junit.platform:junit-platform-commons:1.5.2")
 }
+
 
 tasks.withType<Test> {
     useJUnitPlatform()
-
-
+    
     testLogging {
         showStandardStreams = true
         events = setOf(PASSED, FAILED, SKIPPED, STANDARD_ERROR)
         exceptionFormat = FULL
     }
 }
+
