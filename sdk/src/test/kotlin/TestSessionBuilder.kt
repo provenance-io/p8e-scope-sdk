@@ -17,7 +17,7 @@ class UtilsTest : WordSpec({
     "SessionBuilder.Builder tests" should {
         mockkConstructor(Session.PermissionUpdater::class)
         every {anyConstructed<Session.PermissionUpdater>().saveConstructorArguments()} returns Unit
-        every {anyConstructed<Session.PermissionUpdater>().saveProposedFacts(any<UUID>(), any())} returns Unit
+        every {anyConstructed<Session.PermissionUpdater>().saveProposedFacts(any())} returns Unit
         "Package Contract Single Record" {
             //Setting up single record test
             val osClient = createClientDummy(0)
