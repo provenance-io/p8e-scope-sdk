@@ -20,16 +20,16 @@ import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
-import io.provenance.scope.objectstore.client.OsClient
-import io.provenance.scope.util.getAddress
+import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.objectstore.client.CachedOsClient
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.KeyPair
 
 class ProtoIndexer(
-    private val osClient: /*Cached*/OsClient,
+    private val osClient: CachedOsClient,
     private val mainNet: Boolean,    //TODO: Might change where we pull this from.  Figure out later
-    private val definitionServiceFactory: (OsClient, MemoryClassLoader) -> DefinitionService =
+    private val definitionServiceFactory: (CachedOsClient, MemoryClassLoader) -> DefinitionService =
         { osClient, memoryClassLoader -> DefinitionService(osClient, memoryClassLoader) }
 ) {
     private val indexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("index")
@@ -76,12 +76,11 @@ class ProtoIndexer(
         val encryptionKeyRef = DirectKeyRef(keyPair.public, keyPair.private)
 
         // Try to re-use MemoryClassLoader if possible for caching reasons
-        val spec = _definitionService.loadProto(
-            encryptionKeyRef,
-            contractSpecHashLookup[sessionWrapper.contractSpecIdInfo.contractSpecAddr]!!,   //TODO: figure out session hash lookup
+        val spec = osClient.getRecord(
             ContractSpec::class.java.name,
-            signer
-        ) as ContractSpec
+            contractSpecHashLookup[sessionWrapper.contractSpecIdInfo.contractSpecAddr]!!.toByteArray(),   //TODO: figure out session hash lookup
+            encryptionKeyRef,
+        ).get() as ContractSpec
 
         val classLoaderKey =
             "${spec.definition.resourceLocation.ref.hash}-${spec.considerationSpecsList.first().outputSpec.spec.resourceLocation.ref.hash}"
@@ -114,12 +113,11 @@ class ProtoIndexer(
                     return mapOf()
                 } else {
                     definitionService.forThread {
-                        definitionService.loadProto(
-                            encryptionKeyRef,
-                            t.record.outputsList.first().hash,
+                        osClient.getRecord(
                             t.record.process.name, //TODO: Verify that this is equivalent to original code's t.classname(Message.classname)
-                            signer
-                        )
+                            t.record.outputsList.first().hash.toByteArray(),
+                            encryptionKeyRef,
+                        ).get()
                     }
                 }
             else -> t
@@ -263,7 +261,7 @@ class ProtoIndexer(
                 definitionService.addJar(
                     encryptionKeyRef,
                     DefinitionSpec.parseFrom(it.toByteArray()),
-                    signer
+                    signer.getPublicKey()
                 )
             }
     }

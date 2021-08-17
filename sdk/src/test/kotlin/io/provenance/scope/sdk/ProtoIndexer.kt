@@ -1,5 +1,8 @@
 package io.provenance.scope.sdk
 
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.protobuf.Message
 import io.mockk.mockk
 import io.mockk.every
 import io.provenance.metadata.v1.*
@@ -10,17 +13,20 @@ import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.contract.proto.TestProtos
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
-import io.provenance.scope.util.getAddress
 import io.provenance.scope.util.toByteString
 import io.kotest.core.spec.style.AnnotationSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.objectstore.client.CachedOsClient
 import java.security.KeyPair
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Future
 
 class ProtoIndexerTests: AnnotationSpec(){
 
     lateinit var mockDefinitionService: DefinitionService
-    lateinit var mockOsClient: OsClient
+    lateinit var mockOsClient: CachedOsClient
     lateinit var protoIndexer: ProtoIndexer
 
     fun createContractSpec(): ContractSpec{
@@ -92,10 +98,14 @@ class ProtoIndexerTests: AnnotationSpec(){
             .build()
     }
 
+    fun queueOsResponses(vararg messages: Message) {
+        every { mockOsClient.getRecord(any(), any(), any()) } returnsMany messages.map { Futures.immediateFuture(it) }
+    }
+
     @BeforeAll
     fun setUp(){
         mockDefinitionService = mockk<DefinitionService>()
-        mockOsClient = mockk<OsClient>()
+        mockOsClient = mockk<CachedOsClient>()
         protoIndexer = ProtoIndexer(mockOsClient, false) { mockOsClient, memoryClassLoader -> mockDefinitionService }
     }
 
@@ -108,11 +118,10 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setName("cool name")
             .setSsn("123-456-7890")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
-            testProto
+            testProto,
         )
 
         every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
@@ -156,11 +165,10 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setName("cool name")
             .setSsn("123-456-7890")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
-            testProto
+            testProto,
         )
 
         every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
@@ -182,11 +190,10 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setSsn("123-456-7890")
             .setFood("Bagel")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
-            testProto
+            testProto,
         )
 
         every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
@@ -214,11 +221,10 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setShape("Circle")
             .setMaterial("Metal")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
-            testProto
+            testProto,
         )
 
         every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
@@ -249,13 +255,12 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setName("Luna")
             .setSsn("098-765-4321")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
-            catProto
+            catProto,
         )
 
         every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
@@ -290,13 +295,12 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setSsn("098-765-4321")
             .setFood("Treats")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
-            catProto
+            catProto,
         )
 
         every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
@@ -324,9 +328,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setSsn("098-765-4321")
             .setFood("Treats")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -369,9 +372,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setShape("Loaf")
             .setMaterial("Wood")
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -411,8 +413,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setNestedProto(insideProto)
             .build()
 
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+    
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -449,9 +451,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Windows")
             .setNestedProto(insideProto)
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -483,9 +484,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Windows")
             .setNestedProto(insideProto)
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -523,9 +523,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Windows")
             .setNestedProto(insideProto)
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -570,9 +569,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -627,9 +625,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -675,9 +672,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),
@@ -735,9 +731,8 @@ class ProtoIndexerTests: AnnotationSpec(){
             .setOs("Linux")
             .setNestedProto(innerCatProto)
             .build()
-
-        // set up mockDefinitionService call(s) so that the proper data is returned
-        every { mockDefinitionService.loadProto(any(), any<String>(), any(), any()) } returnsMany listOf(
+        
+        queueOsResponses(
             createContractSpec(),
             personProto,
             createContractSpec(),

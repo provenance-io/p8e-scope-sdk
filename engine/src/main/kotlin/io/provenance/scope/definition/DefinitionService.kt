@@ -72,4 +72,8 @@ class DefinitionService(
     ): Class<*> {
         return memoryClassLoader.loadClass(definition.resourceLocation.classname)
     }
+
+    fun <T> forThread(fn: () -> T): T {
+        return memoryClassLoader.forThread(fn)
+    }
 }

@@ -42,13 +42,13 @@ import java.security.PublicKey
 //
 //fun PK.PublicKey.toHex() = toPublicKeyProto().toHex()
 
-fun PK.PrivateKey.toPrivateKey(): PK.PrivateKey =
+fun PK.PrivateKey.toPrivateKey(): PrivateKey =
     this.let {
         require(it.curve == PK.KeyCurve.SECP256K1) { "Unsupported Key Curve" }
         ECUtils.convertBytesToPrivateKey(it.keyBytes.toByteArray())
     }
 
-fun PK.PublicKey.toPublicKey(): PK.PublicKey =
+fun PK.PublicKey.toPublicKey(): PublicKey =
     this.let {
         require(it.curve == PK.KeyCurve.SECP256K1) {"Unsupported Key Curve"}
         ECUtils.convertBytesToPublicKey(it.publicKeyBytes.toByteArray())
@@ -63,7 +63,7 @@ fun String.toPrivateKeyProto(): PK.PrivateKey = PK.PrivateKey.parseFrom(Hex.deco
 fun String.toJavaPublicKey() = toPublicKeyProto().toPublicKey()
 fun String.toJavaPrivateKey() = toPrivateKeyProto().toPrivateKey()
 
-fun PK.PublicKey.getAddress(mainNet: Boolean): String =
+fun PublicKey.getAddress(mainNet: Boolean): String =
     (this as BCECPublicKey).q.getEncoded(true)
         .let {
             Hash.sha256hash160(it)
