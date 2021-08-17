@@ -24,10 +24,11 @@ fun ByteArray.base64EncodeString(): String = String(this.base64Encode())
 fun String.base64Decode(): ByteArray = Base64.getDecoder().decode(this)
 
 fun ByteArray.sha256() = Hashing.sha256().hashBytes(this).asBytes()
+fun ByteArray.loBytes() = slice(0 until 16)
 fun ByteArray.sha256LoBytes(): ByteArray {
     return Hashing.sha256().hashBytes(this)
         .asBytes()
-        .slice(0..16)
+        .loBytes()
         .toByteArray()
 }
 

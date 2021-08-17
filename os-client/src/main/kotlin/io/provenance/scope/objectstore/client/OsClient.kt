@@ -22,6 +22,7 @@ import io.provenance.scope.encryption.proto.Encryption.ContextType.RETRIEVAL
 import io.provenance.objectstore.proto.Utils
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.crypto.sign
+import io.provenance.scope.objectstore.util.loBytes
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -229,7 +230,7 @@ open class OsClient(
                 }
 
                 val hash = if (loHash) {
-                    dimeInputStream.internalHash().slice(0..16).toByteArray()
+                    dimeInputStream.internalHash().loBytes().toByteArray()
                 } else {
                     dimeInputStream.internalHash()
                 }
