@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "IndexProto";
+
+import "google/protobuf/descriptor.proto";
+
+// Metadata to flag indexing by p8e indexer
+message Index {
+  Behavior index = 1;
+
+  enum Behavior {
+    NOT_SET = 0;
+
+    // Never index
+    NEVER = 1;
+
+    // Always index
+    ALWAYS = 2;
+
+    // Index unless Parent says otherwise
+    INDEX_DEFER_PARENT = 3;
+
+    // Don't index unless Parent says otherwise
+    NO_INDEX_DEFER_PARENT = 4;
+  }
+}
+
+extend google.protobuf.MessageOptions {
+  Index message_index = 65534;
+}
+
+extend google.protobuf.FieldOptions {
+  Index index = 65535;
+}
+

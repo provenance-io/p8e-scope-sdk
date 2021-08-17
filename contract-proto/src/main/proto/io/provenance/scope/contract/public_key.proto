@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "PublicKeys";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+import "io/provenance/scope/contract/util.proto";
+
+enum KeyType {
+  ELLIPTIC = 0;
+}
+
+enum KeyCurve {
+  reserved "P256";
+  reserved 1;
+
+  SECP256K1 = 0;
+}
+
+message SigningAndEncryptionPublicKeys {
+  PublicKey signing_public_key = 1;
+  PublicKey encryption_public_key = 2;
+}
+
+message PublicKey {
+  bytes public_key_bytes = 1;
+  KeyType type = 2;
+  KeyCurve curve = 3;
+  bool compressed = 4;
+}
+
+message PrivateKey {
+  bytes key_bytes = 1;
+  KeyType type = 2;
+  KeyCurve curve = 3;
+  bool compressed = 4;
+}

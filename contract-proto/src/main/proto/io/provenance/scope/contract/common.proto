@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "Commons";
+
+import "io/provenance/scope/contract/public_key.proto";
+import "io/provenance/scope/contract/util.proto";
+
+message Signature {
+    // Signature Detail
+    string algo = 1;
+    string provider = 2;
+    string signature = 3;
+
+    // Identity of signer
+    SigningAndEncryptionPublicKeys signer = 4;
+}
+
+message DefinitionSpec {
+    string name = 1;
+    Location resource_location = 2;
+    Signature signature = 3;
+    Type type = 4;
+
+    enum Type {
+        NO_DEF_TYPE = 0;
+        PROPOSED = 1;
+        FACT = 2;
+        FACT_LIST = 3;
+    }
+}
+
+message OutputSpec {
+    DefinitionSpec spec = 1;
+    reserved 2;
+}
+
+message Location {
+    ProvenanceReference ref = 1;
+    string classname = 2;
+}
+
+message ProvenanceReference {
+    UUID scope_uuid = 1;     // [Req] [Scope.uuid] -- Scope ID
+    UUID group_uuid = 2;     // [Opt] [RecordGroup.group_uuid] -- require record to be within a specific group
+    string hash = 3;         // [Opt] [Record.result_hash] -- specify a specific record inside a scope (and group) by result-hash
+    string name = 4;         // [Opt] [Record.result_name] -- specify a result-name of a record within a scope
+}
