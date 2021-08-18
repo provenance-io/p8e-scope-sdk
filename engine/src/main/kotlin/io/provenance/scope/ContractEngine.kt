@@ -1,5 +1,8 @@
 package io.provenance.scope
 
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
 import com.google.protobuf.Message
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
@@ -32,6 +35,7 @@ import java.io.ByteArrayInputStream
 import java.security.PublicKey
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
+import java.util.concurrent.Future
 import kotlin.concurrent.thread
 
 // TODO move somewhere else
@@ -41,17 +45,6 @@ class ContractEngine(
     private val osClient: CachedOsClient,
     private val signerFactory: SignerFactory,
 ) {
-    companion object {
-        private val executor = ThreadPoolFactory.newFixedThreadPool(
-            System.getenv("CONTRACT_ENGINE_THREAD_POOL_SIZE")
-                ?.takeIf { it.isNotEmpty() }
-                ?.toInt() ?: 32,
-            "contract-engine-%d"
-        )
-    }
-
-    private val _definitionService = DefinitionService(osClient)
-
     private val log = LoggerFactory.getLogger(this::class.java);
 
     fun handle(
@@ -152,7 +145,6 @@ class ContractEngine(
 
         val contractBuilder = contract.toBuilder()
         val contractWrapper = ContractWrapper(
-            executor,
             contractSpecClass,
             encryptionKeyRef,
             definitionService,
@@ -188,25 +180,30 @@ class ContractEngine(
                     }
 
                     ResultSetter {
-                        considerationBuilder.result = signAndStore(
-                            definitionService,
+                        signAndStore(
                             function.fact.name,
                             result,
                             contract.toAudience(scope, shares),
                             encryptionKeyRef,
                             signingKeyRef,
                             scope
-                        )
+                        ).let { signFuture ->
+                            Futures.transform(signFuture, {
+                                considerationBuilder.result = it
+                            }, MoreExecutors.directExecutor()) // todo: should this be a different type of executor?
+                        }
                     }
                 } + skipList.map { function ->
                 ResultSetter {
                     function.considerationBuilder.result = Contracts.ExecutionResult.newBuilder().setResult(SKIP).build()
+                    Futures.immediateFuture(Unit)
                 }
             }
 
         functionResults
             .also { log.info("Saving ${it.size} results for ContractEngine.handle") }
-            .threadedMap(executor) { resultSetter -> resultSetter.setter().run { null } }
+            .map { it.setter() }
+            .also { Futures.whenAllSucceed(it) }
 
         val contractForSignature = contractBuilder.build()
         return envelope.toBuilder()
@@ -256,38 +253,42 @@ class ContractEngine(
     }
 
     private fun signAndStore(
-        definitionService: DefinitionService,
         name: String,
         message: Message,
         audiences: Set<PublicKey>,
         encryptionKeyRef: KeyRef,
         signingKeyRef: KeyRef,
         scope: ScopeResponse?
-    ): Contracts.ExecutionResult {
-        val sha512 = osClient.putRecord(
+    ): ListenableFuture<Contracts.ExecutionResult> {
+        val putResponse = osClient.putRecord(
             message,
             signingKeyRef,
             encryptionKeyRef,
             audiences
-        ).get().value
+        )
 
-        val ancestorHash = scope?.recordsList
-            ?.map { it.record }
-            ?.find { it.name == name }
-            ?.outputsList
-            ?.first() // todo: how to handle multiple outputs?
-            ?.hash
+        return Futures.transform(putResponse, {
+            val sha512 = it!!.value
 
-        return Contracts.ExecutionResult.newBuilder()
-            .setResult(Contracts.ExecutionResult.Result.PASS)
-            .setOutput(proposedRecordOf(
-                name,
-                sha512,
-                message.javaClass.name,
-                scope?.scope?.scopeIdInfo?.scopeUuid?.toUuidProv(),
-                ancestorHash
-            )
-            ).build()
+            val ancestorHash = scope?.recordsList
+                ?.map { it.record }
+                ?.find { it.name == name }
+                ?.outputsList
+                ?.first() // todo: how to handle multiple outputs?
+                ?.hash
+
+            Contracts.ExecutionResult.newBuilder()
+                .setResult(Contracts.ExecutionResult.Result.PASS)
+                .setOutput(proposedRecordOf(
+                    name,
+                    sha512,
+                    message.javaClass.name,
+                    scope?.scope?.scopeIdInfo?.scopeUuid?.toUuidProv(),
+                    ancestorHash
+                )
+                ).build()
+
+        }, MoreExecutors.directExecutor()) // todo: should this be a different type of executor?
     }
 
     private fun failResult(t: Throwable): Contracts.ExecutionResult {
@@ -299,7 +300,7 @@ class ContractEngine(
     }
 }
 
-data class ResultSetter(val setter: () -> Unit)
+data class ResultSetter(val setter: () -> ListenableFuture<Unit>)
 
 fun Contract.toAudience(scope: ScopeResponse?, shares: Collection<PublicKey>): Set<PublicKey> = recitalsList
     .filter { it.hasSigner() }
@@ -318,16 +319,3 @@ fun Contract.toAudience(scope: ScopeResponse?, shares: Collection<PublicKey>): S
 
 // todo: why do we have two identical signature protos currently between encryption/contract?
 fun Common.Signature.toContractSignature(): Commons.Signature = Commons.Signature.parseFrom(toByteArray())
-
-fun<T, K> Collection<T>.threadedMap(executor: ExecutorService, fn: (T) -> K): Collection<K> =
-    this.map { item ->
-        CompletableFuture<K>().also { future ->
-            thread(start = false) {
-                try {
-                    future.complete(fn(item))
-                } catch (t: Throwable) {
-                    future.completeExceptionally(t)
-                }
-            }.let(executor::submit)
-        }
-    }.map { it.get() }
