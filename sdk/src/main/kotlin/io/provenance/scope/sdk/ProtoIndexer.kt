@@ -8,7 +8,7 @@ import io.provenance.metadata.v1.Record
 import io.provenance.metadata.v1.RecordWrapper
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.metadata.v1.SessionWrapper
-import io.provenance.metadata.v1.p8e.ContractSpec
+import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.classloader.ClassLoaderCache
 import io.provenance.scope.classloader.MemoryClassLoader
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec
@@ -22,6 +22,9 @@ import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.util.base64Decode
+import io.provenance.scope.objectstore.util.toByteArray
+import io.provenance.scope.util.MetadataAddress
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.KeyPair
@@ -34,11 +37,8 @@ class ProtoIndexer(
 ) {
     private val indexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("index")
     private val messageIndexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
-    private val _definitionService = definitionServiceFactory(osClient, MemoryClassLoader("", ByteArrayInputStream(ByteArray(0))))
 
-    fun indexFields(scope: ScopeResponse,
-                    keyPairs: Collection<KeyPair>,
-                    contractSpecHashLookup: Map<String, String>): Map<String, Any> {
+    fun indexFields(scope: ScopeResponse, keyPairs: Collection<KeyPair>): Map<String, Any> {
         // find all record groups where there's at least one party member that's an affiliate on this p8e instance
         val sessionMap: Map<ByteString, SessionWrapper> = makeSessionIdMap(scope.sessionsList)
         val addressMap: Map<String, KeyPair> = keyPairs.associateBy{ it.public.getAddress(mainNet) }
@@ -51,7 +51,7 @@ class ProtoIndexer(
             }
             //Get list of record_name - Map pairs
             .map { recordWrapper ->
-                recordNameToIndexFields(recordWrapper, sessionMap, addressMap, contractSpecHashLookup)
+                recordNameToIndexFields(recordWrapper, sessionMap, addressMap)
             }
             //Filter out null maps and then convert list to a map
             .filter { it.second != null }
@@ -60,10 +60,7 @@ class ProtoIndexer(
     }
 
     //Helper function that makes a Pair of a record's name to a map
-    private fun recordNameToIndexFields(recordWrapper: RecordWrapper,
-                                        sessionMap: Map<ByteString, SessionWrapper>,
-                                        addressMap: Map<String, KeyPair>,
-                                        contractSpecHashLookup: Map<String, String>): Pair<String, Map<String, Any>?>{
+    private fun recordNameToIndexFields(recordWrapper: RecordWrapper, sessionMap: Map<ByteString, SessionWrapper>, addressMap: Map<String, KeyPair>): Pair<String, Map<String, Any>?>{
         val sessionWrapper = sessionMap.getValue(recordWrapper.record.sessionId)
         val keyPair: KeyPair =  sessionWrapper.session.partiesList
             .map { it.address }
@@ -78,12 +75,12 @@ class ProtoIndexer(
         // Try to re-use MemoryClassLoader if possible for caching reasons
         val spec = osClient.getRecord(
             ContractSpec::class.java.name,
-            contractSpecHashLookup[sessionWrapper.contractSpecIdInfo.contractSpecAddr]!!.toByteArray(),   //TODO: figure out session hash lookup
+            MetadataAddress.fromBech32(sessionWrapper.contractSpecIdInfo.contractSpecAddr).bytes.sliceArray(1 until 17), // todo: is there a better way to do this?
             encryptionKeyRef,
         ).get() as ContractSpec
 
         val classLoaderKey =
-            "${spec.definition.resourceLocation.ref.hash}-${spec.considerationSpecsList.first().outputSpec.spec.resourceLocation.ref.hash}"
+            "${spec.definition.resourceLocation.ref.hash}-${spec.functionSpecsList.first().outputSpec.spec.resourceLocation.ref.hash}"
         val memoryClassLoader = ClassLoaderCache.classLoaderCache.get(classLoaderKey) {
             MemoryClassLoader("", ByteArrayInputStream(ByteArray(0)))
         }
@@ -95,7 +92,8 @@ class ProtoIndexer(
             definitionService,
             encryptionKeyRef,
             recordWrapper,
-            signer
+            signer,
+            spec = spec
         )
     }
 
@@ -105,7 +103,8 @@ class ProtoIndexer(
         encryptionKeyRef: KeyRef,
         t: T,
         signer: SignerImpl,
-        indexParent: Boolean? = null
+        indexParent: Boolean? = null,
+        spec: ContractSpec? = null
     ): Map<String, Any>? {
         val message = when(t) {
             is RecordWrapper ->
@@ -114,8 +113,8 @@ class ProtoIndexer(
                 } else {
                     definitionService.forThread {
                         osClient.getRecord(
-                            t.record.process.name, //TODO: Verify that this is equivalent to original code's t.classname(Message.classname)
-                            t.record.outputsList.first().hash.toByteArray(),
+                            spec!!.functionSpecsList.find { it.funcName == t.record.name }!!.outputSpec.spec.resourceLocation.classname, //TODO: make a lookup map of function name -> classname for efficiency
+                            t.record.outputsList.first().hash.base64Decode(),
                             encryptionKeyRef,
                         ).get()
                     }
@@ -254,7 +253,7 @@ class ProtoIndexer(
                         .flatMap { listOf(it.outputSpec.spec) }
                 )
                 addAll(
-                    spec.considerationSpecsList
+                    spec.functionSpecsList
                         .flatMap { listOf(it.outputSpec.spec) }
                 )
             }.forEach {

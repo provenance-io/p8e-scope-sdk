@@ -57,8 +57,8 @@ class SignedResult(val scope: ScopeResponse, val envelope: Envelope, private val
                 recordBuilder
                     .apply {
                         processBuilder
-                            .setHash(envelope.contract.spec.dataLocation.ref.hash)
-                            .setName(envelope.contract.spec.dataLocation.classname)
+                            .setHash(envelope.contract.definition.resourceLocation.ref.hash)
+                            .setName(envelope.contract.definition.resourceLocation.classname)
                             .setMethod(it.considerationName)
                     }
                     .setName(it.considerationName)

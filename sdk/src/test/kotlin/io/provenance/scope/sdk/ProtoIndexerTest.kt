@@ -7,8 +7,8 @@ import io.mockk.mockk
 import io.mockk.every
 import io.provenance.metadata.v1.*
 import io.provenance.metadata.v1.Session
-import io.provenance.metadata.v1.p8e.ConsiderationSpec
-import io.provenance.metadata.v1.p8e.ContractSpec
+import io.provenance.scope.contract.proto.Specifications.FunctionSpec
+import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.contract.proto.TestProtos
@@ -19,24 +19,34 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.util.base64EncodeString
+import io.provenance.scope.objectstore.util.toByteArray
+import io.provenance.scope.util.MetadataAddress
 import java.security.KeyPair
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
-class ProtoIndexerTests: AnnotationSpec(){
+class ProtoIndexerTest: AnnotationSpec(){
 
     lateinit var mockDefinitionService: DefinitionService
     lateinit var mockOsClient: CachedOsClient
     lateinit var protoIndexer: ProtoIndexer
 
+    fun contractSpecAddr(uuid: UUID = UUID.randomUUID()) = MetadataAddress.forContractSpecification(uuid)
+    fun randomHash() = UUID.randomUUID().toByteArray().base64EncodeString()
+
     fun createContractSpec(): ContractSpec{
         return ContractSpec.newBuilder()
             .apply {
 //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                addConsiderationSpecs(ConsiderationSpec.newBuilder()
-//                                        .outputSpecBuilder.specb.resource
+                addAllFunctionSpecs(listOf(FunctionSpec.newBuilder()
+                    .setFuncName("person")
+                    .build(),
+                FunctionSpec.newBuilder()
+                    .setFuncName("cat")
                     .build()
-                )
+                ))
             }
             .build()
     }
@@ -50,14 +60,14 @@ class ProtoIndexerTests: AnnotationSpec(){
                     .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
                 )
                 .setContractSpecIdInfo(ContractSpecIdInfo.newBuilder()
-                    .setContractSpecAddr("contractspecaddr")
+                    .setContractSpecAddr(contractSpecAddr().toString())
                 )
             )
             .addRecords(RecordWrapper.newBuilder().setRecord(Record.newBuilder()
                 .setName("person")
                 .setSessionId("sessionid".toByteString())
                 .addOutputs(RecordOutput.newBuilder()
-                    .setHash("outputhash")
+                    .setHash(randomHash())
                     .build()
                 )
                 .build()
@@ -74,14 +84,14 @@ class ProtoIndexerTests: AnnotationSpec(){
                     .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
                 )
                 .setContractSpecIdInfo(ContractSpecIdInfo.newBuilder()
-                    .setContractSpecAddr("contractspecaddr")
+                    .setContractSpecAddr(contractSpecAddr().toString())
                 )
             )
             .addRecords(RecordWrapper.newBuilder().setRecord(Record.newBuilder()
                 .setName("person")
                 .setSessionId("sessionid".toByteString())
                 .addOutputs(RecordOutput.newBuilder()
-                    .setHash("outputhash")
+                    .setHash(randomHash())
                     .build()
                 )
                 .build()
@@ -90,7 +100,7 @@ class ProtoIndexerTests: AnnotationSpec(){
                 .setName("cat")
                 .setSessionId("sessionid".toByteString())
                 .addOutputs(RecordOutput.newBuilder()
-                    .setHash("otherhash")
+                    .setHash(randomHash())
                     .build()
                 )
                 .build()
@@ -129,7 +139,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         /*
         * scope is essentially an array of records, which can be hydrated to the actual data, like [{ name: "person", value: { name: "cool name", ssn: "123-456-789" } }, { name: "some other record", value: <some other proto> }]
@@ -176,7 +186,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 0
     }
@@ -201,7 +211,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 1
         val record = indexFields.get("person")
@@ -232,7 +242,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 1
         val record = indexFields.get("person")
@@ -268,7 +278,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -308,7 +318,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 0
     }
@@ -341,7 +351,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -385,7 +395,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -426,7 +436,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
 //        throw Exception("indexFields is $indexFields")
         indexFields.size shouldBe 1
@@ -464,7 +474,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 0
     }
@@ -497,7 +507,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 1
         val proto = indexFields.get("person") as Map<String, Any>
@@ -536,7 +546,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 1
         val proto = indexFields.get("person") as Map<String, Any>
@@ -586,7 +596,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
 //        throw Exception("indexFields is $indexFields")
         indexFields.size shouldBe 2
@@ -642,7 +652,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 0
     }
@@ -689,7 +699,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 2
         val personInfo = indexFields.get("person") as Map<String, Any>
@@ -748,7 +758,7 @@ class ProtoIndexerTests: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair), mapOf("contractspecaddr" to "contractspechash"))
+        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
 
         indexFields.size shouldBe 2
         val personInfo = indexFields.get("person") as Map<String, Any>
