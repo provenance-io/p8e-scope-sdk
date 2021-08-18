@@ -12,6 +12,7 @@ import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
+import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
@@ -94,7 +95,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
 
         return when (result.isSigned(session.scope, inner.config.mainNet)) {
-            true -> SignedResult(session.scope!!, result, inner.config.mainNet) // todo: better way to get the scope, we will always need some minimal info for creating a new scope if not existant
+            true -> SignedResult(session.scope!!, session.proposedSession!!, result, inner.config.mainNet) // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
             false -> throw NotImplementedError("Multi-party contract support not yet implemented")
         }
     }

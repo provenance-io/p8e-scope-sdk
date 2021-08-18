@@ -22,21 +22,15 @@ import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.proto.Common
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
-import io.provenance.scope.objectstore.util.base64Encode
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
-import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.toHexString
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuidProv
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.PublicKey
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Future
-import kotlin.concurrent.thread
 
 // TODO move somewhere else
 fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
@@ -122,27 +116,6 @@ class ContractEngine(
 
         // todo: validate that all shares passed in are already on the scope in the case of an existing scope??? Or will the contract always have all parties in recitals anyways for data share purposes?
 
-//        when (contract.type!!) {
-//            Contracts.ContractType.CHANGE_SCOPE -> { // todo: it would appear contract type is no longer a thing...
-//                if (scope != null &&
-//                    envelope.status == Envelope.Status.CREATED &&
-//                    contract.invoker.encryptionPublicKey == encryptionKeyRef.publicKey.toPublicKeyProto()
-//                ) {
-//                    val audience = scope.partiesList.map { it.signer.signingPublicKey }
-//                        .plus(contract.recitalsList.map { it.signer.signingPublicKey })
-//                        .map { it.toPublicKey() }
-//                        .let { it + affiliateService.getSharePublicKeys(it).value }
-//                        .toSet()
-//
-//                    log.debug("Change scope ownership - adding ${audience.map { it.toHex() }} [scope: ${scope.uuid.value}] [executionUuid: ${envelope.executionUuid.value}]")
-//
-//                    this.getScopeData(encryptionKeyRef, definitionService, scope, signer)
-//                        .threadedMap(executor) { definitionService.save(encryptionKeyRef.publicKey, it, signer, audience) }
-//                } else { }
-//            }
-//            Contracts.ContractType.FACT_BASED, Contracts.ContractType.UNRECOGNIZED -> Unit
-//        } as Unit
-
         val contractBuilder = contract.toBuilder()
         val contractWrapper = ContractWrapper(
             contractSpecClass,
@@ -211,21 +184,6 @@ class ContractEngine(
             .addSignatures(signer.sign(contractForSignature).toContractSignature())
             .build()
     }
-
-//    private fun getScopeData(
-//        encryptionKeyRef: KeyRef,
-//        definitionService: DefinitionService,
-//        scope: ScopeResponse,
-//        signer: SignerImpl
-//    ): List<ByteArray> =
-//        scope.recordsList
-//            // todo: is the process hash the same as the old record/fact hash? Is the record process name the same as the old record classname?
-//            // todo: what to do about the potential for multiple outputs in the future?
-//            .flatMap { record -> record.record.inputsList.map { input -> Pair(input.typeName, input.hash) } + Pair("unset", record.record.process.hash) + Pair(record.record.process.name, record.record.outputsList.first().hash) }
-////            .plus(scope.sessionsList.map { Pair(it.classname, it.specification) }) // todo: is this still needed? Sessions don't appear to have anything like a classname, looks like there is still a specification id available in the wrapper/session
-//            .toSet()
-//            .threadedMap(executor) { (classname, hash) -> definitionService.get(encryptionKeyRef = encryptionKeyRef, hash = hash, classname = classname, signer = signer).readAllBytes() }
-//            .toList()
 
     private fun loadAllClasses(
         encryptionKeyRef: KeyRef,
