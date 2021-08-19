@@ -107,7 +107,7 @@ class Session(
             scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuidProv()
         }
 
-        fun setScopeUUID(scopeUUID: java.util.UUID) = apply {
+        fun setScopeUuid(scopeUUID: java.util.UUID) = apply {
             if(scope != null) {
                 throw IllegalStateException("Scope UUID cannot be set once the scope is already set")
             }
