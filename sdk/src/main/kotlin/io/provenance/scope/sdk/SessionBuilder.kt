@@ -107,7 +107,7 @@ class Session(
 
         fun setScopeId(scopeId: java.util.UUID) = apply {
             if(scope != null) {
-                if( scope!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
+                if( !scope!!.scope.scopeIdInfo.scopeId.isEmpty && scope!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
                     throw IllegalStateException("Scope id being set doesn't match the scope id of the scope which was already set")
                 }
             }
