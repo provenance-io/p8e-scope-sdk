@@ -9,6 +9,7 @@ import io.provenance.metadata.v1.RecordInput
 import io.provenance.metadata.v1.RecordInputStatus
 import io.provenance.metadata.v1.RecordOutput
 import io.provenance.metadata.v1.ScopeResponse
+import io.provenance.metadata.v1.Session
 import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
@@ -22,19 +23,17 @@ import io.provenance.scope.util.toUuidProv
 import java.util.UUID
 
 sealed class ExecutionResult
-class SignedResult(val scope: ScopeResponse, val envelope: Envelope, private val mainNet: Boolean): ExecutionResult() {
+class SignedResult(val scope: ScopeResponse, val session: Session, val envelope: Envelope, private val mainNet: Boolean): ExecutionResult() {
     private val signers = envelope.signaturesList.map { ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet) }  // todo: correct address/pk?
     private val parties = envelope.contract.recitalsList.map { Party.newBuilder()
         .setRoleValue(it.signerRoleValue)
         .setAddress(ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet)) // todo: correct address/pk?
         .build()
     }
-    private val sessionId = envelope.executionUuid.value.let { uuid -> MetadataAddress.forSession(scope.uuid().toUuidProv(), UUID.fromString(uuid)) }.bytes.toByteString()
+
+    private val sessionId = session.sessionId.toStringUtf8().let { uuid -> MetadataAddress.forSession(scope.uuid().toUuidProv(), UUID.fromString(uuid)) }.bytes.toByteString()
     private val contractSpecId = envelope.contract.spec.dataLocation.ref.hash.base64Decode().toUuid().let { uuid -> MetadataAddress.forContractSpecification(uuid) }
 
-
-    // todo: do we need to add a separate WriteSession message, or will just supplying the sessionId/process information on MsgWriteRecordReqeust create/update the appropriate session on chain?
-    // yes, probably need the WriteSession as well as maybe a WriteScope first
     val messages: List<Message> = listOf(
             MsgWriteScopeRequest.newBuilder()
                 .apply {
@@ -48,7 +47,7 @@ class SignedResult(val scope: ScopeResponse, val envelope: Envelope, private val
                     sessionBuilder.setSessionId(sessionId)
                         .setSpecificationId(contractSpecId.bytes.toByteString())
                         .addAllParties(parties)
-                        .setName(envelope.contract.spec.dataLocation.classname)
+                        .setName(envelope.contract.definition.resourceLocation.classname)
                 }.addAllSigners(signers)
                 .build()
         ) + envelope.contract.considerationsList.map {
