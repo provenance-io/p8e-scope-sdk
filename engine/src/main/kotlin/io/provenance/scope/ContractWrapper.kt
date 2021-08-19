@@ -17,12 +17,8 @@ import io.provenance.scope.util.toOffsetDateTimeProv
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
-import kotlin.concurrent.thread
 
 class ContractWrapper(
-    private val executor: ExecutorService,
     private val contractSpecClass: Class<out Any>,
     private val encryptionKeyRef: KeyRef,
     private val definitionService: DefinitionService,

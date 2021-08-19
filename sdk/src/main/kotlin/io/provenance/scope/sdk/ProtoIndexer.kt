@@ -24,6 +24,7 @@ import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.toByteArray
+import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.util.MetadataAddress
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
@@ -113,7 +114,7 @@ class ProtoIndexer(
                 } else {
                     definitionService.forThread {
                         osClient.getRecord(
-                            spec!!.functionSpecsList.find { it.funcName == t.record.name }!!.outputSpec.spec.resourceLocation.classname, //TODO: make a lookup map of function name -> classname for efficiency
+                            t.record.resultType(),
                             t.record.outputsList.first().hash.base64Decode(),
                             encryptionKeyRef,
                         ).get()

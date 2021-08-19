@@ -127,7 +127,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
 
         return when (result.isSigned(session.scope, inner.config.mainNet)) {
-            true -> SignedResult(session.scope!!, result, inner.config.mainNet) // todo: better way to get the scope, we will always need some minimal info for creating a new scope if not existant
+            true -> SignedResult(session.scope!!, session.proposedSession!!, result, inner.config.mainNet) // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
             false -> throw NotImplementedError("Multi-party contract support not yet implemented")
         }
     }
@@ -162,7 +162,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
                 }.record to type
             }.map { (record, type) ->
                 inner.osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
-            }
+            }.map { it.get() }
 
         return clazz.cast(constructor.newInstance(*params.toList().toTypedArray()))
     }

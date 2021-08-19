@@ -321,8 +321,9 @@ class Session(
                                     .setRef(
                                         ProvenanceReference.newBuilder()
                                             .setScopeUuid(io.provenance.metadata.v1.p8e.UUID.newBuilder()
-                                                .setValue(scope.uuid()))
-                                            .setHash(scopeFact.record.resultHash().sha256().base64EncodeString())
+                                                .setValue(scope.uuid())
+                                            )
+                                            .setHash(scopeFact.record.resultHash().base64EncodeString()) // todo: address for multiple outputs
                                     )
                             ).build()
                     )
