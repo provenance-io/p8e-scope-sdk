@@ -176,7 +176,7 @@ class ContractEngine(
         functionResults
             .also { log.info("Saving ${it.size} results for ContractEngine.handle") }
             .map { it.setter() }
-            .also { Futures.whenAllSucceed(it) }
+            .forEach { it.get() }
 
         val contractForSignature = contractBuilder.build()
         return envelope.toBuilder()

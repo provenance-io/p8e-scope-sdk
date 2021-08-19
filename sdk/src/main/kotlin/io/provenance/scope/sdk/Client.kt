@@ -130,7 +130,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
                 }.record to type
             }.map { (record, type) ->
                 inner.osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
-            }
+            }.map { it.get() }
 
         return clazz.cast(constructor.newInstance(*params.toList().toTypedArray()))
     }

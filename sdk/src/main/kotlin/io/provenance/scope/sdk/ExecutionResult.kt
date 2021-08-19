@@ -23,7 +23,7 @@ import io.provenance.scope.util.toUuidProv
 import java.util.UUID
 
 sealed class ExecutionResult
-class SignedResult(val scope: ScopeResponse, val session: Session, val envelope: Envelope, private val mainNet: Boolean): ExecutionResult() {
+class SignedResult(val scope: ScopeResponse, session: Session, val envelope: Envelope, private val mainNet: Boolean): ExecutionResult() {
     private val signers = envelope.signaturesList.map { ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet) }  // todo: correct address/pk?
     private val parties = envelope.contract.recitalsList.map { Party.newBuilder()
         .setRoleValue(it.signerRoleValue)
@@ -57,12 +57,13 @@ class SignedResult(val scope: ScopeResponse, val session: Session, val envelope:
                     .apply {
                         processBuilder
                             .setHash(envelope.contract.definition.resourceLocation.ref.hash)
-                            .setName(envelope.contract.definition.resourceLocation.classname)
+                            .setName(it.result.output.classname)
                             .setMethod(it.considerationName)
                     }
-                    .setName(it.considerationName)
+                    .setName(it.result.output.name)
                     .setSessionId(sessionId)
-                    .setSpecificationId(MetadataAddress.forRecordSpecification(contractSpecId.getPrimaryUuid(), it.considerationName).bytes.toByteString())
+                    // todo: specificationId seems to be optional, but setting this actually breaks updating a record from a different contract, as record spec id changes, might be some bugs on chain side for this
+//                    .setSpecificationId(MetadataAddress.forRecordSpecification(contractSpecId.getPrimaryUuid(), it.considerationName).bytes.toByteString())
                     .addAllInputs(it.inputsList.map { input ->
                         RecordInput.newBuilder()
                             .setName(input.name)
