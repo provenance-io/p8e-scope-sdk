@@ -3,7 +3,6 @@ package io.provenance.scope.sdk
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.ScopeResponse
-import io.provenance.metadata.v1.ScopeSpecification
 import io.provenance.scope.ContractEngine
 import io.provenance.metadata.v1.Session as SessionProto
 import io.provenance.scope.contract.annotations.Record
@@ -14,7 +13,6 @@ import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
-import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.objectstore.client.CachedOsClient
@@ -29,7 +27,6 @@ import io.provenance.scope.util.toUuidProv
 import java.io.Closeable
 import java.util.ServiceLoader
 import java.security.PublicKey
-import java.util.*
 
 // TODO (@steve)
 // how does signer fit in?
@@ -72,7 +69,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
 
-        return Session.Builder()
+        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuidProv())
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -107,18 +104,10 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             "The annotation for the scope specifications must not be null"
         }
 
-        val scope = ScopeResponse.newBuilder()
-            .apply {
-                scopeBuilder.scopeIdInfoBuilder.setScopeUuid(UUID.randomUUID().toString())
-                scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid(scopeSpecAnnotation.uuid) // todo: figure out how this will be supplied
-            }
-            .build()
-
-        return Session.Builder()
+        return Session.Builder(scopeSpecAnnotation.uuid.toUuidProv())
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
-            .setScope(scope)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }
 
@@ -127,7 +116,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
 
         return when (result.isSigned(session.scope, inner.config.mainNet)) {
-            true -> SignedResult(session.scope!!, session.proposedSession!!, result, inner.config.mainNet) // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
+            true -> SignedResult(session.scopeUuid, session.scopeSpecUuid, session.sessionUuid, result, inner.config.mainNet) // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
             false -> throw NotImplementedError("Multi-party contract support not yet implemented")
         }
     }

@@ -19,8 +19,7 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuidProv
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
-import io.provenance.scope.objectstore.util.toByteArray
-import io.provenance.scope.util.toByteString
+import io.provenance.scope.util.toUuidProv
 import java.util.*
 import java.util.UUID.randomUUID
 
@@ -32,10 +31,10 @@ class Session(
     val spec: Specifications.ContractSpec,
     val provenanceReference: Commons.ProvenanceReference,
     val scope: ScopeResponse?,
-    val executionUUID: UUID,
-    val scopeId: java.util.UUID,
-    val scopeUUID: java.util.UUID,
-    val scopeSpecId: ScopeSpecIdInfo?,
+    val executionUuid: UUID,
+    val scopeUuid: java.util.UUID,
+    val sessionUuid: java.util.UUID,
+    val scopeSpecUuid: java.util.UUID,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
     ) {
     private constructor(builder: Builder) : this(
@@ -46,14 +45,13 @@ class Session(
         builder.spec!!,
         builder.provenanceReference!!,
         builder.scope,
-        builder.executionUUID!!,
-        builder.scopeId,
-        builder.scopeUUID,
-        builder.scopeSpecId
+        builder.executionUuid!!,
+        builder.scopeUuid,
+        builder.sessionUuid,
+        builder.scopeSpecUuid
     )
 
-    // TODO perhaps add scope
-    class Builder(val scopeSpecId: ScopeSpecIdInfo? = null) {
+    class Builder(val scopeSpecUuid: java.util.UUID) {
         var proposedSession: Session? = null
             private set
         var proposedRecords: HashMap<String, Message> = HashMap()
@@ -66,22 +64,30 @@ class Session(
 
         var provenanceReference: Commons.ProvenanceReference? = null
 
-        var scopeId: java.util.UUID = randomUUID()
-
-        var scopeUUID: java.util.UUID = randomUUID()
+        var scopeUuid: java.util.UUID = randomUUID()
 
         var scope: ScopeResponse? = null
 
-        var executionUUID: UUID? = randomUUID().toProtoUuidProv()
+        var executionUuid: UUID? = randomUUID().toProtoUuidProv()
+
+        var sessionUuid: java.util.UUID = randomUUID()
 
         fun build() = Session(this)
 
         fun setExecutionUUID(uuid: UUID) = apply {
-            executionUUID = uuid
+            executionUuid = uuid
+        }
+
+        fun setSessionUuid(sessionUuid: java.util.UUID) = apply {
+            if(proposedSession != null) {
+                throw IllegalStateException("Session UUID cannot be set once the proposed session is already set")
+            }
+            this.sessionUuid = sessionUuid
         }
 
         fun setProposedSession(session: Session) = apply {
             this.proposedSession = session
+            this.sessionUuid = session.sessionId.toStringUtf8().toUuidProv()
         }
 
         fun setContractSpec(contractSpec: Specifications.ContractSpec) = apply {
@@ -97,27 +103,15 @@ class Session(
         }
 
         fun setScope(scopeResponse: ScopeResponse) = apply {
-            if (scopeId != null) {
-                if( !scopeResponse!!.scope.scopeIdInfo.scopeId.isEmpty && scopeResponse!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
-                    throw IllegalStateException("Scope response scope id being set doesn't match the scope id which was already set")
-                }
-            }
             scope = scopeResponse
-        }
-
-        fun setScopeId(scopeId: java.util.UUID) = apply {
-            if(scope != null) {
-                if( !scope!!.scope.scopeIdInfo.scopeId.isEmpty && scope!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
-                    throw IllegalStateException("Scope id being set doesn't match the scope id of the scope which was already set")
-                }
-            }
+            scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuidProv()
         }
 
         fun setScopeUUID(scopeUUID: java.util.UUID) = apply {
             if(scope != null) {
                 throw IllegalStateException("Scope UUID cannot be set once the scope is already set")
             }
-            this.scopeUUID = scopeUUID
+            this.scopeUuid = scopeUUID
         }
 
         fun addProposedRecord(name: String, record: Message) = apply {
@@ -373,7 +367,7 @@ class Session(
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
-            .setExecutionUuid(executionUUID)
+            .setExecutionUuid(executionUuid)
             .setContract(contract)
             .also {
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
