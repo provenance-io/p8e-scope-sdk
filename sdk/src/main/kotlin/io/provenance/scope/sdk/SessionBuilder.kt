@@ -74,7 +74,7 @@ class Session(
 
         fun build() = Session(this)
 
-        fun setExecutionUUID(uuid: UUID) = apply {
+        fun setExecutionUuid(uuid: UUID) = apply {
             executionUuid = uuid
         }
 
