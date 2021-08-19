@@ -98,8 +98,8 @@ class Session(
 
         fun setScope(scopeResponse: ScopeResponse) = apply {
             if (scopeId != null) {
-                if( scopeResponse!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
-                    throw IllegalStateException("Scope response scope id id being set doesn't match the scope id which was already set")
+                if( !scopeResponse!!.scope.scopeIdInfo.scopeId.isEmpty && scopeResponse!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
+                    throw IllegalStateException("Scope response scope id being set doesn't match the scope id which was already set")
                 }
             }
             scope = scopeResponse
