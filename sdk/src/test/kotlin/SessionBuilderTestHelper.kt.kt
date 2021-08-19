@@ -51,6 +51,7 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
     val participants = HashMap<Specifications.PartyType, PublicKeys.PublicKey>()
     participants[Specifications.PartyType.OWNER] = PublicKeys.PublicKey.newBuilder().build()
     val spec = Specifications.ContractSpec.newBuilder()
+        .setDefinition(defSpec)
         .addConditionSpecs(conditionSpec)
         .addFunctionSpecs(Specifications.FunctionSpec.newBuilder().setFuncName("record2").addInputSpecs(defSpec).setInvokerParty(Specifications.PartyType.OWNER))
     if(existingScope != ScopeResponse.getDefaultInstance()) {

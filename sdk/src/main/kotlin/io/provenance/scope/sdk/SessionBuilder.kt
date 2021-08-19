@@ -19,6 +19,8 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuidProv
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
+import io.provenance.scope.objectstore.util.toByteArray
+import io.provenance.scope.util.toByteString
 import java.util.*
 import java.util.UUID.randomUUID
 
@@ -31,6 +33,9 @@ class Session(
     val provenanceReference: Commons.ProvenanceReference,
     val scope: ScopeResponse?,
     val executionUUID: UUID,
+    val scopeId: java.util.UUID,
+    val scopeUUID: java.util.UUID,
+    val scopeSpecId: ScopeSpecIdInfo?,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
     ) {
     private constructor(builder: Builder) : this(
@@ -42,10 +47,13 @@ class Session(
         builder.provenanceReference!!,
         builder.scope,
         builder.executionUUID!!,
+        builder.scopeId,
+        builder.scopeUUID,
+        builder.scopeSpecId
     )
 
     // TODO perhaps add scope
-    class Builder() {
+    class Builder(val scopeSpecId: ScopeSpecIdInfo? = null) {
         var proposedSession: Session? = null
             private set
         var proposedRecords: HashMap<String, Message> = HashMap()
@@ -57,6 +65,10 @@ class Session(
         var spec: Specifications.ContractSpec? = null
 
         var provenanceReference: Commons.ProvenanceReference? = null
+
+        var scopeId: java.util.UUID = randomUUID()
+
+        var scopeUUID: java.util.UUID = randomUUID()
 
         var scope: ScopeResponse? = null
 
@@ -85,7 +97,27 @@ class Session(
         }
 
         fun setScope(scopeResponse: ScopeResponse) = apply {
+            if (scopeId != null) {
+                if( scopeResponse!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
+                    throw IllegalStateException("Scope response scope id id being set doesn't match the scope id which was already set")
+                }
+            }
             scope = scopeResponse
+        }
+
+        fun setScopeId(scopeId: java.util.UUID) = apply {
+            if(scope != null) {
+                if( scope!!.scope.scopeIdInfo.scopeId != scopeId.toByteArray().toByteString()) {
+                    throw IllegalStateException("Scope id being set doesn't match the scope id of the scope which was already set")
+                }
+            }
+        }
+
+        fun setScopeUUID(scopeUUID: java.util.UUID) = apply {
+            if(scope != null) {
+                throw IllegalStateException("Scope UUID cannot be set once the scope is already set")
+            }
+            this.scopeUUID = scopeUUID
         }
 
         fun addProposedRecord(name: String, record: Message) = apply {

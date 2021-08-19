@@ -7,11 +7,13 @@ import io.provenance.metadata.v1.ScopeSpecification
 import io.provenance.scope.ContractEngine
 import io.provenance.metadata.v1.Session as SessionProto
 import io.provenance.scope.contract.annotations.Record
+import io.provenance.scope.contract.annotations.ScopeSpecificationDefinition
 import io.provenance.scope.contract.contracts.ContractHash
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
+import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
@@ -69,7 +71,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         val protoRef = Commons.ProvenanceReference.newBuilder().setHash(protoHash.getHash()).build()
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
-        // TODO I am unsure if the provenanceReference being passed in is correct
+
         return Session.Builder()
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
@@ -85,8 +87,39 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .build()
 
     // executes the first session against a non-existent scope
-    fun<T: P8eContract> newSession(clazz: Class<T>, scopeSpecification: ScopeSpecification, session: SessionProto): Session.Builder {
-        TODO("implement")
+    fun<T: P8eContract, S: P8eScopeSpecification> newSession(clazz: Class<T>, scopeSpecificationDef: Class<S>): Session.Builder {
+        val contractHash = getContractHash(clazz)
+        val protoHash = clazz.methods
+            .find { Message::class.java.isAssignableFrom(it.returnType) }
+            ?.returnType
+            ?.let { getProtoHash(contractHash, it) }
+            .orThrow {
+                IllegalStateException("Unable to find hash for proto JAR for return types on ${clazz.name}")
+            }
+        val contractRef = Commons.ProvenanceReference.newBuilder().setHash(contractHash.getHash()).build()
+        val protoRef = Commons.ProvenanceReference.newBuilder().setHash(protoHash.getHash()).build()
+
+        val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
+
+        val scopeSpecAnnotation = scopeSpecificationDef.getAnnotation(ScopeSpecificationDefinition::class.java)
+
+        requireNotNull(scopeSpecAnnotation) {
+            "The annotation for the scope specifications must not be null"
+        }
+
+        val scope = ScopeResponse.newBuilder()
+            .apply {
+                scopeBuilder.scopeIdInfoBuilder.setScopeUuid(UUID.randomUUID().toString())
+                scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid(scopeSpecAnnotation.uuid) // todo: figure out how this will be supplied
+            }
+            .build()
+
+        return Session.Builder()
+            .also { it.client = this } // TODO remove when class is moved over
+            .setContractSpec(contractSpec)
+            .setProvenanceReference(contractRef)
+            .setScope(scope)
+            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }
 
     fun execute(session: Session, affiliateSharePublicKeys: Collection<PublicKey> = listOf()): ExecutionResult {
