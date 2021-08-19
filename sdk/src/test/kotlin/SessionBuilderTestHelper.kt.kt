@@ -8,11 +8,14 @@ import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.encryption.util.toJavaPublicKey
+import io.provenance.scope.objectstore.util.toByteArray
 import io.provenance.scope.sdk.*
 import io.provenance.scope.sdk.Session
+import io.provenance.scope.util.toByteString
+import io.provenance.scope.util.toUuidProv
 import java.net.URI
 import java.security.KeyPair
-import java.util.HashMap
+import java.util.*
 
 val localKeys = listOf(
     "0A41046C57E9E25101D5E553AE003E2F79025E389B51495607C796B4E95C0A94001FBC24D84CD0780819612529B803E8AD0A397F474C965D957D33DD64E642B756FBC4" to "0A2071E487C3FB00642F1863D57749F32D94F13892FA68D02049F7EA9E8FC58D6E63",
@@ -39,6 +42,7 @@ fun createClientDummy(localKeyIndex: Int): Client {
 
 fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = ScopeResponse.getDefaultInstance()): Session.Builder{
     val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
+        .setSessionId(UUID.randomUUID().toString().toByteString())
         .build()
     val defSpec = Commons.DefinitionSpec.newBuilder()
         .setType(Commons.DefinitionSpec.Type.PROPOSED)
@@ -58,13 +62,26 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
         spec.addInputSpecs(defSpec)
     }
     val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
-
-    return Session.Builder()
-        .setProposedSession(proposedSession)
-        .setContractSpec(spec.build())
-        .setProvenanceReference(provenanceReference)
-        .setClient(osClient)
-        .setScope(existingScope!!)
+    var scopeSpecUuid: UUID
+    if(!existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid.isNullOrEmpty()) {
+        scopeSpecUuid = existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid!!.toUuidProv()
+    } else {
+        scopeSpecUuid = UUID.randomUUID()
+    }
+    if(existingScope == ScopeResponse.getDefaultInstance()) {
+        return Session.Builder(scopeSpecUuid)
+            .setProposedSession(proposedSession)
+            .setContractSpec(spec.build())
+            .setProvenanceReference(provenanceReference)
+            .setClient(osClient)
+    } else {
+        return Session.Builder(scopeSpecUuid)
+            .setProposedSession(proposedSession)
+            .setContractSpec(spec.build())
+            .setProvenanceReference(provenanceReference)
+            .setClient(osClient)
+            .setScope(existingScope!!)
+    }
 }
 
 fun createExistingScope(): ScopeResponse.Builder {
@@ -88,7 +105,13 @@ fun createExistingScope(): ScopeResponse.Builder {
     val scopeWrapper = ScopeWrapper.newBuilder()
         .setScope(scope)
         .build()
-    return ScopeResponse.newBuilder()
+    val scopeResponseBuilder = ScopeResponse.newBuilder()
         .setScope(scopeWrapper)
         .addRecords(recordWrapper)
+        .apply {
+            scopeBuilder.scopeIdInfoBuilder.setScopeUuid(UUID.randomUUID().toString())
+            scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid("ac40a8f0-fb4d-4197-99e9-818a75a3c51d")
+        }
+    return scopeResponseBuilder
+
 }
