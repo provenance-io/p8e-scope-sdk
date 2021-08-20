@@ -8,22 +8,18 @@ import io.provenance.metadata.v1.Party
 import io.provenance.metadata.v1.RecordInput
 import io.provenance.metadata.v1.RecordInputStatus
 import io.provenance.metadata.v1.RecordOutput
-import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.metadata.v1.Session
-import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.toUuid
-import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
-import io.provenance.scope.util.toUuidProv
 import java.util.UUID
 
 sealed class ExecutionResult
-class SignedResult(val scope: ScopeResponse, session: Session, val envelope: Envelope, private val mainNet: Boolean): ExecutionResult() {
+class SignedResult(scopeUuid: UUID, scopeSpecUuid: UUID, sessionUuid: UUID, val envelope: Envelope, private val mainNet: Boolean): ExecutionResult() {
     private val signers = envelope.signaturesList.map { ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet) }  // todo: correct address/pk?
     private val parties = envelope.contract.recitalsList.map { Party.newBuilder()
         .setRoleValue(it.signerRoleValue)
@@ -31,14 +27,14 @@ class SignedResult(val scope: ScopeResponse, session: Session, val envelope: Env
         .build()
     }
 
-    private val sessionId = session.sessionId.toStringUtf8().let { uuid -> MetadataAddress.forSession(scope.uuid().toUuidProv(), UUID.fromString(uuid)) }.bytes.toByteString()
+    private val sessionId = MetadataAddress.forSession(scopeUuid, sessionUuid).bytes.toByteString()
     private val contractSpecId = envelope.contract.spec.dataLocation.ref.hash.base64Decode().toUuid().let { uuid -> MetadataAddress.forContractSpecification(uuid) }
 
     val messages: List<Message> = listOf(
             MsgWriteScopeRequest.newBuilder()
                 .apply {
-                    scopeBuilder.setScopeId(MetadataAddress.forScope(this@SignedResult.scope.uuid().toUuidProv()).bytes.toByteString())
-                        .setSpecificationId(MetadataAddress.forScopeSpecification(this@SignedResult.scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuidProv()).bytes.toByteString())
+                    scopeBuilder.setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
+                        .setSpecificationId(MetadataAddress.forScopeSpecification(scopeSpecUuid).bytes.toByteString())
                         .addAllOwners(parties)
                 }.addAllSigners(signers)
             .build(),
