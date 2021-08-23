@@ -7,7 +7,7 @@ object Version {
     const val guava = "30.1.1-jre"
     const val fortanixKms = "3.23.1408"
 
-    const val bouncy_castle = "1.68"
+    const val bouncy_castle = "1.69"
     const val grpc_version = "1.36.2"
     const val javax_annotation_version = "1.3.2"
     const val os_proto_version = "0.5.0"
