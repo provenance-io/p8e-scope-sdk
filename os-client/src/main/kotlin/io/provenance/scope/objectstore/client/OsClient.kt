@@ -22,6 +22,7 @@ import io.provenance.scope.encryption.proto.Encryption.ContextType.RETRIEVAL
 import io.provenance.objectstore.proto.Utils
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.crypto.sign
+import io.provenance.scope.encryption.crypto.verify
 import io.provenance.scope.objectstore.util.loBytes
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -157,6 +158,105 @@ open class OsClient(
             // TODO use the threadpool that exists
             MoreExecutors.directExecutor(),
         )
+    }
+
+    fun put(
+        message: Message,
+        encryptionPublicKey: PublicKey,
+        signerPublicKey: PublicKey,
+        signature: ByteArray,
+        additionalAudiences: Set<PublicKey> = setOf(),
+        metadata: Map<String, String> = mapOf(),
+        uuid: UUID = UUID.randomUUID(),
+        loHash: Boolean = false,
+    ): ListenableFuture<Objects.ObjectResponse> {
+        val bytes = message.toByteArray()
+
+        return put(
+            ByteArrayInputStream(bytes),
+            encryptionPublicKey,
+            signerPublicKey,
+            signature,
+            bytes.size.toLong(),
+            additionalAudiences,
+            metadata,
+            uuid,
+            loHash,
+        )
+    }
+
+    fun put(
+        inputStream: InputStream,
+        encryptionPublicKey: PublicKey,
+        signerPublicKey: PublicKey,
+        signature: ByteArray,
+        contentLength: Long,
+        additionalAudiences: Set<PublicKey> = setOf(),
+        metadata: Map<String, String> = mapOf(),
+        uuid: UUID = UUID.randomUUID(),
+        loHash: Boolean = false,
+    ): ListenableFuture<Objects.ObjectResponse> {
+        val signatureInputStream = inputStream.verify(signerPublicKey, signature)
+        val signingPublicKey = CertificateUtil.publicKeyToPem(signerPublicKey)
+
+        // TODO should this be performed in the thread pool in the background?
+        val dime = ProvenanceDIME.createDIME(
+            payload = signatureInputStream,
+            ownerEncryptionPublicKey = encryptionPublicKey,
+            additionalAudience = mapOf(Pair(RETRIEVAL, additionalAudiences)),
+            processingAudienceKeys = listOf(),
+            sha256 = true
+        )
+        val dimeInputStream = DIMEInputStream(
+            dime.dime,
+            dime.encryptedPayload,
+            uuid = uuid,
+            metadata = metadata + (SIGNATURE_PUBLIC_KEY_FIELD_NAME to CertificateUtil.publicKeyToPem(signerPublicKey)),
+            internalHash = true,
+            externalHash = false
+        )
+        val responseObserver = SingleResponseFutureObserver<Objects.ObjectResponse>()
+        // TODO test that deadline works on async requests like this
+        val requestObserver = objectAsyncClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).put(responseObserver)
+        val header = Objects.MultiStreamHeader.newBuilder()
+            .setStreamCount(1)
+            .putMetadata(CREATED_BY_HEADER, UUID(0, 0).toString())
+        .build()
+
+        dimeInputStream.use {
+            try {
+                requestObserver.onNext(ChunkBidi.newBuilder().setMultiStreamHeader(header).build())
+
+                val iterator = InputStreamChunkedIterator(it, DIME_FIELD_NAME, contentLength)
+                while (iterator.hasNext()) {
+                    requestObserver.onNext(iterator.next())
+                }
+
+                val hash = if (loHash) {
+                    dimeInputStream.internalHash().loBytes().toByteArray()
+                } else {
+                    dimeInputStream.internalHash()
+                }
+                requestObserver.onNext(propertyChunkRequest(HASH_FIELD_NAME to hash))
+                requestObserver.onNext(propertyChunkRequest(SIGNATURE_FIELD_NAME to signature))
+                requestObserver.onNext(propertyChunkRequest(SIGNATURE_PUBLIC_KEY_FIELD_NAME to signingPublicKey.toByteArray(Charsets.UTF_8)))
+
+                requestObserver.onCompleted()
+            } catch (t: Throwable) {
+                requestObserver.onError(t)
+                throw t
+            }
+        }
+
+        // TODO change this up if deadline functions correctly
+        // if (!responseObserver.finishLatch.await(deadlineMs, TimeUnit.MILLISECONDS)) {
+        //     throw TimeoutException("No response received")
+        // }
+        // if (responseObserver.error != null) {
+        //     throw responseObserver.error!!
+        // }
+
+        return responseObserver.future
     }
 
     fun put(
