@@ -37,6 +37,8 @@ class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = 
     
     val contractEngine: ContractEngine = ContractEngine(osClient, signerFactory)
 
+    val indexer: ProtoIndexer = ProtoIndexer(osClient, config.mainNet)
+
     override fun close() {
         TODO("Implement Closeable and close osClient channel - needs to shutdown and wait for shutdown or timeout")
     }
