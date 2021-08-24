@@ -7,14 +7,3 @@ build
 # Ignore idea
 .idea
 .DS_Store
-
-# tendermint state files that aren't needed
-dev-tools/compose/data/provenance/data/application.db/*
-dev-tools/compose/data/provenance/data/cs.wal/*
-dev-tools/compose/data/provenance/data/state.db/*
-dev-tools/compose/data/provenance/data/wasm/*
-dev-tools/compose/data/provenance/data/blockstore.db/*
-dev-tools/compose/data/provenance/data/evidence.db/*
-dev-tools/compose/data/provenance/data/snapshots/*
-dev-tools/compose/data/provenance/data/tx_index.db/*
-dev-tools/compose/data/provenance/config/write-file-atomic-*
