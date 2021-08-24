@@ -134,7 +134,7 @@ class ContractEngine(
                     } catch (t: Throwable) {
                         // Abort execution on a failed condition
                         log.error("Error executing condition ${contractWrapper.contractClass}.${function.method.name} [Exception classname: ${t.javaClass.name}]", t)
-                        function.considerationBuilder.result = failResult(t)
+                        function.considerationBuilder.result = failResult(t) // TODO: how to handle failures properly
 
                         val contractForSignature = contractBuilder.build()
                         return envelope.toBuilder()
@@ -168,7 +168,10 @@ class ContractEngine(
                     }
                 } + skipList.map { function ->
                 ResultSetter {
-                    function.considerationBuilder.result = Contracts.ExecutionResult.newBuilder().setResult(SKIP).build()
+                    function.considerationBuilder.resultBuilder.setResult(SKIP)
+                        .outputBuilder
+                        .setName(function.fact.name)
+                        .setClassname(function.returnType.name)
                     Futures.immediateFuture(Unit)
                 }
             }

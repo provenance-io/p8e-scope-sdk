@@ -32,6 +32,8 @@ class Function<T: P8eContract>(
     val fact = method.getAnnotation(Record::class.java)
         ?: throw ContractDefinitionException("${contract.javaClass.name}.${method.name} must have the ${Record::class.java.name} annotation.")
 
+    val returnType = method.returnType
+
     private val methodParameters = getFunctionParameters(
         encryptionKeyRef,
         considerationBuilder,

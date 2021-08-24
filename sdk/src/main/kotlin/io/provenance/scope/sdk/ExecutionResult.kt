@@ -8,6 +8,7 @@ import io.provenance.metadata.v1.Party
 import io.provenance.metadata.v1.RecordInput
 import io.provenance.metadata.v1.RecordInputStatus
 import io.provenance.metadata.v1.RecordOutput
+import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.util.getAddress
@@ -54,36 +55,38 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                         .build()
                 )
             }
-        } + envelope.contract.considerationsList.map {
-            MsgWriteRecordRequest.newBuilder()
-                .apply {
-                    recordBuilder
-                        .apply {
-                            processBuilder
-                                .setHash(envelope.contract.definition.resourceLocation.ref.hash)
-                                .setName(it.result.output.classname)
-                                .setMethod(it.considerationName)
-                        }
-                        .setName(it.result.output.name)
-                        .setSessionId(sessionId)
-                        // todo: specificationId seems to be optional, but setting this actually breaks updating a record from a different contract, as record spec id changes, might be some bugs on chain side for this
-    //                    .setSpecificationId(MetadataAddress.forRecordSpecification(contractSpecId.getPrimaryUuid(), it.considerationName).bytes.toByteString())
-                        .addAllInputs(it.inputsList.map { input ->
-                            RecordInput.newBuilder()
-                                .setName(input.name)
-                                .setTypeName(input.classname)
-                                .setHash(input.hash) // todo: setRecordId instead of hash in the case of an @Record annotated input (need to determine how to determine this)
-                                .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED) // todo: RECORD_INPUT_STATUS_RECORD if this is an @Record annotated input (related to above hash/record_id value above)
+        } + envelope.contract.considerationsList
+            .filter { it.result.result == Contracts.ExecutionResult.Result.PASS }
+            .map {
+                MsgWriteRecordRequest.newBuilder()
+                    .apply {
+                        recordBuilder
+                            .apply {
+                                processBuilder
+                                    .setHash(envelope.contract.definition.resourceLocation.ref.hash)
+                                    .setName(it.result.output.classname)
+                                    .setMethod(it.considerationName)
+                            }
+                            .setName(it.result.output.name)
+                            .setSessionId(sessionId)
+                            // todo: specificationId seems to be optional, but setting this actually breaks updating a record from a different contract, as record spec id changes, might be some bugs on chain side for this
+        //                    .setSpecificationId(MetadataAddress.forRecordSpecification(contractSpecId.getPrimaryUuid(), it.considerationName).bytes.toByteString())
+                            .addAllInputs(it.inputsList.map { input ->
+                                RecordInput.newBuilder()
+                                    .setName(input.name)
+                                    .setTypeName(input.classname)
+                                    .setHash(input.hash) // todo: setRecordId instead of hash in the case of an @Record annotated input (need to determine how to determine this)
+                                    .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED) // todo: RECORD_INPUT_STATUS_RECORD if this is an @Record annotated input (related to above hash/record_id value above)
+                                    .build()
+                            }).addOutputs(RecordOutput.newBuilder()
+                                .setHash(it.result.output.hash)
+                                .setStatusValue(it.result.resultValue)
                                 .build()
-                        }).addOutputs(RecordOutput.newBuilder()
-                            .setHash(it.result.output.hash)
-                            .setStatusValue(it.result.resultValue)
-                            .build()
-                        )
+                            )
 
-                }.addAllSigners(signers)
-                .addAllParties(parties)
-                .build()
-        }
+                    }.addAllSigners(signers)
+                    .addAllParties(parties)
+                    .build()
+            }
 }
 class FragmentResult(val input: Envelope, val result: Envelope)
