@@ -57,12 +57,12 @@ services:
     ports:
       - 5000:8080
     volumes:
-      - ./data/object_store:/mnt/data
+      - object_store:/mnt/data
 
   provenance:
     image: provenanceio/provenance:v1.5.0
     container_name: provenance
-    command: /usr/bin/provenanced -t --home /home/provenance start
+    command: bash -c "cp -rn /home/provenance_seed/* /home/provenance && /usr/bin/provenanced -t --home /home/provenance start"
     networks:
       - p8e
     ports:
@@ -70,10 +70,13 @@ services:
       - 9090:9090
       - 26657:26657
     volumes:
-      - ./data/provenance:/home/provenance
+      - ./data/provenance:/home/provenance_seed:ro
+      - provenance:/home/provenance
 
 volumes:
   postgres:
+  provenance:
+  object_store:
 
 networks:
   p8e:
