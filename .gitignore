@@ -17,5 +17,4 @@ dev-tools/compose/data/provenance/data/blockstore.db/*
 dev-tools/compose/data/provenance/data/evidence.db/*
 dev-tools/compose/data/provenance/data/snapshots/*
 dev-tools/compose/data/provenance/data/tx_index.db/*
-dev-tools/compose/data/provenance/data/priv_validator_state.json
 dev-tools/compose/data/provenance/config/write-file-atomic-*
