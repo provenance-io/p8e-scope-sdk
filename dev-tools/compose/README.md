@@ -25,3 +25,12 @@ and the following Java EC private keys as hex.
 
 `./host.env` contains environment variables useful to source on your host. It contains default
 variables that can be used for bootstrapping Provenance contract specifications.
+
+## Start/Stop Applications
+
+Typical [docker-compose](https://docs.docker.com/compose/) commands can be used to manage the applications.
+
+## Resetting Data Volumes
+
+`docker-compose down -v` can be used to wipe all the stateful volumes. This will wipe all `object-store` data
+and reset the Provenance blockchain to block 0.
