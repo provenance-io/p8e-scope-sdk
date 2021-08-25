@@ -1,0 +1,3 @@
+CREATE DATABASE "object-store";
+GRANT ALL PRIVILEGES ON DATABASE "object-store" TO postgres;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

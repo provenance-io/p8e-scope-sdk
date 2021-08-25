@@ -52,7 +52,6 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         .weigher { _: RecordCacheKey, bytes: ByteArray ->  bytes.size }
         .build()
 
-    // TODO remove content length as nullable if proven jar file size is accurate
     fun putJar(
         inputStream: InputStream,
         signingKeyRef: KeyRef,
