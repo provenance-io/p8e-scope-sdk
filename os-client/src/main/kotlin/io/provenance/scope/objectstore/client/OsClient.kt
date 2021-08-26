@@ -236,7 +236,7 @@ open class OsClient(
                 } else {
                     dimeInputStream.internalHash()
                 }
-                log.trace("Hash: ${hash}\nAudience Public Keys:${additionalAudiences}")
+                log.trace("Hash: ${hash}\nAudience Public Keys: $additionalAudiences")
                 requestObserver.onNext(propertyChunkRequest(HASH_FIELD_NAME to hash))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_FIELD_NAME to signatureInputStream.sign()))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_PUBLIC_KEY_FIELD_NAME to signingPublicKey.toByteArray(Charsets.UTF_8)))
