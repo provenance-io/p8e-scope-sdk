@@ -20,7 +20,7 @@ dependencies {
     implementation("com.google.guava:guava:${Version.guava}")
 
     // TODO how to log in a library? What logging framework should this be?
-    implementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
+    compileOnly("org.slf4j", "log4j-over-slf4j", "1.7.30")
 
     implementation("com.fasterxml.jackson.core", "jackson-annotations", Version.jackson_version)
     implementation("com.fasterxml.jackson.core", "jackson-core", Version.jackson_version)

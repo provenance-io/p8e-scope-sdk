@@ -12,7 +12,7 @@ dependencies {
     implementation(project(":engine"))
     api("io.provenance.protobuf", "pb-proto-java", Version.provenanceProtos)
 
-    implementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
+    compileOnly("org.slf4j", "log4j-over-slf4j", "1.7.30")
     implementation("org.jetbrains.kotlin", "kotlin-reflect", Version.kotlin)
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
     implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
@@ -21,6 +21,7 @@ dependencies {
     testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
     testImplementation("io.mockk:mockk:1.12.0")
+    testImplementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
     testImplementation(project(":contract-proto", "testArtifacts"))
     testImplementation("org.junit.platform:junit-platform-commons:1.5.2")
 }

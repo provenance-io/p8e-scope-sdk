@@ -5,6 +5,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
+import org.slf4j.LoggerFactory
 import io.grpc.ManagedChannelBuilder
 import io.provenance.scope.encryption.dime.ProvenanceDIME
 import io.provenance.scope.encryption.ecies.ECUtils
@@ -41,7 +42,7 @@ open class OsClient(
     uri: URI,
     private val deadlineMs: Long
 ) {
-
+    private val log = LoggerFactory.getLogger(this::class.java);
     private val objectAsyncClient: ObjectServiceGrpc.ObjectServiceStub
     private val objectFutureClient: ObjectServiceGrpc.ObjectServiceFutureStub
     private val publicKeyBlockingClient: PublicKeyServiceGrpc.PublicKeyServiceBlockingStub
@@ -219,7 +220,7 @@ open class OsClient(
             .setStreamCount(1)
             .putMetadata(CREATED_BY_HEADER, UUID(0, 0).toString())
         .build()
-
+        log.trace("Persisting Hash to Object Store:")
         dimeInputStream.use {
             try {
                 requestObserver.onNext(ChunkBidi.newBuilder().setMultiStreamHeader(header).build())
@@ -231,9 +232,11 @@ open class OsClient(
 
                 val hash = if (loHash) {
                     dimeInputStream.internalHash().loBytes().toByteArray()
+
                 } else {
                     dimeInputStream.internalHash()
                 }
+                log.trace("Hash: ${hash}\nAudience Public Keys:${additionalAudiences}")
                 requestObserver.onNext(propertyChunkRequest(HASH_FIELD_NAME to hash))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_FIELD_NAME to signatureInputStream.sign()))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_PUBLIC_KEY_FIELD_NAME to signingPublicKey.toByteArray(Charsets.UTF_8)))
