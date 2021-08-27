@@ -303,7 +303,7 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
     /** Gets the set of bytes for the primary uuid part of this MetadataAddress as a UUID. */
     fun getPrimaryUuid() = byteArrayAsUuid(this.bytes.copyOfRange(1,17))
 
-    fun getSecondaryUuid() = byteArrayAsUuid(this.getSecondaryBytes().copyOfRange(1, 17))
+    fun getSecondaryUuid() = byteArrayAsUuid(this.getSecondaryBytes().copyOfRange(0, 16))
 
     /** Gets the set of bytes for the secondary part of this MetadataAddress. */
     fun getSecondaryBytes() = if (this.bytes.size <= 17) byteArrayOf() else bytes.copyOfRange(17, this.bytes.size)
