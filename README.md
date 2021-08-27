@@ -1,5 +1,9 @@
 # P8e Scope Sdk
 
+## Status
+
+[![stability-alpha](https://img.shields.io/badge/stability-alpha-f4d03f.svg)](https://github.com/mkenney/software-guides/blob/master/STABILITY-BADGES.md#alpha)
+
 The libraries included here comprise a development kit that makes interacting with the [Provenance Blockchain](https://github.com/provenance-io/provenance)
 [Metadata](https://docs.provenance.io/modules/metadata-module) module easier.
 
