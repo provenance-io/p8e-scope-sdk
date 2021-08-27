@@ -1,34 +1,25 @@
-```
-                            ______  _____  _____
-                            | ___ \|  _  ||  ___|
-                            | |_/ / \ V / | |__
-                            |  __/  / _ \ |  __|
-                            | |    | |_| || |___
-                            \_|    \_____/\____/
+# P8e Scope Sdk
 
-```
-## Status
+The libraries included here comprise a development kit that makes interacting with the [Provenance Blockchain](https://github.com/provenance-io/provenance)
+[Metadata](https://docs.provenance.io/modules/metadata-module) module easier.
 
-[![stability-alpha](https://img.shields.io/badge/stability-alpha-f4d03f.svg)](https://github.com/mkenney/software-guides/blob/master/STABILITY-BADGES.md#alpha)
+The components needed to make use of this include the following:
+- Provenance node - Provides an API to submit transactions to and to read the event stream from.
+- Object store - Stores encrypted DIME objects. More information can be found [here](https://github.com/provenance-io/object-store).
 
+The quickest way to run these dependent services in a local environment is to use the docker-compose setup [here](https://github.com/provenance-io/p8e-scope-sdk/tree/main/dev-tools/compose).
 
-# P8E-SDK — Provenance Contract Execution Environment Library
+## Provenance Scopes
 
-The Provenance Contact Execution Environment (nicknamed “p8e”) is an optional layer on top of the Provenance Blockchain
-to allow single and multi-party client-side contract execution while preserving data privacy.
-Provenance client-side contracts take encrypted data from the user (client) and transform the information into
-encrypted data in the user’s own private object store with object hashes recorded on the blockchain.
+See the docs on the [Provenance Metadata](https://docs.provenance.io/modules/metadata-module) module for background.
+TODO (steve docs) add more information
 
-Further documentation is provided [here](https://docs.provenance.io/p8e/overview).
+## Contract Execution
 
-## Provenance Blockchain
+One function that this sdk can perform is JVM based contract executions. A contract is a class that subclasses `P8eContract` and contains annotations. The annotations are used at runtime
+to map the `P8eContract` to a [Provenance ContractSpec](https://github.com/provenance-io/provenance/blob/main/proto/provenance/metadata/v1/specification.proto#L61-L86).
+A [gradle plugin](https://github.com/provenance-io/p8e-gradle-plugin) is provided to help develop contracts and to persist them to Provenance and Object Store.
 
-All of the contract memorialization artifacts are stored within the [Provenance](https://github.com/provenance-io/provenance)
-open source blockchain. Submitted contract memorialization requests are evaluated against the known global provenance state.
-Chain of custody and control is enforced for all state transitions to ensure provenance of data is maintained.
+## Examples
 
-## Links
-- [docs](https://docs.provenance.io/)
-- [provenance github](https://github.com/provenance-io/provenance)
-- [p8e-gradle-plugin github](https://github.com/provenance-io/p8e-gradle-plugin)
-- [object-store github](https://github.com/provenance-io/object-store)
+A collection of examples are maintained [here](https://github.com/provenance-io/p8e-scope-sdk/tree/main/examples).
