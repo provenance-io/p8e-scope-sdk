@@ -1,17 +1,17 @@
 # P8e Scope Sdk
 
-The libraries included here comprise the development kit that makes interacting with the [Provenance Blockchain](https://github.com/provenance-io/provenance)
-[Metadata](https://docs.provenance.io/modules/metadata-module) module.
+The libraries included here comprise a development kit that makes interacting with the [Provenance Blockchain](https://github.com/provenance-io/provenance)
+[Metadata](https://docs.provenance.io/modules/metadata-module) module easier.
 
 The components needed to make use of this include the following:
 - Provenance node - Provides an API to submit transactions to and to read the event stream from.
 - Object store - Stores encrypted DIME objects. More information can be found [here](https://github.com/provenance-io/object-store).
 
-The easiest way to run these dependent services in a local environment is to use the docker-compose setup [here](https://github.com/provenance-io/p8e-scope-sdk/tree/main/dev-tools/compose).
+The quickest way to run these dependent services in a local environment is to use the docker-compose setup [here](https://github.com/provenance-io/p8e-scope-sdk/tree/main/dev-tools/compose).
 
 ## Provenance Scopes
 
-See the docs on the [Provenance Metadata](https://docs.provenance.io/modules/metadata-module) for background.
+See the docs on the [Provenance Metadata](https://docs.provenance.io/modules/metadata-module) module for background.
 TODO (steve docs) add more information
 
 ## Contract Execution
