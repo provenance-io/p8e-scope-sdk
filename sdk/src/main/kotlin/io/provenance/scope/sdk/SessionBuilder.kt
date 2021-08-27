@@ -19,6 +19,7 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuidProv
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
+import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toUuidProv
 import java.util.*
 import java.util.UUID.randomUUID
@@ -87,7 +88,7 @@ class Session(
 
         fun setProposedSession(session: Session) = apply {
             this.proposedSession = session
-            this.sessionUuid = session.sessionId.toStringUtf8().toUuidProv()
+            this.sessionUuid = session.sessionId.toByteArray().let { MetadataAddress.fromBytes(it) }.getSecondaryUuid()
         }
 
         fun setContractSpec(contractSpec: Specifications.ContractSpec) = apply {

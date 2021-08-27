@@ -303,8 +303,11 @@ data class MetadataAddress internal constructor(val bytes: ByteArray) {
     /** Gets the set of bytes for the primary uuid part of this MetadataAddress as a UUID. */
     fun getPrimaryUuid() = byteArrayAsUuid(this.bytes.copyOfRange(1,17))
 
+    fun getSecondaryUuid() = byteArrayAsUuid(this.getSecondaryBytes().copyOfRange(1, 17))
+
     /** Gets the set of bytes for the secondary part of this MetadataAddress. */
     fun getSecondaryBytes() = if (this.bytes.size <= 17) byteArrayOf() else bytes.copyOfRange(17, this.bytes.size)
+
 
     /** returns this MetadataAddress as a bech32 address string, e.g. "scope1qzge0zaztu65tx5x5llv5xc9ztsqxlkwel" */
     override fun toString() = Bech32.encode(getPrefixFromKey(this.bytes[0]), this.bytes)
