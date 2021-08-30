@@ -23,7 +23,10 @@ import io.provenance.scope.encryption.proto.Encryption.ContextType.RETRIEVAL
 import io.provenance.objectstore.proto.Utils
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.crypto.sign
+import io.provenance.scope.objectstore.util.base64Encode
+import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.loBytes
+import io.provenance.scope.util.toHexString
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -236,7 +239,7 @@ open class OsClient(
                 } else {
                     dimeInputStream.internalHash()
                 }
-                log.trace("Hash: ${hash}\nAudience Public Keys: $additionalAudiences")
+                log.trace("Hash: ${hash.base64EncodeString()}\nAudience Public Keys: ${additionalAudiences.map { it.toPublicKeyProtoOS().toByteArray().toHexString().toString() }}")
                 requestObserver.onNext(propertyChunkRequest(HASH_FIELD_NAME to hash))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_FIELD_NAME to signatureInputStream.sign()))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_PUBLIC_KEY_FIELD_NAME to signingPublicKey.toByteArray(Charsets.UTF_8)))

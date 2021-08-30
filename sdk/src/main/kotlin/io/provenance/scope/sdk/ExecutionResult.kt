@@ -48,7 +48,13 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                         .addAllOwners(parties)
                 }.addAllSigners(signers)
                 .build()
-            executionInfo.add(Triple<String, String, String>(session.scopeUuid.toString(), msgWriteScopeRequest::class.java.name, "ScopeID: "))
+            executionInfo.add(
+                Triple<String, String, String>(
+                    session.scopeUuid.toString(),
+                    msgWriteScopeRequest::class.java.name,
+                    "ScopeID: "
+                )
+            )
             add(
                 msgWriteScopeRequest
             )
@@ -63,7 +69,13 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                         .setName(envelope.contract.definition.resourceLocation.classname)
                 }.addAllSigners(signers)
                 .build()
-            executionInfo.add(Triple<String, String, String>(session.sessionUuid.toString(), msgWriteSessionRequest::class.java.name, "Session ID: "))
+            executionInfo.add(
+                Triple<String, String, String>(
+                    session.sessionUuid.toString(),
+                    msgWriteSessionRequest::class.java.name,
+                    "Session ID: "
+                )
+            )
             add(
                 msgWriteSessionRequest
             )
@@ -71,6 +83,8 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
     } + envelope.contract.considerationsList
         .filter { it.result.result == Contracts.ExecutionResult.Result.PASS }
         .map {
+            val specId =
+                MetadataAddress.forRecordSpecification(contractSpecId.getPrimaryUuid(), it.considerationName).toString()
             val msgWriteRecordRequest = MsgWriteRecordRequest.newBuilder()
                 .apply {
                     recordBuilder
@@ -101,23 +115,14 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                 }.addAllSigners(signers)
                 .addAllParties(parties)
                 .build()
-            if (msgWriteRecordRequest.record.specificationId.isEmpty) {
-                executionInfo.add(
-                    Triple<String, String, String>(
-                        "",
-                        msgWriteRecordRequest::class.java.name,
-                        "Record ID: "
-                    )
+            executionInfo.add(
+                Triple<String, String, String>(
+                    specId,
+                    msgWriteRecordRequest::class.java.name,
+                    "Record ID: "
                 )
-            } else {
-                executionInfo.add(
-                    Triple<String, String, String>(
-                        UUID.nameUUIDFromBytes(msgWriteRecordRequest.record.specificationId.toByteArray()).toString(),
-                        msgWriteRecordRequest::class.java.name,
-                        "Record ID: "
-                    )
-                )
-            }
+            )
+
             msgWriteRecordRequest
         }
 }
