@@ -3,7 +3,7 @@
 ## Status
 
 [![stability-alpha](https://img.shields.io/badge/stability-alpha-f4d03f.svg)](https://github.com/mkenney/software-guides/blob/master/STABILITY-BADGES.md#alpha)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.provenance.p8e/p8e-scope-sdk/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.provenance.p8e/p8e-sdk)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.provenance.scope/sdk/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.provenance.scope/sdk)
 [![Latest Release][release-badge]][release-latest]
 [![Code Coverage][code-coverage-badge]][code-coverage-report]
 [![License][license-badge]][license-url]
