@@ -89,4 +89,4 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                     .build()
             }
 }
-class FragmentResult(val input: Envelope, val result: Envelope)
+class FragmentResult(val input: Envelope, val result: Envelope): ExecutionResult()

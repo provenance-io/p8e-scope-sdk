@@ -9,6 +9,7 @@ import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.annotations.ScopeSpecificationDefinition
 import io.provenance.scope.contract.contracts.ContractHash
 import io.provenance.scope.contract.proto.Commons
+import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
@@ -23,14 +24,30 @@ import io.provenance.scope.sdk.extensions.isSigned
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
+import io.provenance.scope.sdk.mailbox.MailHandlerFn
+import io.provenance.scope.sdk.mailbox.MailboxService
+import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
+import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.toUuidProv
 import java.io.Closeable
 import java.util.ServiceLoader
 import java.security.PublicKey
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 // TODO (@steve)
 // how does signer fit in?
 // support multiple size hashes in the sdk - object-store should already support hashes of any length
+
+// todo: need to consolidate/organize key helpers
+fun java.security.PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
+    PublicKeys.PublicKey.newBuilder()
+        .setCurve(PublicKeys.KeyCurve.SECP256K1)
+        .setType(PublicKeys.KeyType.ELLIPTIC)
+        .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(this)))
+        .setCompressed(false)
+        .build()
 
 class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = SignerFactory()) : Closeable {
     val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
@@ -38,6 +55,10 @@ class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = 
     val contractEngine: ContractEngine = ContractEngine(osClient, signerFactory)
 
     val indexer: ProtoIndexer = ProtoIndexer(osClient, config.mainNet)
+
+    val affiliateRepository = AffiliateRepository(config.mainNet)
+
+    val mailboxService = MailboxService(osClient.osClient, affiliateRepository)
 
     override fun close() {
         TODO("Implement Closeable and close osClient channel - needs to shutdown and wait for shutdown or timeout")
@@ -50,7 +71,17 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
         private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList() // todo: can we use the contract/proto hashes to generate a dynamic list of what should/should not be loaded from memory vs. system class loader
         private val protoHashes = ServiceLoader.load(ProtoHash::class.java).toList()
+        private var _mailPoller: ScheduledExecutorService? = null
+        private val mailPoller: ScheduledExecutorService
+            get() {
+                if (_mailPoller == null) {
+                    _mailPoller = ThreadPoolFactory.newScheduledThreadPool(1, "mail-poll-%d")
+                }
+                return _mailPoller!!
+            }
     }
+
+    private var mailFuture: ScheduledFuture<*>? = null
 
     // TODO
     // add error handling and start with extensions present here
@@ -77,13 +108,8 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .setProvenanceReference(contractRef)
             .setProposedSession(session)
             .setScope(scope)
-            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
+            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
     }
-
-    fun java.security.PublicKey.toPublicKeyProtoOS(): PublicKeys.PublicKey =
-        PublicKeys.PublicKey.newBuilder()
-            .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(this)))
-            .build()
 
     // executes the first session against a non-existent scope
     fun<T: P8eContract, S: P8eScopeSpecification> newSession(clazz: Class<T>, scopeSpecificationDef: Class<S>): Session.Builder {
@@ -110,17 +136,39 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
-            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
+            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
     }
 
     fun execute(session: Session, affiliateSharePublicKeys: Collection<PublicKey> = listOf()): ExecutionResult {
         val input = session.packageContract()
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
 
-        return when (result.isSigned(session.scope, inner.config.mainNet)) {
+        return when (result.isSigned(inner.config.mainNet)) {
             true -> SignedResult(session, result, inner.config.mainNet) // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
-            false -> throw NotImplementedError("Multi-party contract support not yet implemented")
+            false -> FragmentResult(input, result) // todo: do we need both input and result?
         }
+    }
+
+    fun registerMailHandler(handler: MailHandlerFn) {
+        mailFuture?.cancel(false)
+        mailFuture = mailPoller.scheduleAtFixedRate(PollAffiliateMailbox(
+            inner.osClient.osClient,
+            signingKeyRef = affiliate.signingKeyRef,
+            encryptionKeyRef = affiliate.encryptionKeyRef,
+            maxResults =100,
+            inner.config.mainNet,
+            handler
+        ), 1, 1, TimeUnit.SECONDS)
+    }
+
+    fun requestAffiliateExecution(envelope: Envelope) {
+        // todo: verify this Client instance's affiliate is on the envelope?
+
+        if (envelope.isSigned(inner.config.mainNet)) {
+            TODO("should we throw an exception or something in the event that an affiliate is requesting signatures on an already fully-signed envelope?")
+        }
+
+        inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, inner.signerFactory.getSigner(affiliate.signingKeyRef), envelope)
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
