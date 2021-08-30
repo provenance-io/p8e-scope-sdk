@@ -30,6 +30,13 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-commons:1.5.2")
 }
 
+tasks.jacocoTestReport {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
 tasks.withType<Test> {
     useJUnitPlatform()
     
