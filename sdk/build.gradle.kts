@@ -1,6 +1,11 @@
 import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
 
+plugins {
+    jacoco
+}
+
+
 dependencies {
     // re-exported deps
     api(project(":os-client"))
@@ -26,6 +31,12 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-commons:1.5.2")
 }
 
+tasks.jacocoTestReport {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
 
 tasks.withType<Test> {
     useJUnitPlatform()
@@ -35,5 +46,5 @@ tasks.withType<Test> {
         events = setOf(PASSED, FAILED, SKIPPED, STANDARD_ERROR)
         exceptionFormat = FULL
     }
+    finalizedBy("jacocoTestReport")
 }
-
