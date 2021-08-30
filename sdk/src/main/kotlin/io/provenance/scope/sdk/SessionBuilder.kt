@@ -21,6 +21,7 @@ import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toUuidProv
+import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.UUID.randomUUID
 
@@ -37,7 +38,7 @@ class Session(
     val sessionUuid: java.util.UUID,
     val scopeSpecUuid: java.util.UUID,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
-    ) {
+) {
     private constructor(builder: Builder) : this(
         builder.proposedSession,
         builder.participants,
@@ -80,7 +81,7 @@ class Session(
         }
 
         fun setSessionUuid(sessionUuid: java.util.UUID) = apply {
-            if(proposedSession != null) {
+            if (proposedSession != null) {
                 throw IllegalStateException("Session UUID cannot be set once the proposed session is already set")
             }
             this.sessionUuid = sessionUuid
@@ -109,7 +110,7 @@ class Session(
         }
 
         fun setScopeUuid(scopeUUID: java.util.UUID) = apply {
-            if(scope != null) {
+            if (scope != null) {
                 throw IllegalStateException("Scope UUID cannot be set once the scope is already set")
             }
             this.scopeUuid = scopeUUID
@@ -155,12 +156,14 @@ class Session(
             .setDefinition(spec.definition)
 
         builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
-            .setEncryptionPublicKey(PublicKeys.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.encryptionKeyRef.publicKey)))
-                .build()
-            ).setSigningPublicKey(PublicKeys.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.signingKeyRef.publicKey)))
-                .build()
+            .setEncryptionPublicKey(
+                PublicKeys.PublicKey.newBuilder()
+                    .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.encryptionKeyRef.publicKey)))
+                    .build()
+            ).setSigningPublicKey(
+                PublicKeys.PublicKey.newBuilder()
+                    .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.signingKeyRef.publicKey)))
+                    .build()
             ).build()
 
         // Copy the outputs from previous contract executions to the inputs list.
@@ -315,10 +318,13 @@ class Session(
                                     .setClassname(scopeFact.record.process.name)
                                     .setRef(
                                         ProvenanceReference.newBuilder()
-                                            .setScopeUuid(io.provenance.metadata.v1.p8e.UUID.newBuilder()
-                                                .setValue(scope.uuid())
+                                            .setScopeUuid(
+                                                io.provenance.metadata.v1.p8e.UUID.newBuilder()
+                                                    .setValue(scope.uuid())
                                             )
-                                            .setHash(scopeFact.record.resultHash().base64EncodeString()) // todo: address for multiple outputs
+                                            .setHash(
+                                                scopeFact.record.resultHash().base64EncodeString()
+                                            ) // todo: address for multiple outputs
                                     )
                             ).build()
                     )
@@ -357,10 +363,9 @@ class Session(
     }
 
 
-     fun packageContract(): Envelope {
+    fun packageContract(): Envelope {
         val contract = populateContract()
         //TODO Different executionID
-
         val permissionUpdater = PermissionUpdater(
             client,
             contract,
@@ -419,7 +424,7 @@ class Session(
         private val contract: Contract,
         private val audience: Set<java.security.PublicKey>
     ) {
-
+        private val log = LoggerFactory.getLogger(this::class.java);
         fun saveConstructorArguments() {
             // TODO (later) this can be optimized by checking the recitals and record groups and determining what subset, if any,
             // of input facts need to be fetched and stored in order only save the objects that are needed by some of
@@ -436,8 +441,14 @@ class Session(
 
         // TODO (steve) for later convert to async with ListenableFutures
         fun saveProposedFacts(stagedProposedProtos: Collection<Message>) {
+            log.debug("Persisting ${stagedProposedProtos.size} record(s) to object store")
             stagedProposedProtos.map {
-                client.inner.osClient.putRecord(it, client.affiliate.signingKeyRef, client.affiliate.encryptionKeyRef, audience)
+                client.inner.osClient.putRecord(
+                    it,
+                    client.affiliate.signingKeyRef,
+                    client.affiliate.encryptionKeyRef,
+                    audience
+                )
             }.map { it.get() } // TODO is this the best way to await N items?
         }
     }
