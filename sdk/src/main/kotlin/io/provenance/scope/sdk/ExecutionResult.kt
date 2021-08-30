@@ -48,7 +48,7 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                         .addAllOwners(parties)
                 }.addAllSigners(signers)
                 .build()
-            executionInfo.add(Triple<String, String, String>(UUID.nameUUIDFromBytes(msgWriteScopeRequest.scope.scopeId.toByteArray()).toString(), msgWriteScopeRequest::class.java.name, "ScopeID: "))
+            executionInfo.add(Triple<String, String, String>(session.scopeUuid.toString(), msgWriteScopeRequest::class.java.name, "ScopeID: "))
             add(
                 msgWriteScopeRequest
             )
@@ -63,7 +63,7 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                         .setName(envelope.contract.definition.resourceLocation.classname)
                 }.addAllSigners(signers)
                 .build()
-            executionInfo.add(Triple<String, String, String>(UUID.nameUUIDFromBytes(msgWriteSessionRequest.session.sessionId.toByteArray()).toString(), msgWriteSessionRequest::class.java.name, "Session ID: "))
+            executionInfo.add(Triple<String, String, String>(session.sessionUuid.toString(), msgWriteSessionRequest::class.java.name, "Session ID: "))
             add(
                 msgWriteSessionRequest
             )
