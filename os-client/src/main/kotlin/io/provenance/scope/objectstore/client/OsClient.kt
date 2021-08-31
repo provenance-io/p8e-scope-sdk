@@ -5,6 +5,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
+import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import io.provenance.scope.encryption.dime.ProvenanceDIME
 import io.provenance.scope.encryption.ecies.ECUtils
@@ -25,6 +26,7 @@ import io.provenance.scope.encryption.crypto.sign
 import io.provenance.scope.objectstore.util.loBytes
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.Closeable
 import java.io.InputStream
 import java.net.URI
 import java.security.PublicKey
@@ -40,15 +42,16 @@ const val SIGNATURE_FIELD_NAME = "SIGNATURE"
 open class OsClient(
     uri: URI,
     private val deadlineMs: Long
-) {
+) : Closeable {
 
     private val objectAsyncClient: ObjectServiceGrpc.ObjectServiceStub
     private val objectFutureClient: ObjectServiceGrpc.ObjectServiceFutureStub
     private val publicKeyBlockingClient: PublicKeyServiceGrpc.PublicKeyServiceBlockingStub
     private val mailboxBlockingClient: MailboxServiceGrpc.MailboxServiceBlockingStub
+    private val channel: ManagedChannel
 
     init {
-        val channel = ManagedChannelBuilder.forAddress(uri.host, uri.port)
+        channel = ManagedChannelBuilder.forAddress(uri.host, uri.port)
             .also {
                 if (uri.scheme == "grpcs") {
                     it.useTransportSecurity()
@@ -264,6 +267,14 @@ open class OsClient(
                     .setUrl("http://localhost") // todo: what is this supposed to be?
                     .build()
             )
+
+    override fun close() {
+        channel.shutdown()
+    }
+
+    fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
+        return channel.awaitTermination(timeout, unit)
+    }
 }
 
 fun propertyChunkRequest(pair: Pair<String, ByteArray>): Objects.ChunkBidi =

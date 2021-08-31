@@ -27,6 +27,7 @@ import io.provenance.scope.util.toUuidProv
 import java.io.Closeable
 import java.util.ServiceLoader
 import java.security.PublicKey
+import java.util.concurrent.TimeUnit
 
 // TODO (@steve)
 // how does signer fit in?
@@ -34,13 +35,17 @@ import java.security.PublicKey
 
 class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = SignerFactory()) : Closeable {
     val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
-    
+
     val contractEngine: ContractEngine = ContractEngine(osClient, signerFactory)
 
     val indexer: ProtoIndexer = ProtoIndexer(osClient, config.mainNet)
 
     override fun close() {
-        TODO("Implement Closeable and close osClient channel - needs to shutdown and wait for shutdown or timeout")
+        osClient.osClient.close()
+    }
+
+    fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
+        return osClient.osClient.awaitTermination(timeout, unit)
     }
 }
 
