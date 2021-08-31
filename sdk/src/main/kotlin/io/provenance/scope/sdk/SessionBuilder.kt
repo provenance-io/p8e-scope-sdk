@@ -378,7 +378,7 @@ class Session(
                     .build()
 
                 if (scope != null) {
-                    it.setScope(Any.pack(scope.scope.scope, "")) // todo: is this the correct place to be setting the scope?
+                    it.setScope(Any.pack(scope.scope.scope, ""))
                 }
             }
             .clearSignatures()

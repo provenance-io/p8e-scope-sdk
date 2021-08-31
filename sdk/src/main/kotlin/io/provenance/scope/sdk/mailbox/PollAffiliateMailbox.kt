@@ -41,7 +41,7 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
                 when (mailboxKey) {
                     MailboxMeta.FRAGMENT_REQUEST, MailboxMeta.FRAGMENT_RESPONSE -> handleEnvelope(mailUuid, mailboxKey, dimeInputStream.dime.owner, bytes)
                     MailboxMeta.ERROR_RESPONSE -> handleEnvelopeError(mailUuid, mailboxKey, dimeInputStream.dime.owner, bytes)
-                    else -> TODO("implement additional handling for error response, etc.")
+                    else -> throw IllegalStateException("Unhandled mailbox key: $mailboxKey uuid: $mailUuid")
                 }
             }
         }
@@ -50,10 +50,9 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
     private fun handleEnvelope(mailUuid: UUID, mailboxKey: String, ownerAudience: Audience, message: ByteArray) {
         val envelope = Envelope.parseFrom(message)
         // todo: packing scope as an any so we don't have to pull in the raw protos just for this... stupid or not?
-        // todo: make sure scope is actually being packed into this on the sending/packaging side
         val scope = envelope.scopeOrNull()
 
-        // todo: validation on various uuids being present?
+        // todo: validation on various uuids being present? Do we still have an execution uuid in play?
 
         val className = envelope.contract.definition.resourceLocation.classname
 
@@ -63,9 +62,6 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
         envelope.contract.recitalsList.map { it.signer.signingPublicKey.toPublicKey().getAddress(mainNet) }.plus(scope?.ownersList?.map { it.address } ?: listOf())
             .firstOrNull { it == signingAddress }
             .orThrow { IllegalStateException("Can't find party on contract execution ${envelope.executionUuid.value} with key ${signingKeyRef.publicKey.toHex()}") }
-//            .signer
-//            .signingPublicKey
-//            .toPublicKey()
 
         // todo: do we need to provide any sort of contract whitelisting mechanism, or just let the client ignore anything they don't want?
 
