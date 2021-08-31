@@ -31,6 +31,8 @@ dependencies {
 
     implementation("javax.annotation", "javax.annotation-api", Version.javax_annotation_version)
 
+    compileOnly("org.slf4j", "log4j-over-slf4j", "1.7.30")
+
     runtimeOnly("io.grpc:grpc-netty-shaded:${Version.grpc_version}")
 }
 

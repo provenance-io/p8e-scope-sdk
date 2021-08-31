@@ -48,7 +48,7 @@ class ContractEngine(
         scope: ScopeResponse?,
         affiliateSharePublicKeys: Collection<PublicKey>, // todo: separate array for other scope parties that are not on the contract, or just have them all supplied here?
     ): Envelope {
-        log.info("Running contract engine")
+        log.trace("Running contract engine")
 
         val contract = envelope.contract
 
@@ -126,6 +126,9 @@ class ContractEngine(
         )
 
         val (execList, skipList) = contractWrapper.functions.partition { it.canExecute() }
+
+        log.trace("Skipped Records: ${skipList.map { it.fact.name }}")
+
         val functionResults =
             execList
                 .map { function ->
@@ -177,11 +180,13 @@ class ContractEngine(
             }
 
         functionResults
-            .also { log.info("Saving ${it.size} results for ContractEngine.handle") }
+            .also { log.trace("Saving ${it.size} results for ContractEngine.handle") }
             .map { it.setter() }
             .forEach { it.get() }
 
         val contractForSignature = contractBuilder.build()
+        log.trace("Inputs list for execution: ${contractForSignature.considerationsList.flatMap { it.inputsList }}")
+        log.trace("Outputs list for execution: ${contractForSignature.considerationsList.map { it.result.output }}")
         return envelope.toBuilder()
             .setContract(contractForSignature)
             .addSignatures(signer.sign(contractForSignature).toContractSignature())

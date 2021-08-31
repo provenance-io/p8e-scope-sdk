@@ -29,6 +29,7 @@ import io.provenance.scope.sdk.mailbox.MailboxService
 import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
 import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.toUuidProv
+import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
 import java.security.PublicKey
@@ -51,7 +52,7 @@ fun java.security.PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
 
 class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = SignerFactory()) : Closeable {
     val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
-    
+
     val contractEngine: ContractEngine = ContractEngine(osClient, signerFactory)
 
     val indexer: ProtoIndexer = ProtoIndexer(osClient, config.mainNet)
@@ -61,11 +62,17 @@ class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = 
     val mailboxService = MailboxService(osClient.osClient, affiliateRepository)
 
     override fun close() {
-        TODO("Implement Closeable and close osClient channel - needs to shutdown and wait for shutdown or timeout")
+        osClient.osClient.close()
+    }
+
+    fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
+        return osClient.osClient.awaitTermination(timeout, unit)
     }
 }
 
 class Client(val inner: SharedClient, val affiliate: Affiliate) {
+
+    private val log = LoggerFactory.getLogger(this::class.java);
 
     companion object {
         // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
@@ -141,10 +148,23 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     fun execute(session: Session, affiliateSharePublicKeys: Collection<PublicKey> = listOf()): ExecutionResult {
         val input = session.packageContract()
+        log.debug("Contract name: ${input.contract.definition.name}")
+        log.debug("Session Id: ${session.sessionUuid}")
+        log.debug("Execution UUID: ${input.executionUuid}")
+
+//        logger.trace("Input Hash: ${}")
+
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
 
         return when (result.isSigned(inner.config.mainNet)) {
-            true -> SignedResult(session, result, inner.config.mainNet) // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
+            true -> {
+                // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existent
+                SignedResult(session, result, inner.config.mainNet).also { signedResult ->
+                    log.debug("Number of each type: ${signedResult.executionInfo.groupingBy { it.second }.eachCount()}")
+                    log.debug("List of ID/Address ${signedResult.executionInfo.map { it.third + it.first }}")
+                    log.trace("Full Content of TX Protos: ${signedResult.messages}")
+                }
+            }
             false -> FragmentResult(input, result) // todo: do we need both input and result?
         }
     }

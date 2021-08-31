@@ -11,6 +11,7 @@ import io.provenance.scope.encryption.util.toJavaPublicKey
 import io.provenance.scope.objectstore.util.toByteArray
 import io.provenance.scope.sdk.*
 import io.provenance.scope.sdk.Session
+import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuidProv
 import java.net.URI
@@ -40,10 +41,7 @@ fun createClientDummy(localKeyIndex: Int): Client {
     return Client(SharedClient(clientConfig), affiliate)
 }
 
-fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = ScopeResponse.getDefaultInstance()): Session.Builder{
-    val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
-        .setSessionId(UUID.randomUUID().toString().toByteString())
-        .build()
+fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = null): Session.Builder{
     val defSpec = Commons.DefinitionSpec.newBuilder()
         .setType(Commons.DefinitionSpec.Type.PROPOSED)
         .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record"))
@@ -68,20 +66,19 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
     } else {
         scopeSpecUuid = UUID.randomUUID()
     }
-    if(existingScope == ScopeResponse.getDefaultInstance()) {
-        return Session.Builder(scopeSpecUuid)
-            .setProposedSession(proposedSession)
-            .setContractSpec(spec.build())
-            .setProvenanceReference(provenanceReference)
-            .setClient(osClient)
-    } else {
-        return Session.Builder(scopeSpecUuid)
-            .setProposedSession(proposedSession)
-            .setContractSpec(spec.build())
-            .setProvenanceReference(provenanceReference)
-            .setClient(osClient)
-            .setScope(existingScope!!)
-    }
+    return Session.Builder(scopeSpecUuid)
+        .setContractSpec(spec.build())
+        .setProvenanceReference(provenanceReference)
+        .setClient(osClient)
+        .apply {
+            val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
+                .setSessionId(MetadataAddress.forSession(scopeUuid, UUID.randomUUID()).bytes.toByteString())
+                .build()
+            setProposedSession(proposedSession)
+            if (existingScope != null) {
+                setScope(existingScope)
+            }
+        }
 }
 
 fun createExistingScope(): ScopeResponse.Builder {

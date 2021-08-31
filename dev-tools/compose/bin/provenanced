@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "$(uname)" == "Darwin" ]; then
+	docker run --rm -it provenanceio/provenance provenanced --testnet --node http://host.docker.internal:26657 "$@"
+else
+	echo "ERROR: this script only works with Darwin"
+fi
+

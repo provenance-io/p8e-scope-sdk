@@ -34,7 +34,7 @@ dependencies {
     api("org.apache.commons:commons-math3:3.6.1")
     implementation("commons-io:commons-io:2.8.0")
 
-    implementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
+    compileOnly("org.slf4j", "log4j-over-slf4j", "1.7.30")
 
     implementation("io.arrow-kt", "arrow-core", Version.arrow)
 }
