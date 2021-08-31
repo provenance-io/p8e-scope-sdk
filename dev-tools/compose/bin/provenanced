@@ -1,0 +1,3 @@
+#!/bin/bash
+
+docker run --rm -it provenanceio/provenance provenanced --testnet --node http://host.docker.internal:26657 "$@"
