@@ -30,6 +30,16 @@ variables that can be used for bootstrapping Provenance contract specifications.
 
 Typical [docker-compose](https://docs.docker.com/compose/) commands can be used to manage the applications.
 
+## Using the provenanced CLI
+
+A wrapper script is provided at `./bin/provenanced`.
+
+Example usage:
+
+```
+./bin/provenanced query metadata scopespec all
+```
+
 ## Resetting Data Volumes
 
 `docker-compose down -v` can be used to wipe all the stateful volumes. This will wipe all Object Store data
