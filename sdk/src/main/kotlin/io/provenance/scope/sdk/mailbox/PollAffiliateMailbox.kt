@@ -49,7 +49,7 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
 
     private fun handleEnvelope(mailUuid: UUID, mailboxKey: String, ownerAudience: Audience, message: ByteArray) {
         val envelope = Envelope.parseFrom(message)
-        // todo: packing scope as an any so we don't have to pull in the raw protos just for this... stupid or not?
+
         val scope = envelope.scopeOrNull()
 
         // todo: validation on various uuids being present? Do we still have an execution uuid in play?
