@@ -63,8 +63,6 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
             .firstOrNull { it == signingAddress }
             .orThrow { IllegalStateException("Can't find party on contract execution ${envelope.executionUuid.value} with key ${signingKeyRef.publicKey.toHex()}") }
 
-        // todo: do we need to provide any sort of contract whitelisting mechanism, or just let the client ignore anything they don't want?
-
         when (mailboxKey) {
             MailboxMeta.FRAGMENT_REQUEST -> handler.handleSynchronousAck(mailUuid, ExecutionRequestEvent(envelope))
             MailboxMeta.FRAGMENT_RESPONSE -> handler.handleSynchronousAck(mailUuid, ExecutionResponseEvent(envelope))
