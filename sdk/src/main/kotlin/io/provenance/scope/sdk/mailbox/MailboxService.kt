@@ -7,10 +7,13 @@ import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.objectstore.util.orThrow
 import io.provenance.scope.objectstore.util.toPublicKey
 import io.provenance.scope.sdk.AffiliateRepository
-import io.provenance.scope.sdk.extensions.scopeOrNull
+import io.provenance.scope.util.scopeOrNull
+import org.slf4j.LoggerFactory
 import java.security.PublicKey
+import java.util.UUID
 
 class MailboxService(private val osClient: OsClient, private val affiliateRepository: AffiliateRepository) {
+    private val log = LoggerFactory.getLogger(this::class.java)
 
     /**
      * Fragment an envelope by sending inputs to additional signers.
@@ -29,7 +32,7 @@ class MailboxService(private val osClient: OsClient, private val affiliateReposi
 
         val scope = envelope.scopeOrNull()
 
-        val scopeOwners = scope?.ownersList
+        val scopeOwners = scope?.scope?.scope?.ownersList
             ?.map { affiliateRepository.getAffiliateKeysByAddress(it.address).encryptionPublicKey }
             ?.toSet() ?: setOf()
 
@@ -46,6 +49,24 @@ class MailboxService(private val osClient: OsClient, private val affiliateReposi
             signer,
             additionalAudiences,
             MailboxMeta.MAILBOX_REQUEST
+        )
+    }
+
+    /**
+     * Return the executed fragment back to originator of fragment.
+     *
+     * @param [PublicKey] The owner of the message
+     * @param [env] The executed envelope to return
+     */
+    fun result(encryptionPublicKey: PublicKey, signer: SignerImpl, envelope: Envelope) {
+        val additionalAudiences = setOf(envelope.contract.invoker.encryptionPublicKey.toPublicKey())
+
+        osClient.put(
+            envelope,
+            encryptionPublicKey,
+            signer,
+            additionalAudiences,
+            MailboxMeta.MAILBOX_RESPONSE
         )
     }
 }

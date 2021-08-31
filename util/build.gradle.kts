@@ -1,6 +1,8 @@
 dependencies {
     implementation(project(":contract-proto"))
 
+    implementation("io.provenance.protobuf", "pb-proto-java", Version.provenanceProtos)
+
     implementation("org.bouncycastle", "bcprov-jdk15on", Version.bouncy_castle)
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)

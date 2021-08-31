@@ -15,6 +15,11 @@ import "io/provenance/scope/contract/specification.proto";
 import "io/provenance/scope/contract/public_key.proto";
 import "io/provenance/scope/contract/util.proto";
 
+message EnvelopeState {
+    Envelope input = 1;
+    Envelope result = 2;
+}
+
 message Envelope {
     // ref contains
     // 1) the scope of the object being modified on blockchain.
@@ -55,6 +60,15 @@ message Envelope {
         COMPLETE = 8 [(description) = "Envelope has been completed."];
         ERROR = 11 [(description) = "Envelope is in error state."];
     }
+
+    UUID scopeUuid = 10;
+    UUID scopeSpecUuid = 11;
+    UUID sessionUuid = 12;
+
+    bool newScope = 13;
+    bool newSession = 14;
+
+    bool mainNet = 15;
 }
 
 message EnvelopeEvent {
