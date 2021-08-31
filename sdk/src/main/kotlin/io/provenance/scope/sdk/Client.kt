@@ -24,6 +24,7 @@ import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toUuidProv
+import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
 import java.security.PublicKey
@@ -50,6 +51,8 @@ class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = 
 }
 
 class Client(val inner: SharedClient, val affiliate: Affiliate) {
+
+    private val log = LoggerFactory.getLogger(this::class.java);
 
     companion object {
         // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
@@ -120,10 +123,22 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     fun execute(session: Session, affiliateSharePublicKeys: Collection<PublicKey> = listOf()): ExecutionResult {
         val input = session.packageContract()
+        log.debug("Contract name: ${input.contract.definition.name}")
+        log.debug("Session Id: ${session.sessionUuid}")
+        log.debug("Execution UUID: ${input.executionUuid}")
+
+//        logger.trace("Input Hash: ${}")
+
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
 
         return when (result.isSigned(session.scope, inner.config.mainNet)) {
-            true -> SignedResult(session, result, inner.config.mainNet) // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
+            true -> {
+                val signedResult = SignedResult(session, result, inner.config.mainNet)
+                log.debug("Number of each type: ${ signedResult.executionInfo.groupingBy { it.second }.eachCount() }")
+                log.debug("List of ID/Address ${signedResult.executionInfo.map { it.third + it.first }}")
+                log.trace("Full Content of TX Protos: ${signedResult.messages}")
+                return signedResult
+            } // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existant
             false -> throw NotImplementedError("Multi-party contract support not yet implemented")
         }
     }
