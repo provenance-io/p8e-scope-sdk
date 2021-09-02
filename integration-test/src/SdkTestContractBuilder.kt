@@ -1,7 +1,7 @@
-package io.provenance.p8e.testframework
+package io.provenance.scope.sdk.testframework
 
 import io.provenance.metadata.v1.ScopeResponse
-import io.provenance.p8e.testframework.contracts.SdkSinglePartyContractLarge
+import io.provenance.scope.sdk.testframework.contracts.SdkSinglePartyContractLarge
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.contract.spec.P8eContract as SdkContract
 import io.provenance.scope.encryption.model.DirectKeyRef
@@ -13,11 +13,11 @@ import java.net.URI
 import java.util.*
 import kotlin.collections.HashMap
 
-class SdkTestContractBuilder(val contractType: Class<out SdkContract> = SdkSinglePartyContractLarge::class.java): TestContractBuilder {
-    override val factMap: HashMap<String, ByteArray> = HashMap<String, ByteArray>()
-    override var scopeUuid: UUID = UUID.randomUUID()
-    override var maxFacts: Int = SdkContractInformationMap.getValue(contractType).maxFacts
-    override var numParticipants: Int = SdkContractInformationMap.getValue(contractType).numParticipants
+class SdkTestContractBuilder(val contractType: Class<out SdkContract> = SdkSinglePartyContractLarge::class.java) {
+    val factMap: HashMap<String, ByteArray> = HashMap<String, ByteArray>()
+    var scopeUuid: UUID = UUID.randomUUID()
+    var maxFacts: Int = SdkContractInformationMap.getValue(contractType).maxFacts
+    var numParticipants: Int = SdkContractInformationMap.getValue(contractType).numParticipants
     var scope: ScopeResponse? = null
 
     val sharedClient = SharedClient(
