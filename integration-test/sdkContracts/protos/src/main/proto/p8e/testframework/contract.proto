@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package io.provenance.scope.sdk.testframework;
+
+option java_package = "io.provenance.scope.sdk.testframework.proto";
+option java_outer_classname = "RandomBytes";
+
+message Data {
+  bytes data = 1;
+}
