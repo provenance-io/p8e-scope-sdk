@@ -1,4 +1,4 @@
-package io.provenance.scope.sdk.testframework
+package io.provenance.p8e.testframework
 
 import com.google.protobuf.Any
 import cosmos.tx.v1beta1.TxOuterClass
@@ -8,8 +8,10 @@ import io.provenance.metadata.v1.QueryGrpc
 import io.provenance.metadata.v1.ScopeRequest
 import io.provenance.scope.contract.spec.P8eContract as SdkContract
 import io.provenance.metadata.v1.ScopeResponse
+//import io.provenance.metadata.v1.Session
 import io.provenance.p8e.shared.extension.logger
-import io.provenance.scope.sdk.testframework.proto.RandomBytes
+//import io.provenance.p8e.testframework.contracts.SdkSinglePartyTestScopeSpecification
+import io.provenance.p8e.testframework.proto.RandomBytes
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.*
 import io.provenance.scope.util.toUuidProv
@@ -19,12 +21,12 @@ import sample.TransactionService
 import java.util.concurrent.TimeUnit
 
 
-class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
+class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder): TestContract{
     var type: Class<out SdkContract> = contractBuilder.contractType
-    var numParticipants: Int = contractBuilder.numParticipants
-    var maxFacts: Int = contractBuilder.maxFacts
-    var scopeUuid: UUID = contractBuilder.scopeUuid
-    val factMap: HashMap<String, ByteArray> = contractBuilder.factMap
+    override var numParticipants: Int = contractBuilder.numParticipants
+    override var maxFacts: Int = contractBuilder.maxFacts
+    override var scopeUuid: UUID = contractBuilder.scopeUuid
+    override val factMap: HashMap<String, ByteArray> = contractBuilder.factMap
     val sharedClient: SharedClient = contractBuilder.sharedClient
     var ownerClient: Client = contractBuilder.ownerClient
     val scope: ScopeResponse? = contractBuilder.scope
@@ -45,6 +47,8 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         log.info("About to execute contract...")
         //Call execute and store result somewhere that can be used in waitForResult()
         val result = ownerClient.execute(sessionBuilder.build())
+
+//        log.info("result is: $result")
         log.info("result envelope is: ${(result as SignedResult).envelope}")
 
         //Submit to chain
@@ -113,7 +117,7 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         return SdkContractResult(resultState, indexedResult, scopeResponse)
     }
 
-    fun generateSessionBuilder(scopeSpec: Class<out P8eScopeSpecification>): Session.Builder{
+    fun generateSessionBuilder(scopeSpec: Class<out P8eScopeSpecification>): io.provenance.scope.sdk.Session.Builder{
         if(scope == null){
             log.info("No provided scope")
             return ownerClient.newSession(type, scopeSpec).setScopeUuid(scopeUuid)
@@ -126,7 +130,7 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         }
     }
 
-    fun supplyRecords(sessionBuilder: Session.Builder){
+    fun supplyRecords(sessionBuilder: io.provenance.scope.sdk.Session.Builder){
         for((recordName, data) in factMap){
             log.info("factMap contents: $recordName : $data")
             sessionBuilder.addProposedRecord(recordName,
