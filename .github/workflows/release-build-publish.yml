@@ -64,7 +64,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           directory: sdk/build/reports/jacoco/test/*.xml
 
-  java_build:
+  build_integration_test:
     needs: sdk_build
     name: Compile Integration Tests
     runs-on: ubuntu-latest
