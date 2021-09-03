@@ -36,11 +36,10 @@ jobs:
           server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
 
       - name: Build with Gradle
-        run: ./gradlew clean build
-         --refresh-dependencies -Pversion=$VERSION
+        run: ./gradlew clean build --refresh-dependencies -Pversion=$VERSION
          
       - name: Publish to Maven Local
-        run: ./gradlew publishTomavenLocal --info
+        run: ./gradlew publishToMavenLocal --info
 
       - name: Install gpg secret key
         run: |
