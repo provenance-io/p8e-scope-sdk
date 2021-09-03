@@ -1,4 +1,4 @@
-package io.provenance.p8e.testframework
+package io.provenance.scope.sdk.testframework
 
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldNotBe
@@ -13,9 +13,7 @@ import java.net.URI
 import java.security.KeyPair
 import java.util.*
 import io.provenance.p8e.shared.extension.logger
-import io.provenance.p8e.testframework.contracts.SdkSinglePartyContractMedium
-import io.provenance.p8e.testframework.contracts.SdkSinglePartyContractSmall
-import io.provenance.p8e.testframework.contracts.SdkSinglePartyContractSmallModify
+import io.provenance.scope.sdk.testframework.contracts.*
 import io.provenance.scope.sdk.extensions.uuid
 
 //TODO: Add more assertions to make sure everything is working

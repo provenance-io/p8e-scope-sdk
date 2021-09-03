@@ -124,13 +124,3 @@ fun ECDSASignature.encodeAsBTC(): ByteArray {
 
     return signature
 }
-
-
-
-
-
-
-
-
-
-
