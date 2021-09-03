@@ -65,7 +65,7 @@ jobs:
           directory: sdk/build/reports/jacoco/test/*.xml
 
   build_integration_test:
-    needs: sdk_build
+    needs: java_build
     name: Compile Integration Tests
     runs-on: ubuntu-latest
     
