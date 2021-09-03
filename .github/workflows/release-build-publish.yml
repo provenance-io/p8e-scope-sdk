@@ -38,6 +38,9 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build
          --refresh-dependencies -Pversion=$VERSION
+         
+      - name: Publish to Maven Local
+        run: ./gradlew publishTomavenLocal --info
 
       - name: Install gpg secret key
         run: |
@@ -79,9 +82,9 @@ jobs:
           server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
           
       - name: Build, Bootstrap, and Publish contracts
-        run: ./gradlew build p8eClean p8eBootstrap publishToMavenLocal
+        run: ./gradlew clean build p8eClean p8eBootstrap publishToMavenLocal
         working-directory: ./integration-test/sdkContracts
           
       - name: Compile Tests
-        run: ./gradlew compileKotlin --refresh-dependencies
+        run: ./gradlew clean compileKotlin --refresh-dependencies
         working-directory: ./integration-test
