@@ -1,10 +1,9 @@
-package io.provenance.p8e.testframework
+package io.provenance.scope.sdk.testframework
 
-import io.p8e.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eContract as SdkContract
 import io.p8e.proto.ContractScope
 import io.provenance.metadata.v1.ScopeResponse
-import io.provenance.p8e.testframework.contracts.*
+import io.provenance.scope.sdk.testframework.contracts.*
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.encryption.util.toJavaPublicKey
@@ -31,7 +30,6 @@ fun generateRandomBytes(numberOfBytes: Int): ByteArray {
 //Holds the number of facts in the contract, the number of parties, and the scope's class.java for sdk,
 // for p8e holds whether or not the contract is multi-step
 data class SdkContractInformation(val maxFacts: Int, val numParticipants: Int, val scopeSpec: Class<out P8eScopeSpecification>)
-data class P8eContractInformation(val maxFacts: Int, val numParticipants: Int, val isMultiStep: Boolean)
 
 //TODO: Add multi-party and multi-step contracts when those are implemented
 //To use your own contracts, just add the class.java and put the needed information in the data class
@@ -51,23 +49,6 @@ val SdkContractInformationMap = hashMapOf<Class<out SdkContract>, SdkContractInf
             SdkContractInformation(20, 1, SdkSinglePartyTestScopeSpecification::class.java as Class<out P8eScopeSpecification>)
 )
 
-//TODO: Should probably change the names of the contracts to have P8e at the start for clarity...
-//Needed Information: Number of facts, number of parties, and whether or not it is multi-step.
-//TODO: I don't actually know how much you can customize a contract for the TestContract to properly execute
-//      At the very least, I think if it's multi-party, it needs OWNER, CUSTODIAN, and OMNIBUS
-//      And if it's multi-step, it needs OWNER and CUSTODIAN and you can't have any other parties(for now at least)
-val P8eContractInformationMap = hashMapOf<Class<out P8eContract>, P8eContractInformation>(
-    SinglePartyContractSmall::class.java to P8eContractInformation(2, 1, false),
-    SinglePartyContractMedium::class.java to P8eContractInformation(8, 1, false),
-    SinglePartyContractLarge::class.java to P8eContractInformation(20, 1, false),
-    MultiPartyContractSmall::class.java to P8eContractInformation(2, 3, false),
-    MultiPartyContractMedium::class.java to P8eContractInformation(8, 3, false),
-    MultiPartyContractLarge::class.java to P8eContractInformation(20, 3, false),
-    MultiPartyMultiStepContractSmall::class.java to P8eContractInformation(2, 4, true),
-    MultiPartyMultiStepContractMedium::class.java to P8eContractInformation(8, 4, true),
-    MultiPartyMultiStepContractLarge::class.java to P8eContractInformation(20, 4, true)
-)
-
 //Used in ContractResult to tell if the contract completed or not.
 enum class ResultState { SUCCESS, FAILED }
 
@@ -76,12 +57,6 @@ data class SdkContractResult(
     val result: ResultState,
     val indexedResult: Map<String, Any>,
     val scope: ScopeResponse?
-)
-
-data class ContractResult(
-    val result: ResultState,
-    val envelope: ContractScope.Envelope,
-    val scope: ContractScope.Scope?,
 )
 
 enum class Facts(val fact: String) {
@@ -112,16 +87,4 @@ enum class Facts(val fact: String) {
 //    SDKSPSmallM(SdkSinglePartyContractSmallModify::class.java),
 //    SDKSPMediumM(SdkSinglePartyContractMediumModify::class.java),
 //    SDKSPLargeM(SdkSinglePartyContractLargeModify::class.java)
-//}
-//
-//enum class P8eContractType(val type: Class<out P8eContract>) {
-//    SPSmall(SinglePartyContractSmall::class.java),
-//    SPMedium(SinglePartyContractMedium::class.java),
-//    SPLarge(SinglePartyContractLarge::class.java),
-//    MPSmall(MultiPartyContractSmall::class.java),
-//    MPMedium(MultiPartyContractMedium::class.java),
-//    MPLarge(MultiPartyContractLarge::class.java),
-//    MPMSSmall(MultiPartyMultiStepContractSmall::class.java),
-//    MPMSMedium(MultiPartyMultiStepContractMedium::class.java),
-//    MPMSLarge(MultiPartyMultiStepContractLarge::class.java),
 //}
