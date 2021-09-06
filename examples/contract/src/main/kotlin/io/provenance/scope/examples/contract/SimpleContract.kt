@@ -23,7 +23,7 @@ class SimpleExampleScopeSpecification() : P8eScopeSpecification()
 
 @Participants(roles = [OWNER])
 @ScopeSpecification(names = [scopeNamespace])
-open class SimpleExampeContract(): P8eContract() {
+open class SimpleExampleContract: P8eContract() {
     @Function(invokedBy = OWNER)
     @Record(name = "name")
     open fun name(@Input(name = "name") name: ExampleName): ExampleName =

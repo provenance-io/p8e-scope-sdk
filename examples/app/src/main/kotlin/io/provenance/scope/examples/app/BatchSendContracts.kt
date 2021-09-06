@@ -1,7 +1,6 @@
 package io.provenance.scope.examples.app
 
 import io.grpc.ManagedChannelBuilder
-import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.proto.Specifications.PartyType
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.DirectKeyRef
@@ -16,14 +15,27 @@ import io.provenance.scope.sdk.SharedClient
 import io.provenance.scope.sdk.SignedResult
 import java.net.URI
 import java.util.UUID
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
-data class ExampleNameHydrate(
-    @Record("name") val name: ExampleName,
-)
+fun createRandomExampleContract(sdk: Client): SignedResult {
+    val scopeUuid = UUID.randomUUID()
+    val session = sdk.newSession(SimpleExampleContract::class.java, SimpleExampleScopeSpecification::class.java)
+        .setScopeUuid(scopeUuid)
+        .addProposedRecord("name", ExampleName.newBuilder().setFirstName(scopeUuid.toString()).build())
+        .build()
 
+    return when (val result = sdk.execute(session)) {
+        is SignedResult -> result
+        else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
+    }
+}
+
+// This example demonstrates how a background thread can be used to batch records to persist to Provenance. This
+// solution results in an increase in throughput and is a good strategy to use when higher throughput is required.
 fun main(args: Array<String>) {
-    println("Executing simple contract example!")
+    println("Executing batch contract example!")
 
     // Creates Provenance grpc client. This is used for fetching Provenance account information, as well as
     // simulating and broadcasting TXs.
@@ -60,34 +72,40 @@ fun main(args: Array<String>) {
         partyType = PartyType.OWNER,
     )
     val sdk = Client(SharedClient(config = config), affiliate)
+    val queue = LinkedBlockingQueue<SignedResult>(10)
 
-    // A UUID used to create and update this scope. This can be thought of as the unique primary key
-    // referencing the scope we will be creating below.
-    val scopeUuid = UUID.randomUUID()
+    thread(start = true, isDaemon = true) {
+        val batch = mutableListOf<SignedResult>()
+
+        while (true) {
+            while (batch.size < 10) {
+                batch.add(queue.take())
+            }
+
+            println("Sending batch of 10 scopes to Provenance!")
+            persistBatchToProvenance(transactionService, batch, affiliate.signingKeyRef as DirectKeyRef)
+            println("Batch completed!")
+            batch.clear()
+        }
+    }
 
     try {
-        // Creates and executes a new session on a new scope that contains a single record.
-        val session = sdk.newSession(SimpleExampleContract::class.java, SimpleExampleScopeSpecification::class.java)
-            .setScopeUuid(scopeUuid)
-            .addProposedRecord(
-                "name",
-                ExampleName.newBuilder()
-                    .setFirstName("Jerry")
-                    .setLastName("Seinfeld")
-                    .build()
-            )
-            .build()
-
-        // A single party contract will always return a batch of messages that can be persisted to Provenance.
-        when (val result = sdk.execute(session)) {
-            is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
-            else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
+        repeat(70) {
+            queue.put(createRandomExampleContract(sdk))
+            println("Queued a contract!")
         }
 
-        // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
-        val scopeResponse = getScope(channel, scopeUuid)
-        val scope = sdk.hydrate(ExampleNameHydrate::class.java, scopeResponse)
-        println("ExampleName record data = $scope")
+        println("Completed queuing all contracts!")
+        var timeoutSecs = 0
+        val timeout = 20
+        while (queue.isNotEmpty() && timeoutSecs < timeout) {
+            Thread.sleep(1_000)
+            timeoutSecs += 1
+        }
+
+        if (timeoutSecs >= timeout) {
+            println("Could not finish last batch before timeout!")
+        }
     } catch (e: Exception) {
         println(e.printStackTrace())
     } finally {

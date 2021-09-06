@@ -23,10 +23,12 @@ import io.provenance.scope.sdk.extensions.isSigned
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
+import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuidProv
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
+import java.util.UUID
 import java.security.PublicKey
 import java.util.concurrent.TimeUnit
 
@@ -65,7 +67,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     // finish this function implementation
     // make resolver that can go from byte array to Message class
 
-    fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse, session: SessionProto): Session.Builder {
+    fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse, session: SessionProto? = null): Session.Builder {
         val contractHash = getContractHash(clazz)
         val protoHash = clazz.methods
             .find { Message::class.java.isAssignableFrom(it.returnType) }
@@ -83,7 +85,12 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
-            .setProposedSession(session)
+            .setProposedSession(
+                session ?: SessionProto.newBuilder()
+                    .setSessionId(UUID.randomUUID().toString().toByteString())
+                    .setName("Default session for ${clazz.name}")
+                    .build()
+            )
             .setScope(scope)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }

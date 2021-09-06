@@ -28,6 +28,17 @@ fun persistBatchToProvenance(transactionService: TransactionService, result: Sig
     }
 }
 
+fun persistBatchToProvenance(transactionService: TransactionService, result: Collection<SignedResult>, keyRef: DirectKeyRef) {
+    val txBody = TxBody.newBuilder().addAllMessages(result.flatMap { it.messages }.map { Any.pack(it, "") }).build()
+    val accountInfo = transactionService.accountInfo(keyRef.publicKey.getAddress(false))
+    val estimate = transactionService.estimateTx(txBody, accountInfo.accountNumber, accountInfo.sequence, keyRef.keyPair())
+    val result = transactionService.batchTxBlock(txBody, accountInfo.accountNumber, accountInfo.sequence, estimate, keyRef.keyPair())
+
+    if (result.txResponse.code != 0) {
+        throw ProvenanceTxException(result.txResponse.toString())
+    }
+}
+
 fun getScope(channel: Channel, uuid: UUID): ScopeResponse {
     val metadataClient = QueryGrpc.newBlockingStub(channel).withDeadlineAfter(10, TimeUnit.SECONDS)
 
