@@ -39,7 +39,7 @@ jobs:
         run: ./gradlew clean build --refresh-dependencies -Pversion=$VERSION
 
       - name: Publish to Maven Local
-        run: ./gradlew publishToMavenLocal --info
+        run: ./gradlew publishToMavenLocal -xsignMavenPublication --info
 
       - name: Install gpg secret key
         run: |
