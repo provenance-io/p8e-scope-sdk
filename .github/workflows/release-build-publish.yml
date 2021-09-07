@@ -66,7 +66,7 @@ jobs:
   build_integration_test:
     name: Compile Integration Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v2
 
@@ -75,25 +75,37 @@ jobs:
         with:
           java-version: 11
           server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
-          
+
       - name: Build with Gradle
         run: ./gradlew clean build --refresh-dependencies
-        
+
       - name: Publish to Maven Local
         run: ./gradlew publishToMavenLocal -x signMavenPublication --info
-        
+
       - name: Build Contracts
-        run: ./gradlew clean build
+        run: ./gradlew clean build --refresh-dependencies
         working-directory: ./integration-test/sdkContracts
-        
-      - name: Bootstrap Contracts
-        run: ./gradlew p8eClean p8eBootstrap --info
-        working-directory: ./integration-test/sdkContracts
-        
+        env:
+          OS_GRPC_URL: grpc://localhost:5000
+          PROVENANCE_GRPC_URL: grpc://rpc-0.test.provenance.io:9090
+          CHAIN_ID: pio-testnet-1
+
+        # - name: Bootstrap Contracts
+        #   run: ./gradlew p8eClean p8eCheck p8eBootstrap --info
+        #   working-directory: ./integration-test/sdkContracts
+        #   env:
+        #     OS_GRPC_URL: grpc://localhost:5000
+        #     PROVENANCE_GRPC_URL: grpc://rpc-0.test.provenance.io:9090
+        #     CHAIN_ID: pio-testnet-1
+
       - name: Publish Contracts
         run: ./gradlew publishToMavenLocal --info
         working-directory: ./integration-test/sdkContracts
-          
+        env:
+          OS_GRPC_URL: grpc://localhost:5000
+          PROVENANCE_GRPC_URL: grpc://rpc-0.test.provenance.io:9090
+          CHAIN_ID: pio-testnet-1
+
       - name: Compile Tests
         run: ./gradlew clean compileKotlin --refresh-dependencies
         working-directory: ./integration-test
