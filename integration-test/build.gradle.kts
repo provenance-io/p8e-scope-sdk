@@ -26,7 +26,7 @@ dependencies {
     implementation(kotlin("stdlib", "1.4.32"))
 
     implementation("io.provenance.p8e:p8e-sdk:0.7.+")
-    implementation("io.provenance.p8e:p8e-contract-base:0.7.+")
+    implementation("io.provenance.p8e:p8e-contract-base:1.0-SNAPSHOT")
     implementation("io.provenance.p8e.p8e-integration-tests:contracts:1.0-SNAPSHOT")
     implementation("io.provenance.p8e.p8e-integration-tests:protos:1.0-SNAPSHOT")
 

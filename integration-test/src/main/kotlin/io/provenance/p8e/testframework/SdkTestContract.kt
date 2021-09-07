@@ -28,8 +28,13 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
     val sharedClient: SharedClient = contractBuilder.sharedClient
     var ownerClient: Client = contractBuilder.ownerClient
     val scope: ScopeResponse? = contractBuilder.scope
-
     val log = logger()
+
+    companion object{
+        val pbChannel = ManagedChannelBuilder.forAddress("localhost", 9090)
+            .usePlaintext()
+            .build()
+    }
 
     fun execute(): SdkContractResult{
         //Get scopeSpecUuid
@@ -48,7 +53,6 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         log.info("result envelope is: ${(result as SignedResult).envelope}")
 
         //Submit to chain
-
         val pbChannel = ManagedChannelBuilder.forAddress("localhost", 9090)
             .usePlaintext()
             .build()
@@ -107,9 +111,9 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
             }
             else -> TODO("multiparty schtuff")
         }
-        pbChannel.shutdown()
-        //TODO: Wait until awaitTermination() is true?
-        pbChannel.awaitTermination(60, TimeUnit.SECONDS)
+        //TODO: Figure out how to properly shut down the channel so tests aren't flooded
+//        pbChannel.shutdown()
+//        pbChannel.awaitTermination(240, TimeUnit.SECONDS)
         return SdkContractResult(resultState, indexedResult, scopeResponse)
     }
 
