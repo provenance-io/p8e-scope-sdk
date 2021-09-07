@@ -81,6 +81,18 @@ jobs:
         
       - name: Publish to Maven Local
         run: ./gradlew publishToMavenLocal -x signMavenPublication --info
+        
+      - name: Build Contracts
+        run: ./gradlew clean build
+        working-directory: ./integration-test/sdkContracts
+        
+      - name: Bootstrap Contracts
+        run: ./gradlew p8eClean p8eBootstrap --info
+        working-directory: ./integration-test/sdkContracts
+        
+      - name: Publish Contracts
+        run: ./gradlew publishToMavenLocal --info
+        working-directory: ./integration-test/sdkContracts
           
       - name: Compile Tests
         run: ./gradlew clean compileKotlin --refresh-dependencies
