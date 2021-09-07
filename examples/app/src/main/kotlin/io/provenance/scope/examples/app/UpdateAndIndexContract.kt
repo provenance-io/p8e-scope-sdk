@@ -190,31 +190,31 @@ fun main(args: Array<String>) {
         val scope = sdk.hydrate(LoanScopeData::class.java, scopeResponse)
         println("Loan scope after onboard = $scope")
 
-        // val sessionTwo = sdk.newSession(AddLoanDocument::class.java, scopeResponse)
-        //     .addProposedRecord(
-        //         "documents",
-        //         DocumentList.newBuilder()
-        //             .addDocuments(Document.newBuilder()
-        //                 .setUuid(UUID.randomUUID().toString())
-        //                 .setName("updated_disclosure.pdf")
-        //                 .setLocation("/assets/docs/$scopeUuid/${UUID.randomUUID()}")
-        //                 .setRawDoc(ByteArray(150).toByteString())
-        //                 .setChecksum("0")
-        //                 .build()
-        //             )
-        //             .build()
-        //     ).build()
+        val sessionTwo = sdk.newSession(AddLoanDocument::class.java, scopeResponse)
+            .addProposedRecord(
+                "documents",
+                DocumentList.newBuilder()
+                    .addDocuments(Document.newBuilder()
+                        .setUuid(UUID.randomUUID().toString())
+                        .setName("updated_disclosure.pdf")
+                        .setLocation("/assets/docs/$scopeUuid/${UUID.randomUUID()}")
+                        .setRawDoc(ByteArray(150).toByteString())
+                        .setChecksum("0")
+                        .build()
+                    )
+                    .build()
+            ).build()
 
-        // // A single party contract will always return a batch of messages that can be persisted to Provenance.
-        // when (val result = sdk.execute(sessionTwo)) {
-        //     is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
-        //     else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
-        // }
+        // A single party contract will always return a batch of messages that can be persisted to Provenance.
+        when (val result = sdk.execute(sessionTwo)) {
+            is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
+            else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
+        }
 
-        // // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
-        // val scopeResponseTwo = getScope(channel, scopeUuid)
-        // val scopeTwo = sdk.hydrate(LoanScopeData::class.java, scopeResponse)
-        // println("Document list after adding a new document = ${scopeTwo.documents}")
+        // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
+        val scopeResponseTwo = getScope(channel, scopeUuid)
+        val scopeTwo = sdk.hydrate(LoanScopeData::class.java, scopeResponse)
+        println("Document list after adding a new document = ${scopeTwo.documents}")
 
         // val sessionThree = sdk.newSession(AddLoanServicing::class.java, scopeResponseTwo)
         //     .addProposedRecord(

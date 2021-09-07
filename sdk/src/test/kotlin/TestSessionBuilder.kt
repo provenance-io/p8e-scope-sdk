@@ -1,16 +1,12 @@
 package io.provenance.p8e.testframework
 
 import com.google.protobuf.ByteString
-import com.google.protobuf.Message
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.*
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.sdk.Session
-import io.provenance.scope.sdk.Client
-import java.lang.RuntimeException
-import java.util.*
 
 class UtilsTest : WordSpec({
 
