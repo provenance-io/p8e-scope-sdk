@@ -213,42 +213,42 @@ fun main(args: Array<String>) {
 
         // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
         val scopeResponseTwo = getScope(channel, scopeUuid)
-        val scopeTwo = sdk.hydrate(LoanScopeData::class.java, scopeResponse)
+        val scopeTwo = sdk.hydrate(LoanScopeData::class.java, scopeResponseTwo)
         println("Document list after adding a new document = ${scopeTwo.documents}")
 
-        // val sessionThree = sdk.newSession(AddLoanServicing::class.java, scopeResponseTwo)
-        //     .addProposedRecord(
-        //         "servicing",
-        //         Servicing.newBuilder()
-        //             .setUuid(UUID.randomUUID().toString())
-        //             .setServicerName("FIGURE")
-        //             .setServiceOwnLoans(true)
-        //             .addDocuments(Document.newBuilder()
-        //                 .setUuid(UUID.randomUUID().toString())
-        //                 .setName("servicing_agreement.pdf")
-        //                 .setLocation("/assets/docs/$scopeUuid/${UUID.randomUUID()}")
-        //                 .setRawDoc(ByteArray(50).toByteString())
-        //                 .setChecksum("0")
-        //                 .build()
-        //             )
-        //             .build()
-        //     ).build()
+        val sessionThree = sdk.newSession(AddLoanServicing::class.java, scopeResponseTwo)
+            .addProposedRecord(
+                "servicing",
+                Servicing.newBuilder()
+                    .setUuid(UUID.randomUUID().toString())
+                    .setServicerName("FIGURE")
+                    .setServiceOwnLoans(true)
+                    .addDocuments(Document.newBuilder()
+                        .setUuid(UUID.randomUUID().toString())
+                        .setName("servicing_agreement.pdf")
+                        .setLocation("/assets/docs/$scopeUuid/${UUID.randomUUID()}")
+                        .setRawDoc(ByteArray(50).toByteString())
+                        .setChecksum("0")
+                        .build()
+                    )
+                    .build()
+            ).build()
 
-        // // A single party contract will always return a batch of messages that can be persisted to Provenance.
-        // when (val result = sdk.execute(sessionTwo)) {
-        //     is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
-        //     else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
-        // }
+        // A single party contract will always return a batch of messages that can be persisted to Provenance.
+        when (val result = sdk.execute(sessionThree)) {
+            is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
+            else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
+        }
 
-        // // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
-        // val scopeResponseThree = getScope(channel, scopeUuid)
-        // val scopeThree = sdk.hydrate(LoanServicingData::class.java, scopeResponse)
-        // println("New Servicing record = ${scopeThree.servicing}")
+        // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
+        val scopeResponseThree = getScope(channel, scopeUuid)
+        val scopeThree = sdk.hydrate(LoanServicingData::class.java, scopeResponseThree)
+        println("New Servicing record = ${scopeThree.servicing}")
 
         // The proto indexer provides a way to filter the full scope down to a JSON representation
         // that can be stored efficiently in a downstream system for lookups.
         val result = sdk.inner.indexer.indexFields(
-            scopeResponse,
+            scopeResponseThree,
             keyPairs = listOf(KeyPair(affiliate.encryptionKeyRef.publicKey, (affiliate.encryptionKeyRef as DirectKeyRef).privateKey))
         )
         println("Proto indexer result = $result")
