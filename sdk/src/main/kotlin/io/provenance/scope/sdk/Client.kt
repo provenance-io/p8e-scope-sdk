@@ -138,7 +138,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
 //        logger.trace("Input Hash: ${}")
 
-        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
+        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, affiliateSharePublicKeys)
 
         val envelopeState = EnvelopeState.newBuilder()
             .setInput(input)
