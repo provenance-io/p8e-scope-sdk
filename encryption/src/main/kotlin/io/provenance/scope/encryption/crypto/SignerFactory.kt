@@ -8,14 +8,14 @@ import java.security.KeyPair
 import java.security.PublicKey
 
 class SignerFactory(
-//    private val signAndVerifyApi: SignAndVerifyApi? = null
+    private val signAndVerifyApi: SignAndVerifyApi? = null
 ) {
     fun getSigner(keyRef: KeyRef): SignerImpl = when (keyRef) {
         is DirectKeyRef -> Pen(KeyPair(keyRef.publicKey, keyRef.privateKey))
-//        is SmartKeyRef -> when (signAndVerifyApi) {
-//            null -> throw IllegalStateException("SignerFactory requires a SignAndVerifyApi instance when using SmartKeyRef")
-//            else -> SmartKeySigner(keyRef.uuid.toString(), keyRef.publicKey, signAndVerifyApi)
-//        }
-        is SmartKeyRef -> throw NotImplementedError("SmartKey support not implemented")
+        is SmartKeyRef -> when (signAndVerifyApi) {
+            null -> throw IllegalStateException("SignerFactory requires a SignAndVerifyApi instance when using SmartKeyRef")
+            else -> SmartKeySigner(keyRef.uuid.toString(), keyRef.publicKey, signAndVerifyApi)
+        }
+//        is SmartKeyRef -> throw NotImplementedError("SmartKey support not implemented")
     }
 }
