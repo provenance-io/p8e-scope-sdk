@@ -19,14 +19,12 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
-import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.UUID.randomUUID
 
 class Session(
-    val proposedSession: Session?,
     val participants: HashMap<Specifications.PartyType, PublicKeys.PublicKey>,
     val proposedRecords: HashMap<String, Message>,
     val client: Client, // TODO (wyatt) should probably move this class into the client so we have access to the
@@ -40,7 +38,6 @@ class Session(
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
 ) {
     private constructor(builder: Builder) : this(
-        builder.proposedSession,
         builder.participants,
         builder.proposedRecords,
         builder.client!!,
@@ -54,8 +51,6 @@ class Session(
     )
 
     class Builder(val scopeSpecUuid: java.util.UUID) {
-        var proposedSession: Session? = null
-            private set
         var proposedRecords: HashMap<String, Message> = HashMap()
             private set
         var participants: HashMap<Specifications.PartyType, PublicKeys.PublicKey> = HashMap()
@@ -81,15 +76,7 @@ class Session(
         }
 
         fun setSessionUuid(sessionUuid: java.util.UUID) = apply {
-            if (proposedSession != null) {
-                throw IllegalStateException("Session UUID cannot be set once the proposed session is already set")
-            }
             this.sessionUuid = sessionUuid
-        }
-
-        fun setProposedSession(session: Session) = apply {
-            this.proposedSession = session
-            this.sessionUuid = session.sessionId.toByteArray().let { MetadataAddress.fromBytes(it) }.getSecondaryUuid()
         }
 
         fun setContractSpec(contractSpec: Specifications.ContractSpec) = apply {
