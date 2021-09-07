@@ -77,7 +77,7 @@ jobs:
           server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
           
       - name: Build with Gradle
-        run: ./gradlew clean --refresh-dependencies
+        run: ./gradlew clean build --refresh-dependencies
         
       - name: Publish to Maven Local
         run: ./gradlew publishToMavenLocal -x signMavenPublication --info
