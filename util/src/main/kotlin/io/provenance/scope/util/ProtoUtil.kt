@@ -61,7 +61,7 @@ object ProtoUtil {
 //    outputDef.name,
 //    String(objectWithItem.obj.unencryptedSha512.base64Encode()),
 //    message.javaClass.name,
-//    scope?.uuid?.toUuidProv(),
+//    scope?.uuid?.toUuid(),
 //    ancestorHash
     fun proposedRecordOf(name: String, hash: String, classname: String, scopeUuid: UUID? = null, ancestorHash: String? = null) =
         ProposedRecord.newBuilder()

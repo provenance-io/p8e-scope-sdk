@@ -13,7 +13,7 @@ import io.provenance.scope.sdk.*
 import io.provenance.scope.sdk.Session
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import java.net.URI
 import java.security.KeyPair
 import java.util.*
@@ -62,7 +62,7 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
     val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
     var scopeSpecUuid: UUID
     if(!existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid.isNullOrEmpty()) {
-        scopeSpecUuid = existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid!!.toUuidProv()
+        scopeSpecUuid = existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid!!.toUuid()
     } else {
         scopeSpecUuid = UUID.randomUUID()
     }

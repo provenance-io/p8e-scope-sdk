@@ -16,11 +16,11 @@ import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
-import io.provenance.scope.util.toProtoUuidProv
+import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.util.MetadataAddress
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.UUID.randomUUID
@@ -70,7 +70,7 @@ class Session(
 
         var scope: ScopeResponse? = null
 
-        var executionUuid: UUID? = randomUUID().toProtoUuidProv()
+        var executionUuid: UUID? = randomUUID().toProtoUuid()
 
         var sessionUuid: java.util.UUID = randomUUID()
 
@@ -106,7 +106,7 @@ class Session(
 
         fun setScope(scopeResponse: ScopeResponse) = apply {
             scope = scopeResponse
-            scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuidProv()
+            scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuid()
         }
 
         fun setScopeUuid(scopeUUID: java.util.UUID) = apply {
@@ -377,7 +377,7 @@ class Session(
             .setContract(contract)
             .also {
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
-                // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestampProv() } ?: builder.clearExpirationTime()
+                // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestamp() } ?: builder.clearExpirationTime()
                 it.ref = it.refBuilder
                     .setHash(contract.toByteArray().sha256().base64EncodeString())
                     .build()
