@@ -8,7 +8,6 @@ import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.encryption.util.toJavaPublicKey
-import io.provenance.scope.objectstore.util.toByteArray
 import io.provenance.scope.sdk.*
 import io.provenance.scope.sdk.Session
 import io.provenance.scope.util.MetadataAddress
@@ -70,11 +69,8 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
         .setContractSpec(spec.build())
         .setProvenanceReference(provenanceReference)
         .setClient(osClient)
+        .setSessionUuid(UUID.randomUUID())
         .apply {
-            val proposedSession = io.provenance.metadata.v1.Session.newBuilder()
-                .setSessionId(MetadataAddress.forSession(scopeUuid, UUID.randomUUID()).bytes.toByteString())
-                .build()
-            setProposedSession(proposedSession)
             if (existingScope != null) {
                 setScope(existingScope)
             }
