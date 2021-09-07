@@ -4,7 +4,6 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.ContractEngine
-import io.provenance.metadata.v1.Session as SessionProto
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.annotations.ScopeSpecificationDefinition
 import io.provenance.scope.contract.contracts.ContractHash
@@ -65,7 +64,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     // finish this function implementation
     // make resolver that can go from byte array to Message class
 
-    fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse, session: SessionProto): Session.Builder {
+    fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse): Session.Builder {
         val contractHash = getContractHash(clazz)
         val protoHash = clazz.methods
             .find { Message::class.java.isAssignableFrom(it.returnType) }
@@ -83,7 +82,6 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
-            .setProposedSession(session)
             .setScope(scope)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProtoOS())
     }
