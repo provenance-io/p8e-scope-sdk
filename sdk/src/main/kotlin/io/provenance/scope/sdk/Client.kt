@@ -27,7 +27,6 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.sdk.mailbox.MailHandlerFn
 import io.provenance.scope.sdk.mailbox.MailboxService
 import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
-import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.toUuidProv
 import org.slf4j.LoggerFactory
 import java.io.Closeable
@@ -78,17 +77,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
         private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList() // todo: can we use the contract/proto hashes to generate a dynamic list of what should/should not be loaded from memory vs. system class loader
         private val protoHashes = ServiceLoader.load(ProtoHash::class.java).toList()
-        private var _mailPoller: ScheduledExecutorService? = null
-        private val mailPoller: ScheduledExecutorService
-            get() {
-                if (_mailPoller == null) {
-                    _mailPoller = ThreadPoolFactory.newScheduledThreadPool(1, "mail-poll-%d")
-                }
-                return _mailPoller!!
-            }
     }
-
-    private var mailFuture: ScheduledFuture<*>? = null
 
     // TODO
     // add error handling and start with extensions present here
@@ -169,17 +158,15 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         }
     }
 
-    fun registerMailHandler(handler: MailHandlerFn) {
-        mailFuture?.cancel(false)
-        mailFuture = mailPoller.scheduleAtFixedRate(PollAffiliateMailbox(
+    fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
+        executor.scheduleAtFixedRate(PollAffiliateMailbox(
             inner.osClient.osClient,
             signingKeyRef = affiliate.signingKeyRef,
             encryptionKeyRef = affiliate.encryptionKeyRef,
-            maxResults =100,
+            maxResults = 100,
             inner.config.mainNet,
             handler
         ), 1, 1, TimeUnit.SECONDS)
-    }
 
     fun requestAffiliateExecution(envelope: Envelope) {
         // todo: verify this Client instance's affiliate is on the envelope?

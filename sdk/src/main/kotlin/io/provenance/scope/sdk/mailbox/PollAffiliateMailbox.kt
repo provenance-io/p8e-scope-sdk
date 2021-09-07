@@ -13,8 +13,9 @@ import io.provenance.scope.sdk.extensions.scopeOrNull
 import io.provenance.scope.toHex
 import org.slf4j.LoggerFactory
 import java.util.UUID
+import java.util.function.Function
 
-typealias MailHandlerFn = (MailboxEvent) -> Boolean?
+typealias MailHandlerFn = Function<MailboxEvent, Boolean>
 
 class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, val encryptionKeyRef: KeyRef, val maxResults: Int, val mainNet: Boolean, val handler: MailHandlerFn): Runnable {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -81,10 +82,8 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
     }
 
     private fun MailHandlerFn.handleSynchronousAck(mailUuid: UUID, event: MailboxEvent) {
-        invoke(event)
-            .takeIf { it == true }
-            ?.also {
-                osClient.mailboxAck(mailUuid)
-            }
+        if (apply(event)) {
+            osClient.mailboxAck(mailUuid)
+        }
     }
 }
