@@ -1,7 +1,8 @@
 package io.provenance.scope.sdk.testframework
 
+import com.google.protobuf.ByteString
 import io.provenance.scope.contract.spec.P8eContract as SdkContract
-import io.p8e.proto.ContractScope
+//import io.p8e.proto.ContractScope
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.sdk.testframework.contracts.*
 import io.provenance.scope.contract.spec.P8eScopeSpecification
@@ -26,6 +27,8 @@ fun generateRandomBytes(numberOfBytes: Int): ByteArray {
     }
     return randomBytes
 }
+
+fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
 //Holds the number of facts in the contract, the number of parties, and the scope's class.java for sdk,
 // for p8e holds whether or not the contract is multi-step

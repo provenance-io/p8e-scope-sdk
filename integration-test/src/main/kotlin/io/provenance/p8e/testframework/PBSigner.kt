@@ -1,6 +1,6 @@
 package sample
 
-import io.provenance.engine.crypto.getUnsignedBytes
+//import io.provenance.engine.crypto.getUnsignedBytes
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.objectstore.util.base64Decode
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey
@@ -8,6 +8,7 @@ import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.kethereum.crypto.CURVE
 import org.kethereum.crypto.api.ec.ECDSASignature
 import org.kethereum.crypto.impl.ec.EllipticCurveSigner
+import java.math.BigInteger
 import java.security.KeyPair
 
 import java.security.MessageDigest
@@ -123,4 +124,18 @@ fun ECDSASignature.encodeAsBTC(): ByteArray {
     System.arraycopy(sBytes, 0, signature, 64 - sBytes.size, sBytes.size)
 
     return signature
+}
+
+/**
+ * Returns the bytes from a BigInteger as an unsigned version by truncating a byte if needed.
+ */
+fun BigInteger.getUnsignedBytes(): ByteArray {
+    val bytes = this.toByteArray();
+
+    if (bytes[0] == 0x0.toByte())
+    {
+        return bytes.drop(1).toByteArray()
+    }
+
+    return bytes;
 }

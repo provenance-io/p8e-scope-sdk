@@ -12,7 +12,7 @@ import io.provenance.scope.sdk.SharedClient
 import java.net.URI
 import java.security.KeyPair
 import java.util.*
-import io.provenance.p8e.shared.extension.logger
+//import io.provenance.p8e.shared.extension.logger
 import io.provenance.scope.sdk.testframework.contracts.*
 import io.provenance.scope.sdk.extensions.uuid
 
@@ -113,8 +113,8 @@ class SdkTestContractTests : WordSpec({
         //TODO: Need update contracts to implement this.  See highlighted example on the page in chrome
         //TODO: Use newSession function with 3 parameters
         "Be able to change the scope and still execute"{
-            val log = logger()
-            log.info("Starting final test...")
+//            val log = logger()
+//            log.info("Starting final test...")
 
             val builder: SdkTestContractBuilder = SdkTestContractBuilder(SdkSinglePartyContractSmall::class.java)
             builder.addProposedFact(Facts.FACT1.fact, 53)
@@ -126,7 +126,7 @@ class SdkTestContractTests : WordSpec({
             result.result shouldBe ResultState.SUCCESS
             result.scope shouldNotBe null
 
-            log.info("Making second contract...")
+//            log.info("Making second contract...")
 
             //TODO: I think the type of the contract will need to change to one of the modify contracts, which needs to be written
             val secondBuilder: SdkTestContractBuilder = SdkTestContractBuilder(SdkSinglePartyContractSmallModify::class.java)
