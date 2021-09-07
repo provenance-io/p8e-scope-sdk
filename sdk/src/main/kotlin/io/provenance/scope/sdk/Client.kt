@@ -22,16 +22,19 @@ import io.provenance.scope.sdk.extensions.isSigned
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
+import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuidProv
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
+import java.util.UUID
 import java.security.PublicKey
 import java.util.concurrent.TimeUnit
 
 // TODO (@steve)
 // how does signer fit in?
-// support multiple size hashes in the sdk - object-store should already support hashes of any length
+// add error handling and start with extensions present here
+// make resolver that can go from byte array to Message class
 
 class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = SignerFactory()) : Closeable {
     val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
@@ -58,11 +61,6 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList() // todo: can we use the contract/proto hashes to generate a dynamic list of what should/should not be loaded from memory vs. system class loader
         private val protoHashes = ServiceLoader.load(ProtoHash::class.java).toList()
     }
-
-    // TODO
-    // add error handling and start with extensions present here
-    // finish this function implementation
-    // make resolver that can go from byte array to Message class
 
     fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse): Session.Builder {
         val contractHash = getContractHash(clazz)

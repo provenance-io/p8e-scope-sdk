@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package loans;
+
+option java_package = "io.provenance.scope.examples";
+option java_outer_classname = "LoanExample";
+
+import "google/protobuf/timestamp.proto";
+import "io/provenance/scope/contract/index.proto";
+
+message CreditReport {
+  string uuid = 1;
+  string party_uuid = 2;
+
+  string pull_type = 3;
+
+  google.protobuf.Timestamp inquiry = 4;
+  google.protobuf.Timestamp expiration = 5;
+}
+
+message Document {
+  string uuid = 1 [(io.provenance.scope.contract.index) = {index: INDEX_DEFER_PARENT}];
+
+  string name = 2 [(io.provenance.scope.contract.index) = {index: INDEX_DEFER_PARENT}];
+  string location = 3;
+
+  bytes raw_doc = 4;
+  string checksum = 5;
+}
+
+message DocumentList {
+  repeated Document documents = 1 [(io.provenance.scope.contract.index) = {index: NEVER}];
+}
+
+message Income {
+  string uuid = 1;
+  repeated string plaid_item_uuids = 2;
+
+  string vendor = 3;
+
+  int32 transaction_history_length = 4;
+}
+
+message Loan {
+  string uuid = 1 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  string originator_uuid = 2 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+
+  string loan_number = 3 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  string originator_name = 4;
+
+  string amount = 5;
+  int32 term_in_months = 7;
+
+  string interest_rate = 11;
+  string origination_fee = 12;
+
+  bool primary_residence = 13;
+}
+
+message Servicing {
+  string uuid = 1 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+
+  string servicer_name = 2 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  bool service_own_loans = 3;
+
+  repeated Document documents = 4 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+}
+
+message UnderwritingPacket {
+  string uuid = 1 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  string product_uuid = 2 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  string originator_uuid = 3 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+
+  int32 version = 4;
+
+  int32 credit_score = 5;
+  int32 fico_score = 6;
+
+  string origination_state = 9;
+  string customer_age = 10;
+  int32 years_of_experience = 11;
+  int32 judgements = 12;
+  int32 tax_liens = 13;
+  int32 bankruptcy = 14;
+}
+
+message Lien {
+  int32 lien_position = 1;
+  string original_balance = 2;
+  string current_balance = 3;
+  string lender = 4 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  string monthly_payment = 5 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  int32 term = 6 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  string int_rate = 7 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+  bool primary_lien = 8 [(io.provenance.scope.contract.index) = {index: ALWAYS}];
+}
