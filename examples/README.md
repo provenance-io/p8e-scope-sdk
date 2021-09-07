@@ -7,16 +7,28 @@ a good starting point.
 
 ## How to Run
 
+### Build and Publish the SDK
+
+NOTE: Run this at the root of this repository.
+
+```
+./gradlew clean build publishToMavenLocal -xsignMavenPublication --info
+```
+
 ### Bootstrap Example Contracts
 
+```
 ./gradlew p8eClean p8eCheck --info
 ./gradlew p8eBootstrap --info
+```
 
 ### Run an Example
 
 NOTE: Change the mainClass property to the desired example for execution.
 
+```
 ./gradlew -PmainClass=io.provenance.scope.examples.app.UpdateAndIndexContractKt app:run
+```
 
 ### TODO (steve docs) add examples of the following
 - [ ] smart key example
