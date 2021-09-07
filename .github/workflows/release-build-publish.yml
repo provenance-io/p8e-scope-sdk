@@ -38,9 +38,6 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build --refresh-dependencies -Pversion=$VERSION
 
-      - name: Publish to Maven Local
-        run: ./gradlew publishToMavenLocal -xsignMavenPublication --info
-
       - name: Install gpg secret key
         run: |
           export GPG_TTY=$(tty)
@@ -67,7 +64,6 @@ jobs:
           directory: sdk/build/reports/jacoco/test/*.xml
 
   examples_build:
-    needs: sdk_build
     name: Build Examples
 
     runs-on: ubuntu-latest
@@ -80,6 +76,12 @@ jobs:
         with:
           java-version: 11
           server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
+
+      - name: Build with Gradle
+        run: ./gradlew clean build --refresh-dependencies
+
+      - name: Publish to Maven Local
+        run: ./gradlew publishToMavenLocal -xsignMavenPublication --info
 
       - name: Build Source Code
         run: ./gradlew clean build --refresh-dependencies
