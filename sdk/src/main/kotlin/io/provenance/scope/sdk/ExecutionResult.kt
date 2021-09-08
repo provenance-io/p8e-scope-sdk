@@ -16,7 +16,7 @@ import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.toUuid
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 
 sealed class ExecutionResult
 class SignedResult(session: Session, val envelope: Envelope, private val mainNet: Boolean) : ExecutionResult() {
@@ -60,7 +60,7 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
             )
         }
 
-        if (session.scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuidProv() == session.sessionUuid } == null) {
+        if (session.scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == session.sessionUuid } == null) {
             val msgWriteSessionRequest = MsgWriteSessionRequest.newBuilder()
                 .apply {
                     sessionBuilder.setSessionId(sessionId)

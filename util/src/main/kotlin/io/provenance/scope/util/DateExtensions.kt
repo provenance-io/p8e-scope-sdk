@@ -11,32 +11,32 @@ import java.time.ZoneId
 /**
  * Get Timestamp as OffsetDateTime (system time zone)
  */
-fun TimestampOrBuilder.toOffsetDateTimeProv(): OffsetDateTime = toOffsetDateTimeProv(ZoneId.systemDefault())
+fun TimestampOrBuilder.toOffsetDateTime(): OffsetDateTime = toOffsetDateTime(ZoneId.systemDefault())
 
 /**
  * Get Timestamp as OffsetDateTime
  */
-fun TimestampOrBuilder.toOffsetDateTimeProv(zoneId: ZoneId): OffsetDateTime = OffsetDateTime.ofInstant(toInstantProv(), zoneId)
+fun TimestampOrBuilder.toOffsetDateTime(zoneId: ZoneId): OffsetDateTime = OffsetDateTime.ofInstant(toInstant(), zoneId)
 
 /**
  * Get Timestamp as Instant
  */
-fun TimestampOrBuilder.toInstantProv(): Instant = Instant.ofEpochSecond(seconds, nanos.toLong())
+fun TimestampOrBuilder.toInstant(): Instant = Instant.ofEpochSecond(seconds, nanos.toLong())
 
 /**
  * Quick convert OffsetDateTime to Timestamp
  */
-fun OffsetDateTime.toProtoTimestampProv(): Timestamp = Timestamp.newBuilder().setValueProv(this).build()
+fun OffsetDateTime.toProtoTimestamp(): Timestamp = Timestamp.newBuilder().setValue(this).build()
 
 /**
  * Store OffsetDateTime as Timestamp (UTC)
  */
-fun Timestamp.Builder.setValueProv(odt: OffsetDateTime): Timestamp.Builder = setValueProv(odt.toInstant())
+fun Timestamp.Builder.setValue(odt: OffsetDateTime): Timestamp.Builder = setValue(odt.toInstant())
 
 /**
  * Store Instant as Timestamp (UTC)
  */
-fun Timestamp.Builder.setValueProv(instant: Instant): Timestamp.Builder {
+fun Timestamp.Builder.setValue(instant: Instant): Timestamp.Builder {
     this.nanos = instant.nano
     this.seconds = instant.epochSecond
     return this
@@ -45,4 +45,4 @@ fun Timestamp.Builder.setValueProv(instant: Instant): Timestamp.Builder {
 /**
  * Right Meow
  */
-fun TimestampOrBuilder.nowProv(): Timestamp = Instant.now().let { time -> Timestamp.newBuilder().setSeconds(time.epochSecond).setNanos(time.nano).build() }
+fun TimestampOrBuilder.now(): Timestamp = Instant.now().let { time -> Timestamp.newBuilder().setSeconds(time.epochSecond).setNanos(time.nano).build() }

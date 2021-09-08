@@ -27,7 +27,7 @@ import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
 import io.provenance.scope.util.toHexString
 import io.provenance.scope.util.toMessageWithStackTrace
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.PublicKey
@@ -248,7 +248,7 @@ class ContractEngine(
                     name,
                     sha512,
                     message.javaClass.name,
-                    scope?.scope?.scopeIdInfo?.scopeUuid?.toUuidProv(),
+                    scope?.scope?.scopeIdInfo?.scopeUuid?.toUuid(),
                     ancestorHash
                 )
                 ).build()

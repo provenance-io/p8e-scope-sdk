@@ -27,7 +27,7 @@ import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.mailbox.MailHandlerFn
 import io.provenance.scope.sdk.mailbox.MailboxService
 import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
@@ -92,7 +92,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
 
-        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuidProv())
+        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuid())
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -121,7 +121,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             "The annotation for the scope specifications must not be null"
         }
 
-        return Session.Builder(scopeSpecAnnotation.uuid.toUuidProv())
+        return Session.Builder(scopeSpecAnnotation.uuid.toUuid())
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
