@@ -19,9 +19,9 @@ fun ByteArray.base64Sha512() = this.sha512().base64String()
 
 fun ByteArray.base64String() = String(Base64.getEncoder().encode(this))
 
-fun Utils.UUIDOrBuilder.toUuidProv(): UUID = UUID.fromString(value)
+fun Utils.UUIDOrBuilder.toUuid(): UUID = UUID.fromString(value)
 
-fun String.toUuidProv(): UUID = UUID.fromString(this)
+fun String.toUuid(): UUID = UUID.fromString(this)
 
 // TODO add 16 byte hash support
 fun ByteArray.sha256(): ByteArray = Hashing.sha256().hashBytes(this).asBytes()

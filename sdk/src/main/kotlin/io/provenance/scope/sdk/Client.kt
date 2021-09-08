@@ -14,6 +14,7 @@ import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.ContractSpecMapper.dehydrateSpec
@@ -25,7 +26,7 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.sdk.mailbox.MailHandlerFn
 import io.provenance.scope.sdk.mailbox.MailboxService
 import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
@@ -90,7 +91,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
 
-        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuidProv())
+        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuid())
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -119,7 +120,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             "The annotation for the scope specifications must not be null"
         }
 
-        return Session.Builder(scopeSpecAnnotation.uuid.toUuidProv())
+        return Session.Builder(scopeSpecAnnotation.uuid.toUuid())
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -166,7 +167,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             TODO("should we throw an exception or something in the event that an affiliate is requesting signatures on an already fully-signed envelope?")
         }
 
-        inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, inner.signerFactory.getSigner(affiliate.signingKeyRef), envelope)
+        inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelope)
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
