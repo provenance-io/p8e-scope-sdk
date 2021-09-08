@@ -12,7 +12,7 @@ import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.sdk.testframework.proto.RandomBytes
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.*
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import java.util.*
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import sample.TransactionService
@@ -89,7 +89,7 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
                             println("scope = $updatedScope")
 
                             //This is the indexedResult we want in the SdkContractResult
-                            val indexed = ProtoIndexer(sharedClient.osClient, false).indexFields(updatedScope, localKeys)
+                            val indexed = ownerClient.indexer.indexFields(updatedScope)
                             indexedResult.putAll(indexed)
                             println("indexed result = $indexed")
                         }
@@ -116,7 +116,7 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
             return ownerClient.newSession(type, scopeSpec).setScopeUuid(scopeUuid)
         }
         else{
-            scopeUuid = scope.scope.scopeIdInfo.scopeUuid.toUuidProv()
+            scopeUuid = scope.scope.scopeIdInfo.scopeUuid.toUuid()
             return ownerClient.newSession(type, scope).setScopeUuid(scopeUuid)
         }
     }
