@@ -4,7 +4,6 @@ import com.google.protobuf.ByteString
 import com.google.protobuf.Descriptors.*
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType.*
 import com.google.protobuf.Message
-import io.provenance.metadata.v1.Record
 import io.provenance.metadata.v1.RecordWrapper
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.metadata.v1.SessionWrapper
@@ -20,10 +19,10 @@ import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
+import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
-import io.provenance.scope.objectstore.util.toByteArray
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.util.MetadataAddress
 import org.slf4j.LoggerFactory
@@ -32,27 +31,28 @@ import java.security.KeyPair
 
 class ProtoIndexer(
     private val osClient: CachedOsClient,
-    private val mainNet: Boolean,    //TODO: Might change where we pull this from.  Figure out later
+    private val mainNet: Boolean,
+    private val affiliate: Affiliate,
     private val definitionServiceFactory: (CachedOsClient, MemoryClassLoader) -> DefinitionService =
-        { osClient, memoryClassLoader -> DefinitionService(osClient, memoryClassLoader) }
+        { osClient, memoryClassLoader -> DefinitionService(osClient, memoryClassLoader) },
 ) {
     private val indexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("index")
     private val messageIndexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
+    private val affiliateAddress = affiliate.encryptionKeyRef.publicKey.getAddress(mainNet)
 
     fun indexFields(scope: ScopeResponse, keyPairs: Collection<KeyPair>): Map<String, Any> {
         // find all record groups where there's at least one party member that's an affiliate on this p8e instance
         val sessionMap: Map<ByteString, SessionWrapper> = makeSessionIdMap(scope.sessionsList)
-        val addressMap: Map<String, KeyPair> = keyPairs.associateBy{ it.public.getAddress(mainNet) }
 
         return scope.recordsList
             //Filter to just the records that we have addresses for from the partiesList
             .filter { recordWrapper ->
                 val sessionWrapper = sessionMap.getValue(recordWrapper.record.sessionId)
-                sessionWrapper.session.partiesList.any { addressMap.containsKey(it.address) }
+                sessionWrapper.session.partiesList.any { it.address == affiliateAddress }
             }
             //Get list of record_name - Map pairs
             .map { recordWrapper ->
-                recordNameToIndexFields(recordWrapper, sessionMap, addressMap)
+                recordNameToIndexFields(recordWrapper, sessionMap)
             }
             //Filter out null maps and then convert list to a map
             .filter { it.second != null }
@@ -61,23 +61,17 @@ class ProtoIndexer(
     }
 
     //Helper function that makes a Pair of a record's name to a map
-    private fun recordNameToIndexFields(recordWrapper: RecordWrapper, sessionMap: Map<ByteString, SessionWrapper>, addressMap: Map<String, KeyPair>): Pair<String, Map<String, Any>?>{
+    private fun recordNameToIndexFields(recordWrapper: RecordWrapper, sessionMap: Map<ByteString, SessionWrapper>): Pair<String, Map<String, Any>?>{
         val sessionWrapper = sessionMap.getValue(recordWrapper.record.sessionId)
-        val keyPair: KeyPair =  sessionWrapper.session.partiesList
-            .map { it.address }
-            .first { addressMap.containsKey(it) }
-            .let { addressMap.getValue(it) }
 
         // Need a reference of the signer that is used to verify signatures.
-        //TODO: Add smartkey implementation/handling
-        val signer = Pen(keyPair)
-        val encryptionKeyRef = DirectKeyRef(keyPair.public, keyPair.private)
+        val signer = affiliate.encryptionKeyRef.signer()
 
         // Try to re-use MemoryClassLoader if possible for caching reasons
         val spec = osClient.getRecord(
             ContractSpec::class.java.name,
             MetadataAddress.fromBech32(sessionWrapper.contractSpecIdInfo.contractSpecAddr).bytes.sliceArray(1 until 17), // todo: is there a better way to do this?
-            encryptionKeyRef,
+            affiliate.encryptionKeyRef,
         ).get() as ContractSpec
 
         val classLoaderKey =
@@ -87,11 +81,11 @@ class ProtoIndexer(
         }
 
         val definitionService = definitionServiceFactory(osClient, memoryClassLoader)
-        loadAllJars(encryptionKeyRef, definitionService, spec, signer)
+        loadAllJars(affiliate.encryptionKeyRef, definitionService, spec, signer)
 
         return recordWrapper.record.name to indexFields(
             definitionService,
-            encryptionKeyRef,
+            affiliate.encryptionKeyRef,
             recordWrapper,
             signer,
             spec = spec

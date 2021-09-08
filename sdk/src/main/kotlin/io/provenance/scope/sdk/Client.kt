@@ -12,7 +12,6 @@ import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
-import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
@@ -22,26 +21,20 @@ import io.provenance.scope.sdk.extensions.isSigned
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
-import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuidProv
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
-import java.util.UUID
 import java.security.PublicKey
 import java.util.concurrent.TimeUnit
 
 // TODO (@steve)
-// how does signer fit in?
 // add error handling and start with extensions present here
 // make resolver that can go from byte array to Message class
 
-class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = SignerFactory()) : Closeable {
+class SharedClient(val config: ClientConfig) : Closeable {
     val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
-
-    val contractEngine: ContractEngine = ContractEngine(osClient, signerFactory)
-
-    val indexer: ProtoIndexer = ProtoIndexer(osClient, config.mainNet)
+    val contractEngine: ContractEngine = ContractEngine(osClient)
 
     override fun close() {
         osClient.osClient.close()
@@ -55,6 +48,8 @@ class SharedClient(val config: ClientConfig, val signerFactory: SignerFactory = 
 class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     private val log = LoggerFactory.getLogger(this::class.java);
+
+    val indexer: ProtoIndexer = ProtoIndexer(inner.osClient, inner.config.mainNet, affiliate)
 
     companion object {
         // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
