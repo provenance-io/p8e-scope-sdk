@@ -8,11 +8,8 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.google.common.util.concurrent.SettableFuture
 import com.google.protobuf.Message
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
-import io.provenance.scope.encryption.crypto.Pen
-import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
-import io.provenance.scope.encryption.model.SmartKeyRef
-import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256LoBytes
 import io.provenance.scope.util.ThreadPoolFactory
@@ -21,7 +18,6 @@ import io.provenance.scope.util.sha256String
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.lang.reflect.Method
-import java.security.KeyPair
 import java.security.PublicKey
 import java.util.UUID
 import java.util.concurrent.Semaphore
@@ -60,13 +56,8 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         audience: Set<PublicKey> = setOf(),
         uuid: UUID = UUID.randomUUID(),
     ): ListenableFuture<ObjectHash> {
-        // TODO rework signerimpl and affiliate to signerimpl interface
-        val signer = when (signingKeyRef) {
-            is DirectKeyRef -> Pen(KeyPair(signingKeyRef.publicKey, signingKeyRef.privateKey))
-            is SmartKeyRef -> throw IllegalStateException("TODO SmartKeyRef is not yet supported!")
-        }
         val future = withFutureSemaphore(semaphore) {
-            osClient.put(inputStream, encryptionKeyRef.publicKey, signer, contentLength, audience, uuid = uuid)
+            osClient.put(inputStream, encryptionKeyRef.publicKey, signingKeyRef.signer(), contentLength, audience, uuid = uuid)
         }
 
         return Futures.transform(
@@ -105,11 +96,6 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         uuid: UUID = UUID.randomUUID(),
         loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
-        // TODO rework signerimpl and affiliate to signerimpl interface
-        val signer = when (signingKeyRef) {
-            is DirectKeyRef -> Pen(KeyPair(signingKeyRef.publicKey, signingKeyRef.privateKey))
-            is SmartKeyRef -> throw IllegalStateException("TODO SmartKeyRef is not yet supported!")
-        }
         val cacheKey = if (loHash) {
             RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256LoBytes().base64String())
         } else {
@@ -120,7 +106,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
             SettableFuture.create<ObjectHash>().also { it.set(ObjectHash(cacheKey.hash)) }
         } else {
             val future = withFutureSemaphore(semaphore) {
-                osClient.put(message, encryptionKeyRef.publicKey, signer, audience, uuid = uuid, loHash = loHash)
+                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, loHash = loHash)
             }
 
             Futures.transform(
