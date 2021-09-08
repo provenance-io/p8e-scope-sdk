@@ -40,7 +40,7 @@ class ProtoIndexer(
     private val messageIndexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
     private val affiliateAddress = affiliate.encryptionKeyRef.publicKey.getAddress(mainNet)
 
-    fun indexFields(scope: ScopeResponse, keyPairs: Collection<KeyPair>): Map<String, Any> {
+    fun indexFields(scope: ScopeResponse): Map<String, Any> {
         // find all record groups where there's at least one party member that's an affiliate on this p8e instance
         val sessionMap: Map<ByteString, SessionWrapper> = makeSessionIdMap(scope.sessionsList)
 
