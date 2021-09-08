@@ -247,7 +247,7 @@ fun main(args: Array<String>) {
 
         // The proto indexer provides a way to filter the full scope down to a JSON representation
         // that can be stored efficiently in a downstream system for lookups.
-        val result = sdk.inner.indexer.indexFields(
+        val result = sdk.indexer.indexFields(
             scopeResponseThree,
             keyPairs = listOf(KeyPair(affiliate.encryptionKeyRef.publicKey, (affiliate.encryptionKeyRef as DirectKeyRef).privateKey))
         )

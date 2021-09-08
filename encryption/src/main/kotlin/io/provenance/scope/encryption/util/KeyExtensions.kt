@@ -54,8 +54,6 @@ fun PK.PublicKey.toPublicKey(): PublicKey =
         ECUtils.convertBytesToPublicKey(it.publicKeyBytes.toByteArray())
     }
 
-// fun PublicKey.toHex() = toPublicKeyProto().toHex()
-
 fun String.toPublicKeyProto(): PK.PublicKey = PK.PublicKey.parseFrom(Hex.decode(this))
 
 fun String.toPrivateKeyProto(): PK.PrivateKey = PK.PrivateKey.parseFrom(Hex.decode(this))

@@ -17,6 +17,12 @@ NOTE: Run this at the root of this repository.
 
 ### Bootstrap Example Contracts
 
+If you are running using the dev-tools docker compose setup, first run the following to set up the proper environment variables.
+```
+source ../dev-tools/compose/host.env
+```
+and then to bootstrap the contracts
+
 ```
 ./gradlew p8eClean p8eCheck --info
 ./gradlew p8eBootstrap --info

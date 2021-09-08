@@ -16,9 +16,9 @@ import io.provenance.scope.contract.proto.Contracts.ExecutionResult.Result.SKIP
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.definition.DefinitionService
-import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.KeyRef
+import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.proto.Common
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
@@ -37,7 +37,6 @@ fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
 class ContractEngine(
     private val osClient: CachedOsClient,
-    private val signerFactory: SignerFactory,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java);
 
@@ -85,7 +84,7 @@ class ContractEngine(
         spec: ContractSpec
     ): Envelope {
         val definitionService = DefinitionService(osClient, memoryClassLoader)
-        val signer = signerFactory.getSigner(signingKeyRef)
+        val signer = signingKeyRef.signer()
 
         // Load contract spec class
         val contractSpecClass = try {
