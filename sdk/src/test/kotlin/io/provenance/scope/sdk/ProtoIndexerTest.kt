@@ -143,7 +143,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         /*
         * scope is essentially an array of records, which can be hydrated to the actual data, like [{ name: "person", value: { name: "cool name", ssn: "123-456-789" } }, { name: "some other record", value: <some other proto> }]
@@ -189,7 +189,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
@@ -213,7 +213,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val record = indexFields.get("person")
@@ -243,7 +243,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val record = indexFields.get("person")
@@ -278,7 +278,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -317,7 +317,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
@@ -349,7 +349,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -392,7 +392,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -432,7 +432,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
 //        throw Exception("indexFields is $indexFields")
         indexFields.size shouldBe 1
@@ -469,7 +469,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
@@ -501,7 +501,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val proto = indexFields.get("person") as Map<String, Any>
@@ -539,7 +539,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val proto = indexFields.get("person") as Map<String, Any>
@@ -588,7 +588,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
 //        throw Exception("indexFields is $indexFields")
         indexFields.size shouldBe 2
@@ -643,7 +643,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
@@ -689,7 +689,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 2
         val personInfo = indexFields.get("person") as Map<String, Any>
@@ -747,7 +747,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 2
         val personInfo = indexFields.get("person") as Map<String, Any>

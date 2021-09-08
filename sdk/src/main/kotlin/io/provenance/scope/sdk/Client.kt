@@ -14,6 +14,7 @@ import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.ContractSpecMapper.dehydrateSpec
@@ -166,7 +167,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             TODO("should we throw an exception or something in the event that an affiliate is requesting signatures on an already fully-signed envelope?")
         }
 
-        inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, inner.signerFactory.getSigner(affiliate.signingKeyRef), envelope)
+        inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelope)
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
