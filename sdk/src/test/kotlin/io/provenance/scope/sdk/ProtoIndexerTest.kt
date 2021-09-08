@@ -1,7 +1,6 @@
 package io.provenance.scope.sdk
 
 import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
 import com.google.protobuf.Message
 import io.mockk.mockk
 import io.mockk.every
@@ -10,13 +9,14 @@ import io.provenance.metadata.v1.Session
 import io.provenance.scope.contract.proto.Specifications.FunctionSpec
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.definition.DefinitionService
-import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.contract.proto.TestProtos
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.util.toByteString
 import io.kotest.core.spec.style.AnnotationSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.provenance.scope.contract.proto.Specifications.PartyType.OWNER
+import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64EncodeString
@@ -24,14 +24,14 @@ import io.provenance.scope.objectstore.util.toByteArray
 import io.provenance.scope.util.MetadataAddress
 import java.security.KeyPair
 import java.util.UUID
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Future
 
 class ProtoIndexerTest: AnnotationSpec(){
 
     lateinit var mockDefinitionService: DefinitionService
     lateinit var mockOsClient: CachedOsClient
     lateinit var protoIndexer: ProtoIndexer
+
+    val keyPair = ProvenanceKeyGenerator.generateKeyPair()
 
     fun contractSpecAddr(uuid: UUID = UUID.randomUUID()) = MetadataAddress.forContractSpecification(uuid)
     fun randomHash() = UUID.randomUUID().toByteArray().base64EncodeString()
@@ -114,15 +114,19 @@ class ProtoIndexerTest: AnnotationSpec(){
 
     @BeforeAll
     fun setUp(){
+        val affiliate = Affiliate(
+            signingKeyRef = DirectKeyRef(keyPair.public, keyPair.private),
+            encryptionKeyRef = DirectKeyRef(keyPair.public, keyPair.private),
+            partyType = OWNER,
+        )
         mockDefinitionService = mockk<DefinitionService>()
         mockOsClient = mockk<CachedOsClient>()
-        protoIndexer = ProtoIndexer(mockOsClient, false) { mockOsClient, memoryClassLoader -> mockDefinitionService }
+        protoIndexer = ProtoIndexer(mockOsClient, false, affiliate) { _, _ -> mockDefinitionService }
     }
 
     @Test
     fun oneIndexableOneNot(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val testProto = TestProtos.OneIndexableOneNot.newBuilder()
             .setName("cool name")
@@ -139,7 +143,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         /*
         * scope is essentially an array of records, which can be hydrated to the actual data, like [{ name: "person", value: { name: "cool name", ssn: "123-456-789" } }, { name: "some other record", value: <some other proto> }]
@@ -169,7 +173,6 @@ class ProtoIndexerTest: AnnotationSpec(){
 
     @Test
     fun noneIndexable(){
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val testProto = TestProtos.NoneIndexable.newBuilder()
             .setName("cool name")
@@ -186,14 +189,13 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
 
     @Test
     fun allIndexable(){
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val testProto = TestProtos.AllIndexable.newBuilder()
             .setName("cool name")
@@ -211,7 +213,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val record = indexFields.get("person")
@@ -222,7 +224,6 @@ class ProtoIndexerTest: AnnotationSpec(){
 
     @Test
     fun someIndexableSomeNot(){
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val testProto = TestProtos.SomeIndexableSomeNot.newBuilder()
             .setName("cool name")
@@ -242,7 +243,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val record = indexFields.get("person")
@@ -255,7 +256,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordOneIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val personProto = TestProtos.OneIndexableOneNot.newBuilder()
             .setName("cool name")
@@ -278,7 +278,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -293,7 +293,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordNoneIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val personProto = TestProtos.NoneIndexable.newBuilder()
             .setName("cool name")
@@ -318,7 +317,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
@@ -326,7 +325,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordAllIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val personProto = TestProtos.AllIndexable.newBuilder()
             .setName("cool name")
@@ -351,7 +349,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -366,7 +364,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordSomeIndexableSomeNot(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val personProto = TestProtos.SomeIndexableSomeNot.newBuilder()
             .setName("cool name")
@@ -395,7 +392,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         //throw Exception("indexFields is: $indexFields")
         indexFields.size shouldBe 2
@@ -411,7 +408,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun nestedOneIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val insideProto = TestProtos.OneIndexableOneNot.newBuilder()
             .setName("cool name")
@@ -436,7 +432,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
 //        throw Exception("indexFields is $indexFields")
         indexFields.size shouldBe 1
@@ -449,7 +445,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun nestedNoneIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val insideProto = TestProtos.NoneIndexable.newBuilder()
             .setName("cool name")
@@ -474,7 +469,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
@@ -482,7 +477,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun nestedAllIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val insideProto = TestProtos.AllIndexable.newBuilder()
             .setName("cool name")
@@ -507,7 +501,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val proto = indexFields.get("person") as Map<String, Any>
@@ -519,7 +513,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun nestedSomeIndexableSomeNot(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createSingleRecordScope(keyPair)
         val insideProto = TestProtos.SomeIndexableSomeNot.newBuilder()
             .setName("cool name")
@@ -546,7 +539,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 1
         val proto = indexFields.get("person") as Map<String, Any>
@@ -559,7 +552,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordNestedOneIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val innerPersonProto = TestProtos.OneIndexableOneNot.newBuilder()
             .setName("cool name")
@@ -596,7 +588,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
 //        throw Exception("indexFields is $indexFields")
         indexFields.size shouldBe 2
@@ -613,7 +605,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordNestedestedNoneIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val innerPersonProto = TestProtos.NoneIndexable.newBuilder()
             .setName("cool name")
@@ -652,7 +643,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 0
     }
@@ -660,7 +651,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordNestedestedAllIndexable(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val innerPersonProto = TestProtos.AllIndexable.newBuilder()
             .setName("cool name")
@@ -699,7 +689,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 2
         val personInfo = indexFields.get("person") as Map<String, Any>
@@ -715,7 +705,6 @@ class ProtoIndexerTest: AnnotationSpec(){
     @Test
     fun multiRecordNestedestedSomeIndexableSomeNot(){
         // set up fake data
-        val keyPair = ProvenanceKeyGenerator.generateKeyPair()
         val testScope = createMultiRecordScope(keyPair)
         val innerPersonProto = TestProtos.SomeIndexableSomeNot.newBuilder()
             .setName("cool name")
@@ -758,7 +747,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
         // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope, listOf(keyPair))
+        val indexFields = protoIndexer.indexFields(testScope)
 
         indexFields.size shouldBe 2
         val personInfo = indexFields.get("person") as Map<String, Any>

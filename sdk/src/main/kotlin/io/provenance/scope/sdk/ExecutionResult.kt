@@ -16,7 +16,7 @@ import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.toUuid
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 
 sealed class ExecutionResult
 class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
@@ -28,7 +28,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
         .build()
     }
 
-    private val sessionId = MetadataAddress.forSession(envelopeState.result.scopeUuid.toUuidProv(), envelopeState.result.sessionUuid.toUuidProv()).bytes.toByteString()
+    private val sessionId = MetadataAddress.forSession(envelopeState.result.scopeUuid.toUuid(), envelopeState.result.sessionUuid.toUuid()).bytes.toByteString()
     private val contractSpecId = envelopeState.result.contract.spec.dataLocation.ref.hash.base64Decode().toUuid().let { uuid -> MetadataAddress.forContractSpecification(uuid) }
 
     val executionInfo = mutableListOf<Triple<String, String, String>>()
@@ -36,8 +36,8 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
         if (envelopeState.result.newScope) {
             val msgWriteScopeRequest = MsgWriteScopeRequest.newBuilder()
                 .apply {
-                    scopeBuilder.setScopeId(MetadataAddress.forScope(envelopeState.result.scopeUuid.toUuidProv()).bytes.toByteString())
-                        .setSpecificationId(MetadataAddress.forScopeSpecification(envelopeState.result.scopeSpecUuid.toUuidProv()).bytes.toByteString())
+                    scopeBuilder.setScopeId(MetadataAddress.forScope(envelopeState.result.scopeUuid.toUuid()).bytes.toByteString())
+                        .setSpecificationId(MetadataAddress.forScopeSpecification(envelopeState.result.scopeSpecUuid.toUuid()).bytes.toByteString())
                         .addAllOwners(parties)
                 }.addAllSigners(signers)
                 .build()

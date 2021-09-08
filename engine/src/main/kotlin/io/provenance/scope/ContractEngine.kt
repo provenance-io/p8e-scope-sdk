@@ -16,9 +16,9 @@ import io.provenance.scope.contract.proto.Contracts.ExecutionResult.Result.SKIP
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.definition.DefinitionService
-import io.provenance.scope.encryption.crypto.SignerFactory
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.KeyRef
+import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.proto.Common
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
@@ -28,7 +28,7 @@ import io.provenance.scope.util.ProtoUtil.proposedRecordOf
 import io.provenance.scope.util.scopeOrNull
 import io.provenance.scope.util.toHexString
 import io.provenance.scope.util.toMessageWithStackTrace
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.PublicKey
@@ -38,7 +38,6 @@ fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
 class ContractEngine(
     private val osClient: CachedOsClient,
-    private val signerFactory: SignerFactory,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java);
 
@@ -83,25 +82,26 @@ class ContractEngine(
         spec: ContractSpec
     ): Envelope {
         val definitionService = DefinitionService(osClient, memoryClassLoader)
-        val signer = signerFactory.getSigner(signingKeyRef)
+
+        val signer = signingKeyRef.signer()
         val scope = envelope.scopeOrNull()
 
         // Load contract spec class
         val contractSpecClass = try {
-                definitionService.loadClass(encryptionKeyRef, spec.definition)
-            } catch (e: StatusRuntimeException) {
-                if (e.status.code == Status.Code.NOT_FOUND) {
-                    throw ContractDefinitionException(
-                        """
-                            Unable to load contract jar. Verify that you're using a jar that has been bootstrapped.
-                            [classname: ${spec.definition.resourceLocation.classname}]
-                            [public key: ${encryptionKeyRef.publicKey.toHex()}]
-                            [hash: ${spec.definition.resourceLocation.ref.hash}]
-                        """.trimIndent()
-                    )
-                }
-                throw e
+            definitionService.loadClass(encryptionKeyRef, spec.definition)
+        } catch (e: StatusRuntimeException) {
+            if (e.status.code == Status.Code.NOT_FOUND) {
+                throw ContractDefinitionException(
+                    """
+                        Unable to load contract jar. Verify that you're using a jar that has been bootstrapped.
+                        [classname: ${spec.definition.resourceLocation.classname}]
+                        [public key: ${encryptionKeyRef.publicKey.toHex()}]
+                        [hash: ${spec.definition.resourceLocation.ref.hash}]
+                    """.trimIndent()
+                )
             }
+            throw e
+        }
 
         // Ensure all the classes listed in the spec are loaded into the MemoryClassLoader
         loadAllClasses(
@@ -249,7 +249,7 @@ class ContractEngine(
                     name,
                     sha512,
                     message.javaClass.name,
-                    scope?.scope?.scopeIdInfo?.scopeUuid?.toUuidProv(),
+                    scope?.scope?.scopeIdInfo?.scopeUuid?.toUuid(),
                     ancestorHash
                 )
                 ).build()

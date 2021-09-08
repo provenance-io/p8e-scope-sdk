@@ -22,12 +22,10 @@ import io.provenance.objectstore.proto.PublicKeys
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.encryption.proto.Encryption.ContextType.RETRIEVAL
 import io.provenance.objectstore.proto.Utils
-import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.crypto.sign
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.loBytes
-import io.provenance.scope.objectstore.util.toPublicKey
 import io.provenance.scope.util.toHexString
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream

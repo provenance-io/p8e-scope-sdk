@@ -15,12 +15,12 @@ import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
-import io.provenance.scope.util.toProtoUuidProv
+import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.toPublicKey
 import io.provenance.scope.toAudience
-import io.provenance.scope.util.toUuidProv
+import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.security.PublicKey
@@ -96,7 +96,7 @@ class Session(
 
         fun setScope(scopeResponse: ScopeResponse) = apply {
             scope = scopeResponse
-            scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuidProv()
+            scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuid()
         }
 
         fun setScopeUuid(scopeUUID: java.util.UUID) = apply {
@@ -362,17 +362,17 @@ class Session(
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
-            .setExecutionUuid(executionUuid.toProtoUuidProv())
-            .setScopeUuid(scopeUuid.toProtoUuidProv())
-            .setScopeSpecUuid(scopeSpecUuid.toProtoUuidProv())
-            .setSessionUuid(sessionUuid.toProtoUuidProv())
+            .setExecutionUuid(executionUuid.toProtoUuid())
+            .setScopeUuid(scopeUuid.toProtoUuid())
+            .setScopeSpecUuid(scopeSpecUuid.toProtoUuid())
+            .setSessionUuid(sessionUuid.toProtoUuid())
             .setNewScope(scope == null)
-            .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuidProv() == sessionUuid } == null)
+            .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == sessionUuid } == null)
             .setMainNet(mainNet)
             .setContract(contract)
             .also {
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
-                // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestampProv() } ?: builder.clearExpirationTime()
+                // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestamp() } ?: builder.clearExpirationTime()
                 it.ref = it.refBuilder
                     .setHash(contract.toByteArray().sha256().base64EncodeString())
                     .build()
