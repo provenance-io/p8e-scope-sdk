@@ -125,8 +125,8 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         else{
 //            log.info("Scope provided")
             scopeUuid = scope.scope.scopeIdInfo.scopeUuid.toUuidProv()    //Not needed?
-            val session = scope.sessionsList.last().session
-            return ownerClient.newSession(type, scope, session)
+//            val session = scope.sessionsList.last().session
+            return ownerClient.newSession(type, scope/*, session*/).setScopeUuid(scopeUuid)
         }
     }
 
