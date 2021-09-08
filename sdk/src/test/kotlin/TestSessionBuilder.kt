@@ -29,7 +29,7 @@ class UtilsTest : WordSpec({
 
             // Create Session and run package contract for tests
             val session = builder.build()
-            val envelopePopulatedRecord = session.packageContract()
+            val envelopePopulatedRecord = session.packageContract(false)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
@@ -60,7 +60,7 @@ class UtilsTest : WordSpec({
 
             val session = builder.build()
 
-            val envelopePopulatedRecord = session.packageContract()
+            val envelopePopulatedRecord = session.packageContract(false)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
