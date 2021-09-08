@@ -4,6 +4,8 @@ import com.google.common.hash.Hashing
 import com.google.protobuf.ByteString
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.objectstore.proto.Utils
+import io.provenance.scope.contract.proto.PublicKeys
+import io.provenance.scope.encryption.proto.PK
 import java.nio.ByteBuffer
 import java.security.PublicKey
 import java.util.Base64
@@ -57,4 +59,11 @@ fun PublicKey.toPublicKeyProtoOS(): Utils.PublicKey =
         Utils.PublicKey.newBuilder()
             .setSecp256K1(ByteString.copyFrom(this))
             .build()
+    }
+
+
+fun PublicKeys.PublicKey.toPublicKey(): PublicKey =
+    this.let {
+        require(it.curve == PublicKeys.KeyCurve.SECP256K1) {"Unsupported Key Curve"}
+        ECUtils.convertBytesToPublicKey(it.publicKeyBytes.toByteArray())
     }
