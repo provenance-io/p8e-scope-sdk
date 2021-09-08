@@ -41,16 +41,12 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         val scopeSpec = SdkContractInformationMap.getValue(type).scopeSpec
 
         //Make the session
-//        log.info("About to generate session builder...")
         val sessionBuilder = generateSessionBuilder(scopeSpec)
-//        log.info("Session builder generated.  Adding records...")
         //Go through the fact map and add all the records(facts)
         supplyRecords(sessionBuilder)
 
-//        log.info("About to execute contract...")
         //Call execute and store result somewhere that can be used in waitForResult()
         val result = ownerClient.execute(sessionBuilder.build())
-//        log.info("result envelope is: ${(result as SignedResult).envelope}")
 
         //Submit to chain
         val pbChannel = ManagedChannelBuilder.forAddress("localhost", 9090)
@@ -65,7 +61,6 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
 
         when (result) {
             is SignedResult -> {
-//                log.info("result is: ${result.messages}")
                 val txBody = TxOuterClass.TxBody.newBuilder().addAllMessages(result.messages.map {
                     Any.pack(it, "")
                 }).build()
@@ -105,7 +100,6 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
                     }
                     true
                 } catch (e: Exception) {
-//                        println("Tx fetch error ${e.message}")
                     false
                 }
             }
@@ -119,20 +113,16 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
 
     fun generateSessionBuilder(scopeSpec: Class<out P8eScopeSpecification>): Session.Builder{
         if(scope == null){
-//            log.info("No provided scope")
             return ownerClient.newSession(type, scopeSpec).setScopeUuid(scopeUuid)
         }
         else{
-//            log.info("Scope provided")
-            scopeUuid = scope.scope.scopeIdInfo.scopeUuid.toUuidProv()    //Not needed?
-//            val session = scope.sessionsList.last().session
-            return ownerClient.newSession(type, scope/*, session*/).setScopeUuid(scopeUuid)
+            scopeUuid = scope.scope.scopeIdInfo.scopeUuid.toUuidProv()
+            return ownerClient.newSession(type, scope).setScopeUuid(scopeUuid)
         }
     }
 
     fun supplyRecords(sessionBuilder: Session.Builder){
         for((recordName, data) in factMap){
-//            log.info("factMap contents: $recordName : $data")
             sessionBuilder.addProposedRecord(recordName,
                 RandomBytes.Data.newBuilder().setData(data.toByteString()).build())
         }
