@@ -7,6 +7,7 @@ option java_outer_classname = "Envelopes";
 
 import "google/protobuf/descriptor.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
 
 import "io/provenance/scope/contract/contract.proto";
 import "io/provenance/scope/contract/common.proto";
@@ -38,7 +39,7 @@ message Envelope {
     google.protobuf.Timestamp expiration_time = 7;
 
     // Scope snapshot for executing
-    // Scope scope = 8;
+    google.protobuf.Any scope = 8;
 
     Status status = 9;
 

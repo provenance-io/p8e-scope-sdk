@@ -1,6 +1,7 @@
 package io.provenance.scope.sdk
 
 import com.google.protobuf.*
+import com.google.protobuf.Any
 import io.provenance.metadata.v1.*
 import io.provenance.metadata.v1.Session
 import io.provenance.metadata.v1.p8e.Fact
@@ -368,6 +369,10 @@ class Session(
                 it.ref = it.refBuilder
                     .setHash(contract.toByteArray().sha256().base64EncodeString())
                     .build()
+
+                if (scope != null) {
+                    it.setScope(Any.pack(scope.scope.scope, ""))
+                }
             }
             .clearSignatures()
             .build()
