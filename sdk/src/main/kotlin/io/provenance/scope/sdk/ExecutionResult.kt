@@ -46,6 +46,7 @@ class SignedResult(session: Session, val envelope: Envelope, private val mainNet
                     scopeBuilder.setScopeId(MetadataAddress.forScope(session.scopeUuid).bytes.toByteString())
                         .setSpecificationId(MetadataAddress.forScopeSpecification(session.scopeSpecUuid).bytes.toByteString())
                         .addAllOwners(parties)
+                        .addAllDataAccess(session.dataAccessKeys.map { it.getAddress(mainNet) })
                 }.addAllSigners(signers)
                 .build()
             executionInfo.add(

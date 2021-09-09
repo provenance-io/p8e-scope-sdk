@@ -3,7 +3,6 @@ package io.provenance.scope.sdk
 import com.google.protobuf.*
 import com.google.protobuf.Any
 import io.provenance.metadata.v1.*
-import io.provenance.metadata.v1.Session
 import io.provenance.metadata.v1.p8e.Fact
 import io.provenance.metadata.v1.p8e.Location
 import io.provenance.metadata.v1.p8e.ProvenanceReference
@@ -24,6 +23,7 @@ import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
+import java.security.PublicKey
 import java.util.*
 import java.util.UUID.randomUUID
 
@@ -38,6 +38,7 @@ class Session(
     val scopeUuid: java.util.UUID,
     val sessionUuid: java.util.UUID,
     val scopeSpecUuid: java.util.UUID,
+    val dataAccessKeys: Set<PublicKey>,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
 ) {
     private constructor(builder: Builder) : this(
@@ -50,7 +51,8 @@ class Session(
         builder.executionUuid!!,
         builder.scopeUuid,
         builder.sessionUuid,
-        builder.scopeSpecUuid
+        builder.scopeSpecUuid,
+        builder.dataAccessKeys.toSet(),
     )
 
     class Builder(val scopeSpecUuid: java.util.UUID) {
@@ -65,12 +67,16 @@ class Session(
         var provenanceReference: Commons.ProvenanceReference? = null
 
         var scopeUuid: java.util.UUID = randomUUID()
+            private set
 
         var scope: ScopeResponse? = null
+            private set
 
         var executionUuid: UUID? = randomUUID().toProtoUuid()
 
         var sessionUuid: java.util.UUID = randomUUID()
+
+        val dataAccessKeys: MutableList<PublicKey> = mutableListOf<PublicKey>()
 
         fun build() = Session(this)
 
@@ -106,6 +112,14 @@ class Session(
                 throw IllegalStateException("Scope UUID cannot be set once the scope is already set")
             }
             this.scopeUuid = scopeUUID
+        }
+
+        fun addDataAccessKeys(keys: Collection<PublicKey>) = apply {
+            dataAccessKeys.addAll(keys)
+        }
+
+        fun addDataAccessKey(key: PublicKey) = apply {
+            dataAccessKeys.add(key)
         }
 
         fun addProposedRecord(name: String, record: Message) = apply {
@@ -361,7 +375,7 @@ class Session(
         val permissionUpdater = PermissionUpdater(
             client,
             contract,
-            emptySet(), // TODO this is audience list
+            dataAccessKeys
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
