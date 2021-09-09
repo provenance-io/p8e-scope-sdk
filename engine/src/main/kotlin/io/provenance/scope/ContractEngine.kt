@@ -45,7 +45,7 @@ class ContractEngine(
         signingKeyRef: KeyRef,
         envelope: Envelope,
         scope: ScopeResponse?,
-        affiliateSharePublicKeys: Collection<PublicKey>, // todo: separate array for other scope parties that are not on the contract, or just have them all supplied here?
+        affiliateSharePublicKeys: Collection<PublicKey>,
     ): Envelope {
         log.trace("Running contract engine")
 
