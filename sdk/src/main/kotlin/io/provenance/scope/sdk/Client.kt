@@ -23,6 +23,7 @@ import io.provenance.scope.sdk.extensions.isSigned
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
+import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.mailbox.MailHandlerFn
 import io.provenance.scope.sdk.mailbox.MailboxService
 import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
@@ -171,6 +172,8 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
+        scope.validateRecordsRequested()
+
         val constructor = clazz.declaredConstructors
             .filter {
                 it.parameters.isNotEmpty() &&

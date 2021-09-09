@@ -20,6 +20,8 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
+import io.provenance.scope.sdk.extensions.validateRecordsRequested
+import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -93,6 +95,8 @@ class Session(
         }
 
         fun setScope(scopeResponse: ScopeResponse) = apply {
+            scopeResponse.validateSessionsRequested()
+                .validateRecordsRequested()
             scope = scopeResponse
             scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuid()
         }
