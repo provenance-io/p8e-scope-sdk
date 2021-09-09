@@ -69,6 +69,8 @@ message Envelope {
     bool newSession = 14;
 
     bool mainNet = 15;
+
+    repeated PublicKey data_access = 16;
 }
 
 message EnvelopeEvent {

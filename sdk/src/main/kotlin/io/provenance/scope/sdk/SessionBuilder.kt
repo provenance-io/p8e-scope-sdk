@@ -386,6 +386,7 @@ class Session(
             .setSessionUuid(sessionUuid.toProtoUuid())
             .setNewScope(scope == null)
             .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == sessionUuid } == null)
+            .addAllDataAccess(dataAccessKeys.map { it.toPublicKeyProto() })
             .setMainNet(mainNet)
             .setContract(contract)
             .also {
