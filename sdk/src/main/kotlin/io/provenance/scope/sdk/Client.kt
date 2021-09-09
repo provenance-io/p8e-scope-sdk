@@ -97,6 +97,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .setProvenanceReference(contractRef)
             .setScope(scope)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
+            .addDataAccessKeys(scope.scope.scope.dataAccessList.map { inner.affiliateRepository.getAffiliateKeysByAddress(it).encryptionPublicKey })
     }
 
     // executes the first session against a non-existent scope
@@ -127,7 +128,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
     }
 
-    fun execute(session: Session, affiliateSharePublicKeys: Collection<PublicKey> = listOf()): ExecutionResult {
+    fun execute(session: Session): ExecutionResult {
         val input = session.packageContract()
         log.debug("Contract name: ${input.contract.definition.name}")
         log.debug("Session Id: ${session.sessionUuid}")
@@ -135,7 +136,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
 //        logger.trace("Input Hash: ${}")
 
-        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, affiliateSharePublicKeys)
+        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, session.dataAccessKeys)
 
         return when (result.isSigned(inner.config.mainNet)) {
             true -> {

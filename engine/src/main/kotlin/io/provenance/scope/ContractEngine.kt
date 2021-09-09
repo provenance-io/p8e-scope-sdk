@@ -220,7 +220,7 @@ class ContractEngine(
     private fun signAndStore(
         name: String,
         message: Message,
-        audiences: Set<PublicKey>,
+        audience: Set<PublicKey>,
         encryptionKeyRef: KeyRef,
         signingKeyRef: KeyRef,
         scope: ScopeResponse?
@@ -229,7 +229,7 @@ class ContractEngine(
             message,
             signingKeyRef,
             encryptionKeyRef,
-            audiences
+            audience
         )
 
         return Futures.transform(putResponse, {
