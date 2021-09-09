@@ -24,6 +24,7 @@ import io.provenance.scope.sdk.extensions.isSigned
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.sdk.extensions.uuid
+import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.mailbox.MailHandlerFn
 import io.provenance.scope.sdk.mailbox.MailboxService
 import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
@@ -98,6 +99,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .setProvenanceReference(contractRef)
             .setScope(scope)
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
+            .addDataAccessKeys(scope.scope.scope.dataAccessList.map { inner.affiliateRepository.getAffiliateKeysByAddress(it).encryptionPublicKey })
     }
 
     // executes the first session against a non-existent scope
@@ -128,7 +130,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
     }
 
-    fun execute(session: Session, affiliateSharePublicKeys: Collection<PublicKey> = listOf()): ExecutionResult {
+    fun execute(session: Session): ExecutionResult {
         val input = session.packageContract(inner.config.mainNet)
         log.debug("Contract name: ${input.contract.definition.name}")
         log.debug("Session Id: ${session.sessionUuid}")
@@ -136,7 +138,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
 //        logger.trace("Input Hash: ${}")
 
-        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, affiliateSharePublicKeys)
+        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.dataAccessKeys)
 
         val envelopeState = EnvelopeState.newBuilder()
             .setInput(input)
@@ -192,6 +194,8 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
+        scope.validateRecordsRequested()
+
         val constructor = clazz.declaredConstructors
             .filter {
                 it.parameters.isNotEmpty() &&

@@ -20,10 +20,12 @@ import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.toPublicKey
 import io.provenance.scope.toAudience
+import io.provenance.scope.sdk.extensions.validateRecordsRequested
+import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
-import java.util.*
 import java.security.PublicKey
+import java.util.*
 import java.util.UUID
 import java.util.UUID.randomUUID
 
@@ -38,6 +40,7 @@ class Session(
     val scopeUuid: UUID,
     val sessionUuid: UUID,
     val scopeSpecUuid: UUID,
+    val dataAccessKeys: Set<PublicKey>,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
 ) {
     private constructor(builder: Builder) : this(
@@ -50,7 +53,8 @@ class Session(
         builder.executionUuid!!,
         builder.scopeUuid,
         builder.sessionUuid,
-        builder.scopeSpecUuid
+        builder.scopeSpecUuid,
+        builder.dataAccessKeys.toSet(),
     )
 
     class Builder(val scopeSpecUuid: java.util.UUID) {
@@ -65,12 +69,16 @@ class Session(
         var provenanceReference: Commons.ProvenanceReference? = null
 
         var scopeUuid: java.util.UUID = randomUUID()
+            private set
 
         var scope: ScopeResponse? = null
+            private set
 
         var executionUuid: UUID = randomUUID()
 
         var sessionUuid: UUID = randomUUID()
+
+        val dataAccessKeys: MutableList<PublicKey> = mutableListOf<PublicKey>()
 
         fun build() = Session(this)
 
@@ -95,6 +103,8 @@ class Session(
         }
 
         fun setScope(scopeResponse: ScopeResponse) = apply {
+            scopeResponse.validateSessionsRequested()
+                .validateRecordsRequested()
             scope = scopeResponse
             scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuid()
         }
@@ -104,6 +114,14 @@ class Session(
                 throw IllegalStateException("Scope UUID cannot be set once the scope is already set")
             }
             this.scopeUuid = scopeUUID
+        }
+
+        fun addDataAccessKeys(keys: Collection<PublicKey>) = apply {
+            dataAccessKeys.addAll(keys)
+        }
+
+        fun addDataAccessKey(key: PublicKey) = apply {
+            dataAccessKeys.add(key)
         }
 
         fun addProposedRecord(name: String, record: Message) = apply {
@@ -358,7 +376,7 @@ class Session(
         val permissionUpdater = PermissionUpdater(
             client,
             contract,
-            contract.toAudience(scope),
+            contract.toAudience(scope) + dataAccessKeys,
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()

@@ -1,0 +1,4 @@
+ContractHash*.kt
+ProtoHash*.kt
+io.provenance.scope.contract.contracts.ContractHash
+io.provenance.scope.contract.proto.ProtoHash

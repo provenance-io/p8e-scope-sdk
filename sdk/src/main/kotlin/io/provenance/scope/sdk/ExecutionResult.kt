@@ -39,6 +39,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
                     scopeBuilder.setScopeId(MetadataAddress.forScope(envelopeState.result.scopeUuid.toUuid()).bytes.toByteString())
                         .setSpecificationId(MetadataAddress.forScopeSpecification(envelopeState.result.scopeSpecUuid.toUuid()).bytes.toByteString())
                         .addAllOwners(parties)
+                        .addAllDataAccess(session.dataAccessKeys.map { it.getAddress(mainNet) })
                 }.addAllSigners(signers)
                 .build()
             executionInfo.add(
