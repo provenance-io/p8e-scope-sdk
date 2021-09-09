@@ -9,6 +9,7 @@ import io.provenance.scope.contract.annotations.ScopeSpecificationDefinition
 import io.provenance.scope.contract.contracts.ContractHash
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Envelopes.Envelope
+import io.provenance.scope.contract.proto.Envelopes.EnvelopeState
 import io.provenance.scope.contract.proto.ProtoHash
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.spec.P8eContract
@@ -130,26 +131,42 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     fun execute(session: Session): ExecutionResult {
-        val input = session.packageContract()
+        val input = session.packageContract(inner.config.mainNet)
         log.debug("Contract name: ${input.contract.definition.name}")
         log.debug("Session Id: ${session.sessionUuid}")
         log.debug("Execution UUID: ${input.executionUuid}")
 
 //        logger.trace("Input Hash: ${}")
 
-        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.scope, session.dataAccessKeys)
+        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.dataAccessKeys)
 
-        return when (result.isSigned(inner.config.mainNet)) {
+        val envelopeState = EnvelopeState.newBuilder()
+            .setInput(input)
+            .setResult(result)
+            .build()
+
+        return when (result.isSigned()) {
             true -> {
-                // todo: better way to get the scope/session, we will always need some minimal info for creating a new scope if not existent
-                SignedResult(session, result, inner.config.mainNet).also { signedResult ->
+                SignedResult(envelopeState).also { signedResult ->
                     log.debug("Number of each type: ${signedResult.executionInfo.groupingBy { it.second }.eachCount()}")
                     log.debug("List of ID/Address ${signedResult.executionInfo.map { it.third + it.first }}")
                     log.trace("Full Content of TX Protos: ${signedResult.messages}")
                 }
             }
-            false -> FragmentResult(input, result) // todo: do we need both input and result?
+            false -> FragmentResult(envelopeState)
         }
+    }
+
+    fun execute(envelope: Envelope): ExecutionResult {
+        // todo: should affiliateSharePublicKeys be an empty list in this non-invoking-party-execution-case?
+        val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, envelope, listOf())
+
+        val envelopeState = EnvelopeState.newBuilder()
+            .setInput(envelope)
+            .setResult(result)
+            .build()
+
+        return FragmentResult(envelopeState)
     }
 
     fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
@@ -162,14 +179,18 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             handler
         ), 1, 1, TimeUnit.SECONDS)
 
-    fun requestAffiliateExecution(envelope: Envelope) {
+    fun requestAffiliateExecution(envelopeState: EnvelopeState) {
         // todo: verify this Client instance's affiliate is on the envelope?
 
-        if (envelope.isSigned(inner.config.mainNet)) {
+        if (envelopeState.result.isSigned()) {
             TODO("should we throw an exception or something in the event that an affiliate is requesting signatures on an already fully-signed envelope?")
         }
 
-        inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelope)
+        inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.input)
+    }
+
+    fun respondWithSignedResult(envelopeState: EnvelopeState) {
+        inner.mailboxService.result(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.result)
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {

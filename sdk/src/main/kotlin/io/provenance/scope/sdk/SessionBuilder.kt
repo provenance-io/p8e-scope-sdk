@@ -10,7 +10,6 @@ import io.provenance.scope.contract.proto.*
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
-import io.provenance.scope.contract.proto.Utils.UUID
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
@@ -19,12 +18,15 @@ import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
+import io.provenance.scope.objectstore.util.toPublicKey
+import io.provenance.scope.toAudience
 import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.security.PublicKey
 import java.util.*
+import java.util.UUID
 import java.util.UUID.randomUUID
 
 class Session(
@@ -35,9 +37,9 @@ class Session(
     val provenanceReference: Commons.ProvenanceReference,
     val scope: ScopeResponse?,
     val executionUuid: UUID,
-    val scopeUuid: java.util.UUID,
-    val sessionUuid: java.util.UUID,
-    val scopeSpecUuid: java.util.UUID,
+    val scopeUuid: UUID,
+    val sessionUuid: UUID,
+    val scopeSpecUuid: UUID,
     val dataAccessKeys: Set<PublicKey>,
     val stagedProposedProtos: MutableList<Message> = mutableListOf(),
 ) {
@@ -72,9 +74,9 @@ class Session(
         var scope: ScopeResponse? = null
             private set
 
-        var executionUuid: UUID? = randomUUID().toProtoUuid()
+        var executionUuid: UUID = randomUUID()
 
-        var sessionUuid: java.util.UUID = randomUUID()
+        var sessionUuid: UUID = randomUUID()
 
         val dataAccessKeys: MutableList<PublicKey> = mutableListOf<PublicKey>()
 
@@ -234,11 +236,11 @@ class Session(
                                                     .setHash(it.hash)
                                                     // TODO where can these be retrieved
                                                     .setGroupUuid(
-                                                        UUID.newBuilder()
+                                                        Utils.UUID.newBuilder()
                                                             .setValueBytes(envelope.ref.groupUuid.valueBytes).build()
                                                     )
                                                     .setScopeUuid(
-                                                        UUID.newBuilder()
+                                                        Utils.UUID.newBuilder()
                                                             .setValueBytes(envelope.ref.scopeUuid.valueBytes).build()
                                                     )
                                                     .build()
@@ -368,18 +370,24 @@ class Session(
         return builder.build()
     }
 
-
-    fun packageContract(): Envelope {
+     fun packageContract(mainNet: Boolean): Envelope {
         val contract = populateContract()
         //TODO Different executionID
         val permissionUpdater = PermissionUpdater(
             client,
             contract,
-            dataAccessKeys
+            contract.toAudience(scope) + dataAccessKeys,
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
-            .setExecutionUuid(executionUuid)
+            .setExecutionUuid(executionUuid.toProtoUuid())
+            .setScopeUuid(scopeUuid.toProtoUuid())
+            .setScopeSpecUuid(scopeSpecUuid.toProtoUuid())
+            .setSessionUuid(sessionUuid.toProtoUuid())
+            .setNewScope(scope == null)
+            .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == sessionUuid } == null)
+            .addAllDataAccess(dataAccessKeys.map { it.toPublicKeyProto() })
+            .setMainNet(mainNet)
             .setContract(contract)
             .also {
                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
@@ -389,7 +397,7 @@ class Session(
                     .build()
 
                 if (scope != null) {
-                    it.setScope(Any.pack(scope.scope.scope, ""))
+                    it.setScope(Any.pack(scope, ""))
                 }
             }
             .clearSignatures()
@@ -411,11 +419,11 @@ class Session(
                 .setRef(
                     Commons.ProvenanceReference.newBuilder()
                         .setGroupUuid(
-                            UUID.newBuilder().setValueBytes(fact.dataLocation.ref.groupUuid.valueBytes).build()
+                            Utils.UUID.newBuilder().setValueBytes(fact.dataLocation.ref.groupUuid.valueBytes).build()
                         )
                         .setHash(fact.dataLocation.ref.hash)
                         .setScopeUuid(
-                            UUID.newBuilder().setValueBytes(fact.dataLocation.ref.scopeUuid.valueBytes).build()
+                            Utils.UUID.newBuilder().setValueBytes(fact.dataLocation.ref.scopeUuid.valueBytes).build()
                         )
                         .setName(fact.dataLocation.ref.name)
                         .build()
@@ -424,6 +432,13 @@ class Session(
                 .build()
         }
     }
+
+    private fun Contract.toAudience(scope: ScopeResponse?): Set<PublicKey> = recitalsList.map {
+        it.signer.encryptionPublicKey.toPublicKey()
+    }.toSet()
+//    .plus(scope.scope.scope.ownersList.map { // todo: add scope owners to list, need AffiliateRepository
+//        it.address
+//    })
 
     private fun isMatchingFact(inputFact: Contracts.Record.Builder, factName: String): Boolean {
         return inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()

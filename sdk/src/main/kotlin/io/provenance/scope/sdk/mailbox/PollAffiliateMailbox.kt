@@ -9,8 +9,8 @@ import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.orThrow
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.objectstore.util.toPublicKey
-import io.provenance.scope.sdk.extensions.scopeOrNull
 import io.provenance.scope.toHex
+import io.provenance.scope.util.scopeOrNull
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.function.Function
@@ -60,7 +60,7 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
         val signingAddress = signingKeyRef.publicKey.getAddress(mainNet)
 
         // verify affiliate is present on contract/scope
-        envelope.contract.recitalsList.map { it.signer.signingPublicKey.toPublicKey().getAddress(mainNet) }.plus(scope?.ownersList?.map { it.address } ?: listOf())
+        envelope.contract.recitalsList.map { it.signer.signingPublicKey.toPublicKey().getAddress(mainNet) }.plus(scope?.scope?.scope?.ownersList?.map { it.address } ?: listOf())
             .firstOrNull { it == signingAddress }
             .orThrow { IllegalStateException("Can't find party on contract execution ${envelope.executionUuid.value} with key ${signingKeyRef.publicKey.toHex()}") }
 
