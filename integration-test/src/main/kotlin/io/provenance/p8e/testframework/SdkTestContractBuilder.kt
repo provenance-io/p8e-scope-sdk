@@ -13,10 +13,12 @@ import java.net.URI
 import java.util.*
 import kotlin.collections.HashMap
 
+//TODO: Change name of addProposedFact to addProposedRecord(and factMap too) since facts are now called records
+
 class SdkTestContractBuilder(val contractType: Class<out SdkContract> = SdkSinglePartyContractLarge::class.java) {
-    val factMap: HashMap<String, ByteArray> = HashMap<String, ByteArray>()
+    val recordMap: HashMap<String, ByteArray> = HashMap<String, ByteArray>()
     var scopeUuid: UUID = UUID.randomUUID()
-    var maxFacts: Int = SdkContractInformationMap.getValue(contractType).maxFacts
+    var maxRecords: Int = SdkContractInformationMap.getValue(contractType).maxRecords
     var numParticipants: Int = SdkContractInformationMap.getValue(contractType).numParticipants
     var scope: ScopeResponse? = null
 
@@ -54,11 +56,11 @@ class SdkTestContractBuilder(val contractType: Class<out SdkContract> = SdkSingl
         return this
     }
 
-    fun addProposedFact(name: String, numBytes: Int): SdkTestContractBuilder{
-        if(name.substring(4).toInt() > maxFacts){
-            throw IllegalArgumentException("Fact number too large for given ContractType")
+    fun addProposedRecord(name: String, numBytes: Int): SdkTestContractBuilder{
+        if(name.substring(4).toInt() > maxRecords){
+            throw IllegalArgumentException("Record number too large for given ContractType")
         }
-        factMap[name] = generateRandomBytes(numBytes)
+        recordMap[name] = generateRandomBytes(numBytes)
         return this
     }
 

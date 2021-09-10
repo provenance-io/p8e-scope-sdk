@@ -22,9 +22,9 @@ import java.util.concurrent.TimeUnit
 class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
     var type: Class<out SdkContract> = contractBuilder.contractType
     var numParticipants: Int = contractBuilder.numParticipants
-    var maxFacts: Int = contractBuilder.maxFacts
+    var maxRecords: Int = contractBuilder.maxRecords
     var scopeUuid: UUID = contractBuilder.scopeUuid
-    val factMap: HashMap<String, ByteArray> = contractBuilder.factMap
+    val recordMap: HashMap<String, ByteArray> = contractBuilder.recordMap
     val sharedClient: SharedClient = contractBuilder.sharedClient
     var ownerClient: Client = contractBuilder.ownerClient
     val scope: ScopeResponse? = contractBuilder.scope
@@ -42,7 +42,7 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
 
         //Make the session
         val sessionBuilder = generateSessionBuilder(scopeSpec)
-        //Go through the fact map and add all the records(facts)
+        //Go through the record map and add all the records(records)
         supplyRecords(sessionBuilder)
 
         //Call execute and store result somewhere that can be used in waitForResult()
@@ -108,6 +108,7 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         //TODO: Figure out how to properly shut down the channel so tests aren't flooded
 //        pbChannel.shutdown()
 //        pbChannel.awaitTermination(240, TimeUnit.SECONDS)
+//        ownerClient.inner.osClient.osClient.close()
         return SdkContractResult(resultState, indexedResult, scopeResponse)
     }
 
@@ -117,12 +118,12 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         }
         else{
             scopeUuid = scope.scope.scopeIdInfo.scopeUuid.toUuid()
-            return ownerClient.newSession(type, scope).setScopeUuid(scopeUuid)
+            return ownerClient.newSession(type, scope)
         }
     }
 
     fun supplyRecords(sessionBuilder: Session.Builder){
-        for((recordName, data) in factMap){
+        for((recordName, data) in recordMap){
             sessionBuilder.addProposedRecord(recordName,
                 RandomBytes.Data.newBuilder().setData(data.toByteString()).build())
         }

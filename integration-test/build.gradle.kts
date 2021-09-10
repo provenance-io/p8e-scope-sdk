@@ -10,6 +10,7 @@ version = (project.property("version") as String?)
     ?: "1.0-SNAPSHOT"
 
 plugins {
+    idea
     `jacoco`
     kotlin("jvm") version "1.4.32"
 //     id("com.google.protobuf") version "0.8.13"

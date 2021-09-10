@@ -32,7 +32,7 @@ fun ByteArray.toByteString() = ByteString.copyFrom(this)
 
 //Holds the number of facts in the contract, the number of parties, and the scope's class.java for sdk,
 // for p8e holds whether or not the contract is multi-step
-data class SdkContractInformation(val maxFacts: Int, val numParticipants: Int, val scopeSpec: Class<out P8eScopeSpecification>)
+data class SdkContractInformation(val maxRecords: Int, val numParticipants: Int, val scopeSpec: Class<out P8eScopeSpecification>)
 
 //TODO: Add multi-party and multi-step contracts when those are implemented
 //To use your own contracts, just add the class.java and put the needed information in the data class
