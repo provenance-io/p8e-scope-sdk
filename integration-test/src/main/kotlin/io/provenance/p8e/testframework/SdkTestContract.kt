@@ -19,7 +19,6 @@ import io.provenance.scope.contract.spec.P8eScopeSpecification
 import sample.TransactionService
 import java.util.concurrent.TimeUnit
 
-//TODO: allow for setting data access keys for non-modify contracts
 
 class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
     var type: Class<out SdkContract> = contractBuilder.contractType
