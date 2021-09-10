@@ -25,6 +25,7 @@ import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
+import io.provenance.scope.util.scopeOrNull
 import io.provenance.scope.util.toHexString
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuid
@@ -44,8 +45,7 @@ class ContractEngine(
         encryptionKeyRef: KeyRef,
         signingKeyRef: KeyRef,
         envelope: Envelope,
-        scope: ScopeResponse?,
-        affiliateSharePublicKeys: Collection<PublicKey>, // todo: separate array for other scope parties that are not on the contract, or just have them all supplied here?
+        affiliateSharePublicKeys: Collection<PublicKey>,
     ): Envelope {
         log.trace("Running contract engine")
 
@@ -67,7 +67,6 @@ class ContractEngine(
                 signingKeyRef,
                 memoryClassLoader,
                 affiliateSharePublicKeys,
-                scope,
                 spec
             )
         }
@@ -80,28 +79,29 @@ class ContractEngine(
         signingKeyRef: KeyRef,
         memoryClassLoader: MemoryClassLoader,
         shares: Collection<PublicKey>,
-        scope: ScopeResponse?,
         spec: ContractSpec
     ): Envelope {
         val definitionService = DefinitionService(osClient, memoryClassLoader)
+
         val signer = signingKeyRef.signer()
+        val scope = envelope.scopeOrNull()
 
         // Load contract spec class
         val contractSpecClass = try {
-                definitionService.loadClass(encryptionKeyRef, spec.definition)
-            } catch (e: StatusRuntimeException) {
-                if (e.status.code == Status.Code.NOT_FOUND) {
-                    throw ContractDefinitionException(
-                        """
-                            Unable to load contract jar. Verify that you're using a jar that has been bootstrapped.
-                            [classname: ${spec.definition.resourceLocation.classname}]
-                            [public key: ${encryptionKeyRef.publicKey.toHex()}]
-                            [hash: ${spec.definition.resourceLocation.ref.hash}]
-                        """.trimIndent()
-                    )
-                }
-                throw e
+            definitionService.loadClass(encryptionKeyRef, spec.definition)
+        } catch (e: StatusRuntimeException) {
+            if (e.status.code == Status.Code.NOT_FOUND) {
+                throw ContractDefinitionException(
+                    """
+                        Unable to load contract jar. Verify that you're using a jar that has been bootstrapped.
+                        [classname: ${spec.definition.resourceLocation.classname}]
+                        [public key: ${encryptionKeyRef.publicKey.toHex()}]
+                        [hash: ${spec.definition.resourceLocation.ref.hash}]
+                    """.trimIndent()
+                )
             }
+            throw e
+        }
 
         // Ensure all the classes listed in the spec are loaded into the MemoryClassLoader
         loadAllClasses(
@@ -220,7 +220,7 @@ class ContractEngine(
     private fun signAndStore(
         name: String,
         message: Message,
-        audiences: Set<PublicKey>,
+        audience: Set<PublicKey>,
         encryptionKeyRef: KeyRef,
         signingKeyRef: KeyRef,
         scope: ScopeResponse?
@@ -229,12 +229,13 @@ class ContractEngine(
             message,
             signingKeyRef,
             encryptionKeyRef,
-            audiences
+            audience
         )
 
         return Futures.transform(putResponse, {
             val sha512 = it!!.value
 
+            // todo: it would appear that the ancestorHash isn't a thing on chain anymore? can we remove this?
             val ancestorHash = scope?.recordsList
                 ?.map { it.record }
                 ?.find { it.name == name }
@@ -271,6 +272,7 @@ fun Contract.toAudience(scope: ScopeResponse?, shares: Collection<PublicKey>): S
     .filter { it.hasSigner() }
     .map { it.signer.encryptionPublicKey }
 //    .plus( // can't pull from existing scope, so all parties must be on recitals list/shares passed in
+        // todo: maybe pull these via address from AffiliateRepository?
 //        scope?.sessionsList
 //            ?.flatMap { it.session.partiesList }
 //            ?.filter { it.hasSigner() }

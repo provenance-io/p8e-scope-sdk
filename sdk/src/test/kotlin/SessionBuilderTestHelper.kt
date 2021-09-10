@@ -104,6 +104,10 @@ fun createExistingScope(): ScopeResponse.Builder {
         .apply {
             scopeBuilder.scopeIdInfoBuilder.setScopeUuid(UUID.randomUUID().toString())
             scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid("ac40a8f0-fb4d-4197-99e9-818a75a3c51d")
+
+            requestBuilder
+                .setIncludeRecords(true)
+                .setIncludeSessions(true)
         }
     return scopeResponseBuilder
 

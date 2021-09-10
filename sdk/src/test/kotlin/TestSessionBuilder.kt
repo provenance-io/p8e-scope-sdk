@@ -1,6 +1,7 @@
 package io.provenance.p8e.testframework
 
 import com.google.protobuf.ByteString
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.*
@@ -29,7 +30,7 @@ class UtilsTest : WordSpec({
 
             // Create Session and run package contract for tests
             val session = builder.build()
-            val envelopePopulatedRecord = session.packageContract()
+            val envelopePopulatedRecord = session.packageContract(false)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
@@ -60,7 +61,7 @@ class UtilsTest : WordSpec({
 
             val session = builder.build()
 
-            val envelopePopulatedRecord = session.packageContract()
+            val envelopePopulatedRecord = session.packageContract(false)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
@@ -77,6 +78,28 @@ class UtilsTest : WordSpec({
             envelopePopulatedRecord.contract.inputsCount shouldBe 1
             envelopePopulatedRecord.contract.inputsList[0].name shouldBe "record2"
             envelopePopulatedRecord.contract.inputsList[0].dataLocation.classname shouldBe "io.provenance.scope.contract.proto.Contracts\$Record"
+        }
+        "disallow adding a scope when sessions were not requested" {
+            val osClient = createClientDummy(0)
+            val scopeResponse = createExistingScope().apply {
+                requestBuilder.setIncludeSessions(false)
+            }
+
+            val exception = shouldThrow<IllegalStateException> {
+                createSessionBuilderNoRecords(osClient, scopeResponse.build())
+            }
+            exception.message shouldBe "Provided scope must include sessions"
+        }
+        "disallow adding a scope when records were not requested" {
+            val osClient = createClientDummy(0)
+            val scopeResponse = createExistingScope().apply {
+                requestBuilder.setIncludeRecords(false)
+            }
+
+            val exception = shouldThrow<IllegalStateException> {
+                createSessionBuilderNoRecords(osClient, scopeResponse.build())
+            }
+            exception.message shouldBe "Provided scope must include records"
         }
     }
 })
