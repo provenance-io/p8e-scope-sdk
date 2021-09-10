@@ -3,32 +3,44 @@ package io.provenance.scope.encryption.crypto
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.provenance.scope.encryption.crypto.SignerImpl.Companion.PROVIDER
-import io.provenance.scope.encryption.crypto.SignerImpl.Companion.SIGN_ALGO
+import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.proto.Common
 import io.provenance.scope.encryption.proto.PK
-import io.provenance.scope.encryption.ecies.ECUtils
-import org.bouncycastle.jce.provider.BouncyCastleProvider
+import io.provenance.scope.encryption.util.orThrow
+import io.provenance.scope.util.ProtoUtil
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
-import java.security.Security
 import java.security.Signature
-import java.util.*
+import java.util.Base64
 
 class Pen(
     private val keyPair: KeyPair
 ): SignerImpl {
-
     val privateKey: PrivateKey = keyPair.private
 
-    val signature: Signature = Signature.getInstance(
-        SIGN_ALGO,
+    override var hashType = SignerImpl.DEFAULT_HASH
+        set(value) {
+            field = value
+            resetSignature()
+        }
+
+    override var deterministic: Boolean = false
+        set(value) {
+            field = value
+            resetSignature()
+        }
+
+    private var signature: Signature = getNewSignatureInstance()
+
+    private fun resetSignature() {
+        signature = getNewSignatureInstance()
+    }
+
+    private fun getNewSignatureInstance() = Signature.getInstance(
+        signAlgorithm,
         PROVIDER
     )
-
-    init {
-        Security.addProvider(BouncyCastleProvider())
-    }
 
     /**
      * Return the signing public key.
@@ -53,7 +65,7 @@ class Pen(
         signature.update(data)
 
         return Common.Signature.newBuilder()
-            .setAlgo(SIGN_ALGO)
+            .setAlgo(signature.algorithm)
             .setProvider(PROVIDER)
             .setSignature(String(Base64.getEncoder().encode(signature.sign())))
             .setSigner(signer())
