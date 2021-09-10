@@ -9,11 +9,12 @@ import io.provenance.scope.sdk.Affiliate
 import io.provenance.scope.sdk.Client
 import io.provenance.scope.sdk.ClientConfig
 import io.provenance.scope.sdk.SharedClient
+import java.security.PublicKey
 import java.net.URI
 import java.util.*
 import kotlin.collections.HashMap
 
-//TODO: Change name of addProposedFact to addProposedRecord(and factMap too) since facts are now called records
+//TODO: Allow for setting of Data Access Keys for non-modify contracts
 
 class SdkTestContractBuilder(val contractType: Class<out SdkContract> = SdkSinglePartyContractLarge::class.java) {
     val recordMap: HashMap<String, ByteArray> = HashMap<String, ByteArray>()
@@ -21,6 +22,8 @@ class SdkTestContractBuilder(val contractType: Class<out SdkContract> = SdkSingl
     var maxRecords: Int = SdkContractInformationMap.getValue(contractType).maxRecords
     var numParticipants: Int = SdkContractInformationMap.getValue(contractType).numParticipants
     var scope: ScopeResponse? = null
+    var dataAccessKeys: MutableList<PublicKey> = mutableListOf<PublicKey>()
+
 
     val sharedClient = SharedClient(
         ClientConfig(
@@ -61,6 +64,11 @@ class SdkTestContractBuilder(val contractType: Class<out SdkContract> = SdkSingl
             throw IllegalArgumentException("Record number too large for given ContractType")
         }
         recordMap[name] = generateRandomBytes(numBytes)
+        return this
+    }
+
+    fun addAccessKey(key: PublicKey): SdkTestContractBuilder{
+        dataAccessKeys.add(key)
         return this
     }
 

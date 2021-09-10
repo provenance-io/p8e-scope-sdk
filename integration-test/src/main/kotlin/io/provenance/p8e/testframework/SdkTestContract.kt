@@ -13,11 +13,13 @@ import io.provenance.scope.sdk.testframework.proto.RandomBytes
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.*
 import io.provenance.scope.util.toUuid
+import java.security.PublicKey
 import java.util.*
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import sample.TransactionService
 import java.util.concurrent.TimeUnit
 
+//TODO: allow for setting data access keys for non-modify contracts
 
 class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
     var type: Class<out SdkContract> = contractBuilder.contractType
@@ -28,6 +30,7 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
     val sharedClient: SharedClient = contractBuilder.sharedClient
     var ownerClient: Client = contractBuilder.ownerClient
     val scope: ScopeResponse? = contractBuilder.scope
+    var dataAccessKeys: MutableList<PublicKey> = contractBuilder.dataAccessKeys
 //    val log = logger()
 
     companion object{
@@ -40,8 +43,11 @@ class SdkTestContract constructor(contractBuilder: SdkTestContractBuilder){
         //Get scopeSpecUuid
         val scopeSpec = SdkContractInformationMap.getValue(type).scopeSpec
 
-        //Make the session
+
+        //Make the session and add all data access keys
         val sessionBuilder = generateSessionBuilder(scopeSpec)
+        sessionBuilder.addDataAccessKeys(dataAccessKeys)
+
         //Go through the record map and add all the records(records)
         supplyRecords(sessionBuilder)
 

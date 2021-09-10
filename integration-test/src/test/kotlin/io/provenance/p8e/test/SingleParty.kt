@@ -59,7 +59,6 @@ class SinglePartyTests : WordSpec({
         "allow setting data access parties" {
             val builder: SdkTestContractBuilder = SdkTestContractBuilder(SdkSinglePartyContractSmall::class.java)
             builder.addProposedRecord("fact1", 9).addProposedRecord("fact2", 3)
-            val contract = builder.build()
 
             //Made from local, private keypair from localKeys list from Utils.kt(ownerClient uses localKeys[0]
             val custAffiliate = Affiliate(
@@ -67,15 +66,17 @@ class SinglePartyTests : WordSpec({
                 DirectKeyRef(localKeys[1].public, localKeys[1].private),
                 Specifications.PartyType.CUSTODIAN
             )
-            val ownerAddr = contract.ownerClient.affiliate.encryptionKeyRef.publicKey.getAddress(mainNet=false)
-            val custAddr = custAffiliate.encryptionKeyRef.publicKey.getAddress(mainNet=false)
 
+            //Add an access key
+            builder.addAccessKey(custAffiliate.encryptionKeyRef.publicKey)
+
+            val contract = builder.build()
             val result = contract.execute()
             val scope: ScopeResponse = result.scope!!
 
-            //Check data access addresses
-            scope.scope.scope.dataAccessList
-            //Add custAddr to data access addresses and make a modify contract and execute and re-check?
+            //Check to make sure the access key is within the data access list
+            scope.scope.scope.dataAccessList.contains(
+                custAffiliate.encryptionKeyRef.publicKey.getAddress(mainNet=false)) shouldBe true
 
         }
 
