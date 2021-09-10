@@ -81,7 +81,7 @@ fun Audience.toCryptogram(): ProvenanceECIESCryptogram {
     )
 }
 
-fun String.toSecretKeySpecProv() = ProvenanceAESCrypt.secretKeySpecGenerate(Base64.getDecoder().decode(this))
+fun String.toSecretKeySpec() = ProvenanceAESCrypt.secretKeySpecGenerate(Base64.getDecoder().decode(this))
 
 fun String.toAgreeKey(transientKey: String): KeyObject {
        val keyUuid = this

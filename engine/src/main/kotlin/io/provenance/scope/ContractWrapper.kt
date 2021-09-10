@@ -13,7 +13,7 @@ import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
-import io.provenance.scope.util.toOffsetDateTimeProv
+import io.provenance.scope.util.toOffsetDateTime
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
@@ -41,7 +41,7 @@ class ContractWrapper(
     private val constructorParameters = getConstructorParameters(constructor, records)
 
     private val contract = (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
-        .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTimeProv()) }
+        .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
 
     val functions = contractBuilder.considerationsBuilderList
         .filter { it.result == ExecutionResult.getDefaultInstance() }

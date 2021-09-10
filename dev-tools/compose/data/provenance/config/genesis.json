@@ -88,7 +88,7 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "address": "tp1hjvympqheaer7v3ylr6csu6dfs8xq34evl3zg8",
+          "address": "tp1s67kjhq4t0wflaylcrxe83tzemut2gcp2kqzua",
           "pub_key": null,
           "account_number": "0",
           "sequence": "0"
@@ -193,7 +193,7 @@
           ]
         },
         {
-          "address": "tp1hjvympqheaer7v3ylr6csu6dfs8xq34evl3zg8",
+          "address": "tp1s67kjhq4t0wflaylcrxe83tzemut2gcp2kqzua",
           "coins": [
             {
               "denom": "nhash",
