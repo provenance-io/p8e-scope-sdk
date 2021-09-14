@@ -44,7 +44,7 @@ message Location {
 
 message ProvenanceReference {
     UUID scope_uuid = 1;     // [Req] [Scope.uuid] -- Scope ID
-    UUID group_uuid = 2;     // [Opt] [RecordGroup.group_uuid] -- require record to be within a specific group
-    string hash = 3;         // [Opt] [Record.result_hash] -- specify a specific record inside a scope (and group) by result-hash
+    UUID session_uuid = 2;     // [Opt] [RecordGroup.session_uuid] -- require record to be within a specific session
+    string hash = 3;         // [Opt] [Record.result_hash] -- specify a specific record inside a scope (and session) by result-hash
     string name = 4;         // [Opt] [Record.result_name] -- specify a result-name of a record within a scope
 }

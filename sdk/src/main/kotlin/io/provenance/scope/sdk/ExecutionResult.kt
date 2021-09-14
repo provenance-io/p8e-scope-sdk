@@ -29,7 +29,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
         .build()
     }
 
-    private val sessionId = MetadataAddress.forSession(envelopeState.result.scopeUuid.toUuid(), envelopeState.result.sessionUuid.toUuid()).bytes.toByteString()
+    private val sessionId = MetadataAddress.forSession(envelopeState.result.ref.scopeUuid.toUuid(), envelopeState.result.ref.sessionUuid.toUuid()).bytes.toByteString()
     private val contractSpecId = envelopeState.result.contract.spec.dataLocation.ref.hash.base64Decode().toUuid().let { uuid -> MetadataAddress.forContractSpecification(uuid) }
 
     val executionInfo = mutableListOf<Triple<String, String, String>>()
@@ -37,7 +37,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
         if (envelopeState.result.newScope) {
             val msgWriteScopeRequest = MsgWriteScopeRequest.newBuilder()
                 .apply {
-                    scopeBuilder.setScopeId(MetadataAddress.forScope(envelopeState.result.scopeUuid.toUuid()).bytes.toByteString())
+                    scopeBuilder.setScopeId(MetadataAddress.forScope(envelopeState.result.ref.scopeUuid.toUuid()).bytes.toByteString())
                         .setSpecificationId(MetadataAddress.forScopeSpecification(envelopeState.result.scopeSpecUuid.toUuid()).bytes.toByteString())
                         .addAllOwners(parties)
                         .addAllDataAccess(envelopeState.result.dataAccessList.map { it.toPublicKey().getAddress(mainNet) })
@@ -45,7 +45,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
                 .build()
             executionInfo.add(
                 Triple<String, String, String>(
-                    envelopeState.result.scopeUuid.value,
+                    envelopeState.result.ref.scopeUuid.value,
                     msgWriteScopeRequest::class.java.name,
                     "ScopeID: "
                 )
@@ -66,7 +66,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
                 .build()
             executionInfo.add(
                 Triple<String, String, String>(
-                    envelopeState.result.sessionUuid.value,
+                    envelopeState.result.ref.sessionUuid.value,
                     msgWriteSessionRequest::class.java.name,
                     "Session ID: "
                 )

@@ -11,6 +11,8 @@ sealed class KeyRef(val publicKey: PublicKey)
 class SmartKeyRef(publicKey: PublicKey, val uuid: UUID) : KeyRef(publicKey)
 class DirectKeyRef(publicKey: PublicKey, val privateKey: PrivateKey) : KeyRef(publicKey)
 
+data class SigningAndEncryptionPublicKeys(val signingPublicKey: PublicKey, val encryptionPublicKey: PublicKey)
+
 // TODO implement smart key leg
 fun KeyRef.signer(): SignerImpl = when (this) {
     is DirectKeyRef -> Pen(KeyPair(this.publicKey, this.privateKey))

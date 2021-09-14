@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.gradle.api.tasks.testing.logging.TestLogEvent.*
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
 
 buildscript {
     repositories {
@@ -30,6 +32,7 @@ subprojects {
     apply(plugin = "signing")
     apply(plugin = "java-library")
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "jacoco")
 
     repositories {
         mavenCentral()
@@ -44,6 +47,32 @@ subprojects {
     java {
         withJavadocJar()
         withSourcesJar()
+    }
+
+    dependencies {
+        testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
+        testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
+        testImplementation("io.mockk:mockk:1.12.0")
+        testImplementation("org.slf4j", "log4j-over-slf4j", "1.7.30")
+        testImplementation("org.junit.platform:junit-platform-commons:1.5.2")
+    }
+
+    tasks.jacocoTestReport {
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
+        }
+    }
+
+    tasks.withType<Test> {
+        useJUnitPlatform()
+
+        testLogging {
+            showStandardStreams = true
+            events = setOf(PASSED, FAILED, SKIPPED, STANDARD_ERROR)
+            exceptionFormat = FULL
+        }
+        finalizedBy("jacocoTestReport")
     }
 
     publishing {
