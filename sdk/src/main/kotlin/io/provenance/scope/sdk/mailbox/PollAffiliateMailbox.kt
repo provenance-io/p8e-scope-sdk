@@ -9,8 +9,8 @@ import io.provenance.scope.encryption.proto.Encryption.Audience
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.orThrow
 import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.objectstore.util.toPublicKey
-import io.provenance.scope.toHex
 import io.provenance.scope.util.error
 import io.provenance.scope.util.randomProtoUuid
 import io.provenance.scope.util.scopeOrNull
