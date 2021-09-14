@@ -36,11 +36,19 @@ NOTE: Change the mainClass property to the desired example for execution.
 ./gradlew -PmainClass=io.provenance.scope.examples.app.UpdateAndIndexContractKt app:run
 ```
 
+### Example Descriptions
+
+SimpleContract.kt - Simple execution to introduce Provenance scopes and P8eContract basics.
+SmartKeyHsm.kt - Mimics the simple execution example but makes use of a third party HSM (Smart Key) for cryptography operations.
+UpdateAndIndexContract.kt - Demonstrates updating records on a Provenance scope and the concept of the P8e index protobuf descriptor.
+BatchSendContracts.kt - Demonstrates higher throughput Provenance writes by batching and sending transactions in a background process.
+
 ### TODO (steve docs) add examples of the following
-- [ ] smart key example
+- [x] smart key example
 - [x] single party execution with hydration
 - [x] complex single party execution and then update single party execution with proto indexer and with hydration
 - [x] multiple contract batching and sending to chain
+- [ ] change scope ownership
 - [ ] multi party execution
 - [ ] multistep execution
 - [ ] skipping execution and using client strictly to save objects and persist to provenance

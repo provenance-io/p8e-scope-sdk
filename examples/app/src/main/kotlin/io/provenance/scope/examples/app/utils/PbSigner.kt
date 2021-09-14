@@ -1,26 +1,25 @@
-package io.provenance.scope.examples.app
+package io.provenance.scope.examples.app.utils
 
-import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey
+import io.provenance.scope.encryption.crypto.SignerImpl
+import io.provenance.scope.objectstore.util.base64Decode
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.kethereum.crypto.CURVE
 import org.kethereum.crypto.api.ec.ECDSASignature
-import org.kethereum.crypto.impl.ec.EllipticCurveSigner
+import org.kethereum.crypto.impl.ec.canonicalise
 import java.math.BigInteger
-import java.security.KeyPair
-import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
+import kotlin.experimental.and
 
 // NOTE:
 // This whole namespace would not be needed once the provenance hdwallet is ready.
 
 data class StdSignature(
     val pub_key: StdPubKey,
-    val signature: ByteArray
+    val signature: ByteArray,
 )
 
 data class StdPubKey(
     val type: String,
-    val value: ByteArray? = ByteArray(0)
+    val value: ByteArray,
 )
 
 fun BigInteger.getUnsignedBytes(): ByteArray {
@@ -60,37 +59,25 @@ fun ECDSASignature.encodeAsBTC(): ByteArray {
     return signature
 }
 
-object Hash {
-    /**
-     * Generates SHA-256 digest for the given `input`.
-     *
-     * @param input The input to digest
-     * @return The hash value for the given input
-     * @throws RuntimeException If we couldn't find any SHA-256 provider
-     */
-    fun sha256(input: ByteArray?): ByteArray {
-        return try {
-            val digest = MessageDigest.getInstance("SHA-256")
-            digest.digest(input)
-        } catch (e: NoSuchAlgorithmException) {
-            throw RuntimeException("Couldn't find a SHA-256 provider", e)
-        }
-    }
-}
-
 typealias SignerFn = (ByteArray) -> List<StdSignature>
 object PbSigner {
-    fun signerFor(keyPair: KeyPair): SignerFn = { bytes ->
-        bytes.let {
-            Hash.sha256(it)
-        }.let {
-            val privateKey = (keyPair.private as BCECPrivateKey).s
-            StdSignature(
-                pub_key = StdPubKey("tendermint/PubKeySecp256k1", (keyPair.public as BCECPublicKey).q.getEncoded(true)) ,
-                signature = EllipticCurveSigner().sign(it, privateKey, true).encodeAsBTC()
-            )
-        }.let {
-            listOf(it)
-        }
+    fun signerFor(signer: SignerImpl): SignerFn = { bytes ->
+        StdSignature(
+            pub_key = StdPubKey("tendermint/PubKeySecp256k1", (signer.getPublicKey() as BCECPublicKey).q.getEncoded(true)),
+            signature = signer.sign(bytes).signature.base64Decode().toECDSASignature(true).encodeAsBTC()
+        ).let { listOf(it) }
     }
+
+    fun ByteArray.extractRAndS(): Pair<BigInteger, BigInteger> {
+        val startR = if (this[1] and 0x80.toByte() != 0.toByte()) 3 else 2
+        val lengthR = this[startR + 1].toInt()
+        val startS = startR + 2 + lengthR
+        val lengthS = this[startS + 1].toInt()
+
+        return BigInteger(this, startR + 2, lengthR) to BigInteger(this, startS + 2, lengthS)
+    }
+
+    fun ByteArray.toECDSASignature(canonical: Boolean) = extractRAndS().let { (r, s) ->
+        ECDSASignature(r, s)
+    }.let { if (canonical) { it.canonicalise() } else { it } }
 }
