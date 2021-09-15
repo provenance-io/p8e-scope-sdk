@@ -1,11 +1,14 @@
 package io.provenance.scope.examples.app
 
+import com.fortanix.sdkms.v1.ApiClient
+import com.fortanix.sdkms.v1.api.AuthenticationApi
+import com.fortanix.sdkms.v1.api.SignAndVerifyApi
+import com.fortanix.sdkms.v1.auth.ApiKeyAuth
 import io.grpc.ManagedChannelBuilder
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.proto.Specifications.PartyType
-import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.model.DirectKeyRef
-import io.provenance.scope.encryption.util.toJavaPrivateKey
+import io.provenance.scope.encryption.model.SmartKeyRef
+import io.provenance.scope.encryption.util.toJavaPublicKey
 import io.provenance.scope.examples.SimpleExample.ExampleName
 import io.provenance.scope.examples.app.utils.SingleTx
 import io.provenance.scope.examples.app.utils.TransactionService
@@ -22,12 +25,12 @@ import java.net.URI
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-data class ExampleNameHydrate(
+data class ExampleNameHydrateHsm(
     @Record("name") val name: ExampleName,
 )
 
 fun main(args: Array<String>) {
-    println("Executing simple contract example!")
+    println("Executing example with Smart Key HSM crypto operations!")
 
     // Creates Provenance grpc client. This is used for fetching Provenance account information, as well as
     // simulating and broadcasting TXs.
@@ -44,9 +47,28 @@ fun main(args: Array<String>) {
         .build()
     val transactionService = TransactionService(System.getenv("CHAIN_ID"), channel)
 
+    // Creates a Smart Key API Client
+    val smartKeyApiKey = System.getenv("SMART_KEY_API_KEY")
+    val smartKeyClient = ApiClient().apply {
+        setBasicAuthString(smartKeyApiKey)
+        com.fortanix.sdkms.v1.Configuration.setDefaultApiClient(this)
+
+        // authenticate with API
+        val authResponse = AuthenticationApi(this).authorize()
+        val auth = getAuthentication("bearerToken") as ApiKeyAuth
+        auth.apiKey = authResponse.accessToken
+        auth.apiKeyPrefix = "Bearer"
+    }
+    val signAndVerifyApi = SignAndVerifyApi(smartKeyClient)
+
     // Creates a P8e scope client that will be used for contract execution.
-    val encryptionPrivateKey = System.getenv("ENCRYPTION_PRIVATE_KEY").toJavaPrivateKey()
-    val signingPrivateKey = System.getenv("SIGNING_PRIVATE_KEY").toJavaPrivateKey()
+    val publicKey = System.getenv("SMART_KEY_PUBLIC_KEY").toJavaPublicKey()
+    val smartKeyUuid = UUID.fromString(System.getenv("SMART_KEY_UUID"))
+    val smartKeyRef = SmartKeyRef(
+        publicKey = publicKey,
+        uuid = smartKeyUuid,
+        signAndVerifyApi = signAndVerifyApi,
+    )
     val config = ClientConfig(
         cacheJarSizeInBytes = 0L,
         cacheSpecSizeInBytes = 0L,
@@ -57,9 +79,11 @@ fun main(args: Array<String>) {
 
         mainNet = false,
     )
+    // We are choosing to use the same underlying HSM key for signing and encryption, but they can also be separate
+    // Smart Key references.
     val affiliate = Affiliate(
-        encryptionKeyRef = DirectKeyRef(ECUtils.toPublicKey(encryptionPrivateKey)!!, encryptionPrivateKey),
-        signingKeyRef = DirectKeyRef(ECUtils.toPublicKey(signingPrivateKey)!!, signingPrivateKey),
+        encryptionKeyRef = smartKeyRef,
+        signingKeyRef = smartKeyRef,
         partyType = PartyType.OWNER,
     )
     val sdk = Client(SharedClient(config = config), affiliate)
@@ -75,8 +99,8 @@ fun main(args: Array<String>) {
             .addProposedRecord(
                 "name",
                 ExampleName.newBuilder()
-                    .setFirstName("Jerry")
-                    .setLastName("Seinfeld")
+                    .setFirstName("Art")
+                    .setLastName("Vandelay")
                     .build()
             )
             .build()
@@ -89,7 +113,7 @@ fun main(args: Array<String>) {
 
         // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
         val scopeResponse = getScope(channel, scopeUuid)
-        val scope = sdk.hydrate(ExampleNameHydrate::class.java, scopeResponse)
+        val scope = sdk.hydrate(ExampleNameHydrateHsm::class.java, scopeResponse)
         println("ExampleName record data = $scope")
     } catch (e: Exception) {
         println(e.printStackTrace())

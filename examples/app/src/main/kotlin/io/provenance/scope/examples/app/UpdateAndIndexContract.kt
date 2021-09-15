@@ -14,6 +14,10 @@ import io.provenance.scope.examples.LoanExample.Lien
 import io.provenance.scope.examples.LoanExample.Loan
 import io.provenance.scope.examples.LoanExample.Servicing
 import io.provenance.scope.examples.LoanExample.UnderwritingPacket
+import io.provenance.scope.examples.app.utils.SingleTx
+import io.provenance.scope.examples.app.utils.TransactionService
+import io.provenance.scope.examples.app.utils.getScope
+import io.provenance.scope.examples.app.utils.persistBatchToProvenance
 import io.provenance.scope.examples.contract.AddLoanDocument
 import io.provenance.scope.examples.contract.AddLoanServicing
 import io.provenance.scope.examples.contract.LoanOnboard
@@ -26,7 +30,6 @@ import io.provenance.scope.sdk.SignedResult
 import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toProtoTimestamp
 import java.net.URI
-import java.security.KeyPair
 import java.time.OffsetDateTime
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -61,7 +64,6 @@ fun main(args: Array<String>) {
                 it.usePlaintext()
             }
         }
-        .usePlaintext()
         .build()
     val transactionService = TransactionService(System.getenv("CHAIN_ID"), channel)
 
@@ -181,7 +183,7 @@ fun main(args: Array<String>) {
 
         // A single party contract will always return a batch of messages that can be persisted to Provenance.
         when (val result = sdk.execute(session)) {
-            is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
+            is SignedResult -> persistBatchToProvenance(transactionService, SingleTx(result), affiliate.signingKeyRef)
             else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
         }
 
@@ -207,7 +209,7 @@ fun main(args: Array<String>) {
 
         // A single party contract will always return a batch of messages that can be persisted to Provenance.
         when (val result = sdk.execute(sessionTwo)) {
-            is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
+            is SignedResult -> persistBatchToProvenance(transactionService, SingleTx(result), affiliate.signingKeyRef)
             else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
         }
 
@@ -236,7 +238,7 @@ fun main(args: Array<String>) {
 
         // A single party contract will always return a batch of messages that can be persisted to Provenance.
         when (val result = sdk.execute(sessionThree)) {
-            is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
+            is SignedResult -> persistBatchToProvenance(transactionService, SingleTx(result), affiliate.signingKeyRef)
             else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
         }
 
