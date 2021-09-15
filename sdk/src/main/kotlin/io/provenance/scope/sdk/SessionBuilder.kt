@@ -8,6 +8,7 @@ import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
@@ -75,7 +76,7 @@ class Session(
 
         var sessionUuid: UUID = randomUUID()
 
-        val dataAccessKeys: MutableList<PublicKey> = mutableListOf<PublicKey>()
+        val dataAccessKeys: MutableList<PublicKey> = mutableListOf()
 
         fun build() = Session(this)
 
@@ -366,6 +367,22 @@ class Session(
     }
 
      fun packageContract(mainNet: Boolean): Envelope {
+         if (scope != null) {
+             val sessionDataAccessAddresses = dataAccessKeys.map { it.getAddress(mainNet) }.toSet()
+
+             sessionDataAccessAddresses.forEach { key ->
+                 if (!scope.scope.scope.dataAccessList.contains(key)) {
+                     throw IllegalStateException("$key was added with data access in this session but does not have access in the existing scope.")
+                 }
+             }
+
+             scope.scope.scope.dataAccessList.forEach { key ->
+                 if (!sessionDataAccessAddresses.contains(key)) {
+                     throw IllegalStateException("$key has data access in the existing scope but was not added to the data access list in this session.")
+                 }
+             }
+         }
+
         val contract = populateContract()
         //TODO Different executionID
         val permissionUpdater = PermissionUpdater(

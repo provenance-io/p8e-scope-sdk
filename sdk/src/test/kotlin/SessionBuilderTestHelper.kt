@@ -6,6 +6,7 @@ import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.encryption.model.DirectKeyRef
+import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.encryption.util.toJavaPublicKey
 import io.provenance.scope.sdk.*
@@ -73,6 +74,7 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
         .apply {
             if (existingScope != null) {
                 setScope(existingScope)
+                addDataAccessKey(localKeys[3].public)
             }
         }
 }
@@ -93,7 +95,7 @@ fun createExistingScope(): ScopeResponse.Builder {
         .setName("record2")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
     val scope = Scope.newBuilder()
-        .addDataAccess("tp1w837rynvaoweyawnvo3ry77wno37r")
+        .addDataAccess(localKeys[3].public.getAddress(false))
         .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER))
         .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
