@@ -46,10 +46,10 @@ object ProtoUtil {
             .setSpec(defSpec)
     }
 
-    fun provenanceReferenceOf(scopeUuid: UUID, contractUuid: UUID, hash: String) =
+    fun provenanceReferenceOf(scopeUuid: UUID, sessionUuid: UUID, hash: String) =
         ProvenanceReference.newBuilder()
             .setScopeUuid(Utils.UUID.newBuilder().setValue(scopeUuid.toString()).build())
-            .setGroupUuid(Utils.UUID.newBuilder().setValue(contractUuid.toString()).build())
+            .setSessionUuid(Utils.UUID.newBuilder().setValue(sessionUuid.toString()).build())
             .setHash(hash)
 
 

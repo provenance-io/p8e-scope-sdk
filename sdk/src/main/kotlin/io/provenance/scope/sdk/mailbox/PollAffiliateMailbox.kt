@@ -4,46 +4,55 @@ import io.provenance.metadata.v1.Scope
 import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.model.KeyRef
+import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.proto.Encryption.Audience
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.orThrow
 import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.objectstore.util.toPublicKey
-import io.provenance.scope.toHex
+import io.provenance.scope.util.error
+import io.provenance.scope.util.randomProtoUuid
 import io.provenance.scope.util.scopeOrNull
+import io.provenance.scope.util.toMessageWithStackTrace
+import io.provenance.scope.util.toUuidOrNull
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.function.Function
 
 typealias MailHandlerFn = Function<MailboxEvent, Boolean>
 
-class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, val encryptionKeyRef: KeyRef, val maxResults: Int, val mainNet: Boolean, val handler: MailHandlerFn): Runnable {
+class PollAffiliateMailbox(val osClient: OsClient, val mailboxService: MailboxService, val signingKeyRef: KeyRef, val encryptionKeyRef: KeyRef, val maxResults: Int, val mainNet: Boolean, val handler: MailHandlerFn): Runnable {
     private val log = LoggerFactory.getLogger(this::class.java)
 
     override fun run() {
         osClient.mailboxGet(encryptionKeyRef.publicKey, maxResults).forEach { (mailUuid, dimeInputStream) ->
-            dimeInputStream.getDecryptedPayload(encryptionKeyRef).use {
-                val bytes = it.readAllBytes()
+            try {
+                dimeInputStream.getDecryptedPayload(encryptionKeyRef).use {
+                    val bytes = it.readAllBytes()
 
-                if (!it.verify()) {
-                    log.warn("Mailbox object verification failure [public key: ${encryptionKeyRef.publicKey.toHex()}] [mailbox uuid: $mailUuid]")
-                    return
+                    if (!it.verify()) {
+                        log.warn("Mailbox object verification failure [public key: ${encryptionKeyRef.publicKey.toHex()}] [mailbox uuid: $mailUuid]")
+                        return
+                    }
+
+                    log.trace("Received mail from poll $mailUuid")
+
+                    if (!dimeInputStream.metadata.containsKey(MailboxMeta.KEY)) {
+                        osClient.mailboxAck(mailUuid).also { log.warn("Unhandled mailbox meta: {}", dimeInputStream.metadata) }
+                        return
+                    }
+
+                    val mailboxKey = dimeInputStream.metadata[MailboxMeta.KEY]
+
+                    when (mailboxKey) {
+                        MailboxMeta.FRAGMENT_REQUEST, MailboxMeta.FRAGMENT_RESPONSE -> handleEnvelope(mailUuid, mailboxKey, dimeInputStream.dime.owner, bytes)
+                        MailboxMeta.ERROR_RESPONSE -> handleEnvelopeError(mailUuid, mailboxKey, dimeInputStream.dime.owner, bytes)
+                        else -> throw IllegalStateException("Unhandled mailbox key: $mailboxKey uuid: $mailUuid")
+                    }
                 }
-
-                log.trace("Received mail from poll $mailUuid")
-
-                if (!dimeInputStream.metadata.containsKey(MailboxMeta.KEY)) {
-                    osClient.mailboxAck(mailUuid).also { log.warn("Unhandled mailbox meta: {}", dimeInputStream.metadata) }
-                    return
-                }
-
-                val mailboxKey = dimeInputStream.metadata[MailboxMeta.KEY]
-
-                when (mailboxKey) {
-                    MailboxMeta.FRAGMENT_REQUEST, MailboxMeta.FRAGMENT_RESPONSE -> handleEnvelope(mailUuid, mailboxKey, dimeInputStream.dime.owner, bytes)
-                    MailboxMeta.ERROR_RESPONSE -> handleEnvelopeError(mailUuid, mailboxKey, dimeInputStream.dime.owner, bytes)
-                    else -> throw IllegalStateException("Unhandled mailbox key: $mailboxKey uuid: $mailUuid")
-                }
+            } catch (t: Throwable) {
+                log.error("Error processing incoming mail", t)
             }
         }
     }
@@ -53,7 +62,8 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
 
         val scope = envelope.scopeOrNull()
 
-        // todo: validation on various uuids being present? Do we still have an execution uuid in play?
+        require(envelope.ref.sessionUuid.toUuidOrNull() != null) { "Session uuid is required" }
+        require(envelope.executionUuid.toUuidOrNull() != null) { "Execution uuid is required" }
 
         val className = envelope.contract.definition.resourceLocation.classname
 
@@ -67,18 +77,17 @@ class PollAffiliateMailbox(val osClient: OsClient, val signingKeyRef: KeyRef, va
         when (mailboxKey) {
             MailboxMeta.FRAGMENT_REQUEST -> handler.handleSynchronousAck(mailUuid, ExecutionRequestEvent(envelope))
             MailboxMeta.FRAGMENT_RESPONSE -> handler.handleSynchronousAck(mailUuid, ExecutionResponseEvent(envelope))
-            else -> throw IllegalStateException("Should not happen, unhandled mailbox key:$mailboxKey") // todo: error handling around the upper when (mailboxKey) cases
+            else -> throw IllegalStateException("Should not happen, unhandled mailbox key:$mailboxKey")
         }
     }
 
     private fun handleEnvelopeError(mailUuid: UUID, mailboxKey: String, ownerAudience: Audience, message: ByteArray) {
         val error = Envelopes.EnvelopeError.parseFrom(message)
 
-        // todo: validation on various uuids being present?
+        require(error.sessionUuid.toUuidOrNull() != null) { "Session uuid is required" }
+        require(error.executionUuid.toUuidOrNull() != null) { "Execution uuid is required" }
 
         handler.handleSynchronousAck(mailUuid, ExecutionErrorEvent(error))
-
-        // todo: mail error to other parties??? Function in old MailboxReaper seems a bit overloaded for error cases...
     }
 
     private fun MailHandlerFn.handleSynchronousAck(mailUuid: UUID, event: MailboxEvent) {

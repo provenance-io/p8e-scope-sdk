@@ -80,6 +80,9 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
 }
 
 fun createExistingScope(): ScopeResponse.Builder {
+    val scopeUuid = UUID.randomUUID()
+    val sessionUUID = UUID.randomUUID()
+    val specificationUUID = UUID.randomUUID()
     val scopeRecord = Record.newBuilder()
         .addInputs(
             RecordInput.newBuilder()
@@ -88,14 +91,15 @@ fun createExistingScope(): ScopeResponse.Builder {
             .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED))
         .addOutputs(RecordOutput.newBuilder().setHash("234567834567").build())
         .setProcess(Process.newBuilder().setName("io.provenance.scope.contract.proto.Contracts\$Record").build())
+        .setSessionId(MetadataAddress.forSession(scopeUuid, sessionUUID).bytes.toByteString())
         .setName("record2")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
     val scope = Scope.newBuilder()
         .addDataAccess(localKeys[3].public.getAddress(false))
         .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER))
-        .setScopeId(ByteString.copyFromUtf8("1234567801234567890"))
+        .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
-        .setSpecificationId(ByteString.copyFromUtf8("09876543210987654321"))
+        .setSpecificationId(MetadataAddress.forScopeSpecification(specificationUUID).bytes.toByteString())
         .build()
     val scopeWrapper = ScopeWrapper.newBuilder()
         .setScope(scope)
@@ -104,8 +108,8 @@ fun createExistingScope(): ScopeResponse.Builder {
         .setScope(scopeWrapper)
         .addRecords(recordWrapper)
         .apply {
-            scopeBuilder.scopeIdInfoBuilder.setScopeUuid(UUID.randomUUID().toString())
-            scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid("ac40a8f0-fb4d-4197-99e9-818a75a3c51d")
+            scopeBuilder.scopeIdInfoBuilder.setScopeUuid(scopeUuid.toString())
+            scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid(specificationUUID.toString())
 
             requestBuilder
                 .setIncludeRecords(true)

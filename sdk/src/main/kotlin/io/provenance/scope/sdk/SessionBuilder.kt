@@ -2,10 +2,7 @@ package io.provenance.scope.sdk
 
 import com.google.protobuf.*
 import com.google.protobuf.Any
-import io.provenance.metadata.v1.*
-import io.provenance.metadata.v1.p8e.Fact
-import io.provenance.metadata.v1.p8e.Location
-import io.provenance.metadata.v1.p8e.ProvenanceReference
+import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
@@ -20,6 +17,7 @@ import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.toPublicKey
+import io.provenance.scope.sdk.extensions.sessionUuid
 import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
@@ -235,9 +233,9 @@ class Session(
                                                 Commons.ProvenanceReference.newBuilder()
                                                     .setHash(it.hash)
                                                     // TODO where can these be retrieved
-                                                    .setGroupUuid(
+                                                    .setSessionUuid(
                                                         Utils.UUID.newBuilder()
-                                                            .setValueBytes(envelope.ref.groupUuid.valueBytes).build()
+                                                            .setValueBytes(envelope.ref.sessionUuid.valueBytes).build()
                                                     )
                                                     .setScopeUuid(
                                                         Utils.UUID.newBuilder()
@@ -317,21 +315,19 @@ class Session(
         if (scope != null) {
             scope.recordsList
                 .associateBy { it.record.name }
-                .forEach { (factName, scopeFact) ->
-                    builder.populateFact(
-                        Fact.newBuilder()
-                            .setName(factName)
+                .forEach { (recordName, scopeRecord) ->
+                    builder.populateRecord(
+                        Contracts.Record.newBuilder()
+                            .setName(recordName)
                             .setDataLocation(
-                                Location.newBuilder()
-                                    .setClassname(scopeFact.record.process.name)
+                                Commons.Location.newBuilder()
+                                    .setClassname(scopeRecord.record.process.name)
                                     .setRef(
-                                        ProvenanceReference.newBuilder()
-                                            .setScopeUuid(
-                                                io.provenance.metadata.v1.p8e.UUID.newBuilder()
-                                                    .setValue(scope.uuid())
-                                            )
+                                        Commons.ProvenanceReference.newBuilder()
+                                            .setScopeUuid(scope.uuid().toProtoUuid())
+                                            .setSessionUuid(scopeRecord.record.sessionUuid().toProtoUuid())
                                             .setHash(
-                                                scopeFact.record.resultHash().base64EncodeString()
+                                                scopeRecord.record.resultHash().base64EncodeString()
                                             ) // todo: address for multiple outputs
                                     )
                             ).build()
@@ -385,64 +381,63 @@ class Session(
                      throw IllegalStateException("$key has data access in the existing scope but was not added to the data access list in this session.")
                  }
              }
-
          }
 
-         val contract = populateContract()
-         //TODO Different executionID
-         val permissionUpdater = PermissionUpdater(
-             client,
-             contract,
-             contract.toAudience(scope) + dataAccessKeys,
-         )
-         // Build the envelope for this execution
-         val envelope = Envelope.newBuilder()
-             .setExecutionUuid(executionUuid.toProtoUuid())
-             .setScopeUuid(scopeUuid.toProtoUuid())
-             .setScopeSpecUuid(scopeSpecUuid.toProtoUuid())
-             .setSessionUuid(sessionUuid.toProtoUuid())
-             .setNewScope(scope == null)
-             .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == sessionUuid } == null)
-             .addAllDataAccess(dataAccessKeys.map { it.toPublicKeyProto() })
-             .setMainNet(mainNet)
-             .setContract(contract)
-             .also {
-                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
-                 // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestamp() } ?: builder.clearExpirationTime()
-                 it.ref = it.refBuilder
-                     .setHash(contract.toByteArray().sha256().base64EncodeString())
-                     .build()
+        val contract = populateContract()
+        //TODO Different executionID
+        val permissionUpdater = PermissionUpdater(
+            client,
+            contract,
+            contract.toAudience(scope) + dataAccessKeys,
+        )
+        // Build the envelope for this execution
+        val envelope = Envelope.newBuilder()
+            .setExecutionUuid(executionUuid.toProtoUuid())
+            .setScopeSpecUuid(scopeSpecUuid.toProtoUuid())
+            .setNewScope(scope == null)
+            .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == sessionUuid } == null)
+            .addAllDataAccess(dataAccessKeys.map { it.toPublicKeyProto() })
+            .setMainNet(mainNet)
+            .setContract(contract)
+            .apply {
+                // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
+                // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestamp() } ?: builder.clearExpirationTime()
+                refBuilder
+                    .setScopeUuid(scopeUuid.toProtoUuid())
+                    .setSessionUuid(sessionUuid.toProtoUuid())
+                    .setHash(contract.toByteArray().sha256().base64EncodeString())
+                    .build()
 
-                 if (scope != null) {
-                     it.setScope(Any.pack(scope, ""))
-                 }
-             }
-             .clearSignatures()
-             .build()
+                if (scope != null) {
+                    setScope(Any.pack(scope, ""))
+                }
+            }
+            .clearSignatures()
+            .build()
 
-         permissionUpdater.saveConstructorArguments()
+        permissionUpdater.saveConstructorArguments()
 
-         permissionUpdater.saveProposedFacts(this.proposedRecords.values)
+        permissionUpdater.saveProposedFacts(this.proposedRecords.values)
 
-         return envelope
-     }
+        return envelope
+    }
 
-    private fun Contract.Builder.populateFact(fact: Fact) {
+    private fun Contract.Builder.populateRecord(record: Contracts.Record) {
         inputsBuilderList.firstOrNull {
-            isMatchingFact(it, fact.name)
+            isMatchingRecord(it, record.name)
         }?.apply {
             dataLocation = Commons.Location.newBuilder()
-                .setClassname(fact.dataLocation.classname)
+                .setClassname(record.dataLocation.classname)
                 .setRef(
                     Commons.ProvenanceReference.newBuilder()
-                        .setGroupUuid(
-                            Utils.UUID.newBuilder().setValueBytes(fact.dataLocation.ref.groupUuid.valueBytes).build()
+                        .setSessionUuid(
+                            Utils.UUID.newBuilder().setValueBytes(record.dataLocation.ref.sessionUuid.valueBytes).build()
                         )
-                        .setHash(fact.dataLocation.ref.hash)
+                        .setHash(record.dataLocation.ref.hash)
                         .setScopeUuid(
-                            Utils.UUID.newBuilder().setValueBytes(fact.dataLocation.ref.scopeUuid.valueBytes).build()
+                            Utils.UUID.newBuilder().setValueBytes(record.dataLocation.ref.scopeUuid.valueBytes).build()
                         )
-                        .setName(fact.dataLocation.ref.name)
+                        .setName(record.dataLocation.ref.name)
                         .build()
                 )
 
@@ -457,8 +452,8 @@ class Session(
 //        it.address
 //    })
 
-    private fun isMatchingFact(inputFact: Contracts.Record.Builder, factName: String): Boolean {
-        return inputFact.name == factName && inputFact.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
+    private fun isMatchingRecord(inputRecord: Contracts.Record.Builder, recordName: String): Boolean {
+        return inputRecord.name == recordName && inputRecord.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
     }
 
     class PermissionUpdater(

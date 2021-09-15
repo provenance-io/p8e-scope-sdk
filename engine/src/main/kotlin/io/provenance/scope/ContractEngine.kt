@@ -22,19 +22,16 @@ import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.proto.Common
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
+import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
 import io.provenance.scope.util.scopeOrNull
-import io.provenance.scope.util.toHexString
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.PublicKey
-
-// TODO move somewhere else
-fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
 class ContractEngine(
     private val osClient: CachedOsClient,
