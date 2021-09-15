@@ -129,6 +129,26 @@ class PollAffiliateMailboxTest: WordSpec() {
 
                 handlerCount shouldBe 1
             }
+            "prevent exceptions thrown in handler from preventing other mail from being processed" {
+                val requests = listOf(
+                    buildEnvelope(listOf(SigningAndEncryptionPublicKeys(signingKeyRef.publicKey, encryptionKeyRef.publicKey))),
+                    buildEnvelope(listOf(SigningAndEncryptionPublicKeys(signingKeyRef.publicKey, encryptionKeyRef.publicKey))),
+                )
+                val inputStreams = requests.map { buildInputStreamOf(it) }
+                val dimeInputStreams = inputStreams.map { buildDimeInputStreamOf(it, MailboxMeta.MAILBOX_REQUEST) }
+                every { osClient.mailboxGet(any(), any()) } returns dimeInputStreams.map { UUID.randomUUID() to it }.asSequence()
+                every { osClient.mailboxAck(any()) } returns Unit
+
+                var handlerCount = 0
+                PollAffiliateMailbox(osClient, mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
+                    handlerCount++
+                    event::class shouldBe ExecutionRequestEvent::class
+                    (event as ExecutionRequestEvent).envelope shouldBe requests[handlerCount - 1]
+                    throw Exception("failure")
+                }.run()
+
+                handlerCount shouldBe 2
+            }
         }
     }
 }
