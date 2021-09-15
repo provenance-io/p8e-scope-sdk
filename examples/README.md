@@ -38,10 +38,20 @@ NOTE: Change the mainClass property to the desired example for execution.
 
 ### Example Descriptions
 
-SimpleContract.kt - Simple execution to introduce Provenance scopes and P8eContract basics.
-SmartKeyHsm.kt - Mimics the simple execution example but makes use of a third party HSM (Smart Key) for cryptography operations.
-UpdateAndIndexContract.kt - Demonstrates updating records on a Provenance scope and the concept of the P8e index protobuf descriptor.
-BatchSendContracts.kt - Demonstrates higher throughput Provenance writes by batching and sending transactions in a background process.
+SimpleContract.kt
+ - Simple execution to introduce Provenance scopes and P8eContract basics.
+SmartKeyHsm.kt
+ - Mimics the simple execution example but makes use of a third party HSM (Smart Key) for cryptography operations.
+ - The following environment variables will have to be set that are associated with your Smart Key account.
+
+ ```bash
+ SMART_KEY_API_KEY, SMART_KEY_PUBLIC_KEY, SMART_KEY_UUID
+ ```
+
+UpdateAndIndexContract.kt
+ - Demonstrates updating records on a Provenance scope and the concept of the P8e index protobuf descriptor.
+BatchSendContracts.kt
+ - Demonstrates higher throughput Provenance writes by batching and sending transactions in a background process.
 
 ### TODO (steve docs) add examples of the following
 - [x] smart key example
