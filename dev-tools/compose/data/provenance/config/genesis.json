@@ -87,6 +87,13 @@
           "sequence": "0"
         },
         {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "tp1s67kjhq4t0wflaylcrxe83tzemut2gcp2kqzua",
+          "pub_key": null,
+          "account_number": "0",
+          "sequence": "0"
+        },
+        {
           "@type": "/provenance.marker.v1.MarkerAccount",
           "base_account": {
             "address": "tp1pr93cqdh4kfnmrknhwa87a5qrwxw9k3dhkszp0",
@@ -178,6 +185,15 @@
         },
         {
           "address": "tp1zv0twcl8gvve9cyujgq2j7jxplagurgnrg0lh7",
+          "coins": [
+            {
+              "denom": "nhash",
+              "amount": "12500000000000000000"
+            }
+          ]
+        },
+        {
+          "address": "tp1s67kjhq4t0wflaylcrxe83tzemut2gcp2kqzua",
           "coins": [
             {
               "denom": "nhash",

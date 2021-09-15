@@ -14,6 +14,7 @@ dependencies {
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
     implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
     implementation("com.google.guava", "guava", Version.guava)
+    implementation("com.fortanix", "sdkms-client", "3.23.1408")
 
     testImplementation(project(":contract-proto", "testArtifacts"))
 }
