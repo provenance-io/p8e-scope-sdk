@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
 import java.security.PublicKey
+//import io.opentracing.util.GlobalTracer;
+//import io.provenance.scope.util.TracingUtil
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -70,6 +72,7 @@ class SharedClient(val config: ClientConfig) : Closeable {
 class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     private val log = LoggerFactory.getLogger(this::class.java);
+//    private val tracingUtil = TracingUtil()
 
     val indexer: ProtoIndexer = ProtoIndexer(inner.osClient, inner.config.mainNet, affiliate)
 
@@ -131,7 +134,14 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     fun execute(session: Session): ExecutionResult {
+//        tracingUtil.startSpan("Execution")
+//        val span = tracer.buildSpan("Execution").start()
+//        span.setTag("Class", this.javaClass.name)
+//        span.setTag("Function", "Execute")
+//        span.setTag("Input-Types-List", "Session")
+//        span.log(mutableMapOf(Pair("Input", session)))
         val input = session.packageContract(inner.config.mainNet)
+//        span.log(mutableMapOf(Pair("Packaged Contract", input)))
         log.debug("Contract name: ${input.contract.definition.name}")
         log.debug("Session Id: ${session.sessionUuid}")
         log.debug("Execution UUID: ${input.executionUuid}")
@@ -154,7 +164,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
                 }
             }
             false -> FragmentResult(envelopeState)
-        }
+        }//.also { tracingUtil.finishSpan("Execution") }
     }
 
     fun execute(envelope: Envelope): ExecutionResult {
@@ -194,6 +204,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
+
         scope.validateRecordsRequested()
 
         val constructor = clazz.declaredConstructors

@@ -23,6 +23,10 @@ dependencies {
     implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
     implementation("com.google.guava", "guava", Version.guava)
     implementation("com.fortanix", "sdkms-client", "3.23.1408")
+//    compile("io.opentracing", "opentracing-api", "0.33.0")
+//    compile("io.opentracing", "opentracing-util", "0.33.0")
+//    compile("io.opentracing", "opentracing-noop", "0.33.0")
+
 
     testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.4.2")
