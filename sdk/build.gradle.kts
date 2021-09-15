@@ -41,7 +41,7 @@ tasks.jacocoTestReport {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    
+
     testLogging {
         showStandardStreams = true
         events = setOf(PASSED, FAILED, SKIPPED, STANDARD_ERROR)

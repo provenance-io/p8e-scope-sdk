@@ -11,6 +11,7 @@ import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
@@ -19,7 +20,6 @@ import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.toPublicKey
-import io.provenance.scope.toAudience
 import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
@@ -78,7 +78,7 @@ class Session(
 
         var sessionUuid: UUID = randomUUID()
 
-        val dataAccessKeys: MutableList<PublicKey> = mutableListOf<PublicKey>()
+        val dataAccessKeys: MutableList<PublicKey> = mutableListOf()
 
         fun build() = Session(this)
 
@@ -371,44 +371,61 @@ class Session(
     }
 
      fun packageContract(mainNet: Boolean): Envelope {
-        val contract = populateContract()
-        //TODO Different executionID
-        val permissionUpdater = PermissionUpdater(
-            client,
-            contract,
-            contract.toAudience(scope) + dataAccessKeys,
-        )
-        // Build the envelope for this execution
-        val envelope = Envelope.newBuilder()
-            .setExecutionUuid(executionUuid.toProtoUuid())
-            .setScopeUuid(scopeUuid.toProtoUuid())
-            .setScopeSpecUuid(scopeSpecUuid.toProtoUuid())
-            .setSessionUuid(sessionUuid.toProtoUuid())
-            .setNewScope(scope == null)
-            .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == sessionUuid } == null)
-            .addAllDataAccess(dataAccessKeys.map { it.toPublicKeyProto() })
-            .setMainNet(mainNet)
-            .setContract(contract)
-            .also {
-                // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
-                // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestamp() } ?: builder.clearExpirationTime()
-                it.ref = it.refBuilder
-                    .setHash(contract.toByteArray().sha256().base64EncodeString())
-                    .build()
+         if (scope != null) {
+             val sessionDataAccessAddresses = dataAccessKeys.map { it.getAddress(mainNet) }.toSet()
 
-                if (scope != null) {
-                    it.setScope(Any.pack(scope, ""))
-                }
-            }
-            .clearSignatures()
-            .build()
+             sessionDataAccessAddresses.forEach { key ->
+                 if (!scope.scope.scope.dataAccessList.contains(key)) {
+                     throw IllegalStateException("$key was added with data access in this session but does not have access in the existing scope.")
+                 }
+             }
 
-        permissionUpdater.saveConstructorArguments()
+             scope.scope.scope.dataAccessList.forEach { key ->
+                 if (!sessionDataAccessAddresses.contains(key)) {
+                     throw IllegalStateException("$key has data access in the existing scope but was not added to the data access list in this session.")
+                 }
+             }
 
-        permissionUpdater.saveProposedFacts(this.proposedRecords.values)
+         }
 
-        return envelope
-    }
+         val contract = populateContract()
+         //TODO Different executionID
+         val permissionUpdater = PermissionUpdater(
+             client,
+             contract,
+             contract.toAudience(scope) + dataAccessKeys,
+         )
+         // Build the envelope for this execution
+         val envelope = Envelope.newBuilder()
+             .setExecutionUuid(executionUuid.toProtoUuid())
+             .setScopeUuid(scopeUuid.toProtoUuid())
+             .setScopeSpecUuid(scopeSpecUuid.toProtoUuid())
+             .setSessionUuid(sessionUuid.toProtoUuid())
+             .setNewScope(scope == null)
+             .setNewSession(scope?.sessionsList?.find { it.sessionIdInfo.sessionUuid.toUuid() == sessionUuid } == null)
+             .addAllDataAccess(dataAccessKeys.map { it.toPublicKeyProto() })
+             .setMainNet(mainNet)
+             .setContract(contract)
+             .also {
+                 // stagedPrevExecutionUuid?.run { builder.prevExecutionUuid = this }
+                 // stagedExpirationTime?.run { builder.expirationTime = toProtoTimestamp() } ?: builder.clearExpirationTime()
+                 it.ref = it.refBuilder
+                     .setHash(contract.toByteArray().sha256().base64EncodeString())
+                     .build()
+
+                 if (scope != null) {
+                     it.setScope(Any.pack(scope, ""))
+                 }
+             }
+             .clearSignatures()
+             .build()
+
+         permissionUpdater.saveConstructorArguments()
+
+         permissionUpdater.saveProposedFacts(this.proposedRecords.values)
+
+         return envelope
+     }
 
     private fun Contract.Builder.populateFact(fact: Fact) {
         inputsBuilderList.firstOrNull {
