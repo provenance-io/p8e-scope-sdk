@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "TestContractProtos";
+
+message TestProto {
+  string value = 1;
+}

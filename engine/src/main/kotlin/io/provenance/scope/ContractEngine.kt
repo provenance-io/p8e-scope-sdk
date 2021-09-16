@@ -26,6 +26,7 @@ import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
+import io.provenance.scope.util.forThread
 import io.provenance.scope.util.scopeOrNull
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuid

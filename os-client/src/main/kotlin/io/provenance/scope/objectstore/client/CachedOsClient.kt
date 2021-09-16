@@ -18,6 +18,7 @@ import io.provenance.scope.util.NotFoundException
 import io.provenance.scope.util.ProtoParseException
 import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.base64String
+import io.provenance.scope.util.forThread
 import io.provenance.scope.util.sha256String
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -134,20 +135,23 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         hash: ByteArray,
         encryptionKeyRef: KeyRef,
     ): ListenableFuture<Message> {
+        val classLoader = Thread.currentThread().contextClassLoader
         val future = getRawBytes(hash, encryptionKeyRef)
 
         return Futures.transform(
             future,
             { byteArray ->
-                val clazz = Message::class.java
-                val instanceToReturn = parseFromLookup(classname).invoke(null, byteArray)
+                classLoader.forThread {
+                    val clazz = Message::class.java
+                    val instanceToReturn = parseFromLookup(classname).invoke(null, byteArray)
 
-                // TODO what happens when you throw in a transform?
-                if (!clazz.isAssignableFrom(instanceToReturn.javaClass)) {
-                    throw ProtoParseException("Unable to assign instance ${instanceToReturn::class.java.name} to type ${clazz.name}")
+                    // TODO what happens when you throw in a transform?
+                    if (!clazz.isAssignableFrom(instanceToReturn.javaClass)) {
+                        throw ProtoParseException("Unable to assign instance ${instanceToReturn::class.java.name} to type ${clazz.name}")
+                    }
+
+                    clazz.cast(instanceToReturn)
                 }
-
-                clazz.cast(instanceToReturn)
             },
             decryptionWorkerThreadPool,
         )
@@ -196,7 +200,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     }
 
     private fun parseFromLookup(classname: String): Method =
-        javaClass.classLoader.loadClass(classname).declaredMethods.find {
+        Thread.currentThread().contextClassLoader.loadClass(classname).declaredMethods.find {
             it.returnType.name == classname && it.name == "parseFrom" && it.parameterCount == 1 && it.parameters.first().type == ByteArray::class.java
         } ?: throw ProtoParseException("Unable to find \"parseFrom\" method on $classname. $classname should subtype com.google.protobuf.Message")
 }
