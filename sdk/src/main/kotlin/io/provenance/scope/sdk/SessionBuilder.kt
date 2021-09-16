@@ -408,8 +408,8 @@ class Session(
                     .setHash(contract.toByteArray().sha256().base64EncodeString())
                     .build()
 
-                if (scope != null) {
-                    setScope(Any.pack(scope, ""))
+                if (this@Session.scope != null) {
+                    setScope(Any.pack(this@Session.scope, ""))
                 }
             }
             .clearSignatures()
