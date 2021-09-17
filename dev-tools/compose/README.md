@@ -30,6 +30,11 @@ variables that can be used for bootstrapping Provenance contract specifications.
 
 Typical [docker-compose](https://docs.docker.com/compose/) commands can be used to manage the applications.
 
+```
+docker-compose up -d
+docker-compose stop
+```
+
 ## Using the provenanced CLI
 
 A wrapper script is provided at `./bin/provenanced`.

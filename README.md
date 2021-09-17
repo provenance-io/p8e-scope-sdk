@@ -32,7 +32,7 @@ The quickest way to run these dependent services in a local environment is to us
 
 ## Provenance Scopes
 
-See the docs on the [Provenance Metadata](https://docs.provenance.io/modules/metadata-module) module for background.
+See the docs on the [Provenance Metadata](https://docs.provenance.io/modules/metadata-module) module and [P8e Contract Execution](https://docs.provenance.io/p8e/overview) for background.
 TODO (steve docs) add more information
 
 ## Contract Execution
