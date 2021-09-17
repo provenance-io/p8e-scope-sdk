@@ -28,6 +28,8 @@ The components needed to make use of this include the following:
 - Provenance node - Provides an API to submit transactions to and to read the event stream from.
 - Object store - Stores encrypted DIME objects. More information can be found [here](https://github.com/provenance-io/object-store).
 
+## Local Setup
+
 The quickest way to run these dependent services in a local environment is to use the docker-compose setup [here](https://github.com/provenance-io/p8e-scope-sdk/tree/main/dev-tools/compose).
 
 ## Provenance Scopes
