@@ -4,7 +4,7 @@ import io.provenance.scope.contract.proto.ProtoHash
 
 class TestProtoHash : ProtoHash {
 
-    private val classes = mapOf("io.provenance.scope.contract.proto.TestContractProtos.TestProto" to true)
+    private val classes = mapOf("io.provenance.scope.contract.proto.TestContractProtos\$TestProto" to true)
 
     override fun getClasses(): Map<String, Boolean> {
         return classes

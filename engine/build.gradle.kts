@@ -39,4 +39,5 @@ dependencies {
     implementation("io.arrow-kt", "arrow-core", Version.arrow)
 
     testImplementation(project(":contract-base", "testArtifacts"))
+    testImplementation(project(":contract-proto", "testArtifacts"))
 }
