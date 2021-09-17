@@ -71,7 +71,6 @@ class SharedClient(val config: ClientConfig) : Closeable {
 class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     private val log = LoggerFactory.getLogger(this::class.java);
-//    private val tracingUtil = TracingUtil()
     private val tracer = GlobalTracer.get()
 
     val indexer: ProtoIndexer = ProtoIndexer(inner.osClient, inner.config.mainNet, affiliate)
@@ -157,7 +156,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
                 }
             }
             false -> FragmentResult(envelopeState)
-        }.also { span.finish() }//.also { tracingUtil.finishSpan("Execution") }
+        }.also { span.finish() }
     }
 
     fun execute(envelope: Envelope): ExecutionResult {

@@ -25,7 +25,6 @@ dependencies {
     implementation("com.fortanix", "sdkms-client", "3.23.1408")
     compileOnly("io.opentracing", "opentracing-api", "0.33.0")
     compileOnly("io.opentracing", "opentracing-util", "0.33.0")
-    compileOnly("io.opentracing", "opentracing-noop", "0.33.0")
 
 
     testImplementation("io.kotest:kotest-runner-junit5:4.4.+")
