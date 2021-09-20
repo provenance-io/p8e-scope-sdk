@@ -109,9 +109,11 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         }
 
         return if (recordCache.asMap().containsKey(cacheKey)) {
-            SettableFuture.create<ObjectHash>().also { it.set(ObjectHash(cacheKey.hash)) }.also {
+            Futures.immediateFuture(ObjectHash(cacheKey.hash)).also {
                 span.setTag("Cached-Response", true)
-                span.finish() }
+                span.finish()
+            }
+
         } else {
             val future = withFutureSemaphore(semaphore) {
                 osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, loHash = loHash)
@@ -174,7 +176,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         val record = recordCache.asMap()[cacheKey]
 
         return if (record != null) {
-            SettableFuture.create<ByteArray>().also { it.set(record) }.also {
+            Futures.immediateFuture(record).also {
                 span.setTag("Cached-Response", true)
                 span.finish()
             }
