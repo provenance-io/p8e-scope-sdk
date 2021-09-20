@@ -37,4 +37,7 @@ dependencies {
     compileOnly("org.slf4j", "log4j-over-slf4j", "1.7.30")
 
     implementation("io.arrow-kt", "arrow-core", Version.arrow)
+
+    testImplementation(project(":contract-base", "testArtifacts"))
+    testImplementation(project(":contract-proto", "testArtifacts"))
 }

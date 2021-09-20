@@ -12,10 +12,15 @@ import io.opentracing.util.GlobalTracer
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.model.signer
+import io.provenance.scope.objectstore.util.base64Encode
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256LoBytes
+import io.provenance.scope.objectstore.util.toHex
+import io.provenance.scope.util.NotFoundException
+import io.provenance.scope.util.ProtoParseException
 import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.base64String
+import io.provenance.scope.util.forThread
 import io.provenance.scope.util.sha256String
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -144,21 +149,24 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     ): ListenableFuture<Message> {
         val span = tracer.buildSpan("GetRecord OS").start()
 
+        val classLoader = Thread.currentThread().contextClassLoader
         val future = getRawBytes(hash, encryptionKeyRef)
 
         return Futures.transform(
             future,
             { byteArray ->
                 span.finish()
-                val clazz = Message::class.java
-                val instanceToReturn = parseFromLookup(classname).invoke(null, byteArray)
+                classLoader.forThread {
+                    val clazz = Message::class.java
+                    val instanceToReturn = parseFromLookup(classname).invoke(null, byteArray)
 
-                // TODO what happens when you throw in a transform?
-                if (!clazz.isAssignableFrom(instanceToReturn.javaClass)) {
-                    throw IllegalStateException("Unable to assign instance ${instanceToReturn::class.java.name} to type ${clazz.name}")
+                    // TODO what happens when you throw in a transform?
+                    if (!clazz.isAssignableFrom(instanceToReturn.javaClass)) {
+                        throw ProtoParseException("Unable to assign instance ${instanceToReturn::class.java.name} to type ${clazz.name}")
+                    }
+
+                    clazz.cast(instanceToReturn)
                 }
-
-                clazz.cast(instanceToReturn)
             },
             decryptionWorkerThreadPool,
         )
@@ -196,7 +204,13 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                         dimeInputStream.getDecryptedPayload(encryptionKeyRef).use { signatureInputStream ->
                             signatureInputStream.readAllBytes().also {
                                 if (!signatureInputStream.verify()) {
-                                    // TODO throw exception can't verify signature
+                                    throw NotFoundException(
+                                        """
+                                            Object was fetched but we're unable to verify item signature
+                                            [encryption public key: ${encryptionKeyRef.publicKey.toHex()}]
+                                            [hash: ${hash.base64EncodeString()}]
+                                        """.trimIndent()
+                                    )
                                 }
                             }
                         }
@@ -208,8 +222,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     }
 
     private fun parseFromLookup(classname: String): Method =
-        // TODO change to different exception?
-        javaClass.classLoader.loadClass(classname).declaredMethods.find {
+        Thread.currentThread().contextClassLoader.loadClass(classname).declaredMethods.find {
             it.returnType.name == classname && it.name == "parseFrom" && it.parameterCount == 1 && it.parameters.first().type == ByteArray::class.java
-        } ?: throw IllegalStateException("Unable to find \"parseFrom\" method on $classname. $classname should subtype com.google.protobuf.Message")
+        } ?: throw ProtoParseException("Unable to find \"parseFrom\" method on $classname. $classname should subtype com.google.protobuf.Message")
 }

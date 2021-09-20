@@ -27,6 +27,8 @@ dependencies {
     implementation("io.grpc:grpc-stub:1.39.0")
     implementation("ch.qos.logback:logback-classic:1.0.13")
 
+    implementation("com.fortanix", "sdkms-client", "3.23.1408")
+
     // TODO remove after new signer lib is implemented
     implementation("org.bouncycastle:bcprov-jdk15on:1.69")
     implementation("com.github.komputing.kethereum:crypto:0.83.4")

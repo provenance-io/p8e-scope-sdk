@@ -7,6 +7,10 @@ import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.examples.SimpleExample.ExampleName
+import io.provenance.scope.examples.app.utils.SingleTx
+import io.provenance.scope.examples.app.utils.TransactionService
+import io.provenance.scope.examples.app.utils.getScope
+import io.provenance.scope.examples.app.utils.persistBatchToProvenance
 import io.provenance.scope.examples.contract.SimpleExampleContract
 import io.provenance.scope.examples.contract.SimpleExampleScopeSpecification
 import io.provenance.scope.sdk.Affiliate
@@ -37,7 +41,6 @@ fun main(args: Array<String>) {
                 it.usePlaintext()
             }
         }
-        .usePlaintext()
         .build()
     val transactionService = TransactionService(System.getenv("CHAIN_ID"), channel)
 
@@ -80,7 +83,7 @@ fun main(args: Array<String>) {
 
         // A single party contract will always return a batch of messages that can be persisted to Provenance.
         when (val result = sdk.execute(session)) {
-            is SignedResult -> persistBatchToProvenance(transactionService, result, affiliate.signingKeyRef as DirectKeyRef)
+            is SignedResult -> persistBatchToProvenance(transactionService, SingleTx(result), affiliate.signingKeyRef)
             else -> throw IllegalStateException("Must be a signed result since this is a single party contract.")
         }
 

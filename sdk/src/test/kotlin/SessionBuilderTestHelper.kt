@@ -6,6 +6,7 @@ import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.encryption.model.DirectKeyRef
+import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.encryption.util.toJavaPublicKey
 import io.provenance.scope.sdk.*
@@ -73,11 +74,15 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
         .apply {
             if (existingScope != null) {
                 setScope(existingScope)
+                addDataAccessKey(localKeys[3].public)
             }
         }
 }
 
 fun createExistingScope(): ScopeResponse.Builder {
+    val scopeUuid = UUID.randomUUID()
+    val sessionUUID = UUID.randomUUID()
+    val specificationUUID = UUID.randomUUID()
     val scopeRecord = Record.newBuilder()
         .addInputs(
             RecordInput.newBuilder()
@@ -86,14 +91,15 @@ fun createExistingScope(): ScopeResponse.Builder {
             .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED))
         .addOutputs(RecordOutput.newBuilder().setHash("234567834567").build())
         .setProcess(Process.newBuilder().setName("io.provenance.scope.contract.proto.Contracts\$Record").build())
+        .setSessionId(MetadataAddress.forSession(scopeUuid, sessionUUID).bytes.toByteString())
         .setName("record2")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
     val scope = Scope.newBuilder()
-        .addDataAccess("tp1w837rynvaoweyawnvo3ry77wno37r")
+        .addDataAccess(localKeys[3].public.getAddress(false))
         .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER))
-        .setScopeId(ByteString.copyFromUtf8("1234567801234567890"))
+        .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
-        .setSpecificationId(ByteString.copyFromUtf8("09876543210987654321"))
+        .setSpecificationId(MetadataAddress.forScopeSpecification(specificationUUID).bytes.toByteString())
         .build()
     val scopeWrapper = ScopeWrapper.newBuilder()
         .setScope(scope)
@@ -102,8 +108,8 @@ fun createExistingScope(): ScopeResponse.Builder {
         .setScope(scopeWrapper)
         .addRecords(recordWrapper)
         .apply {
-            scopeBuilder.scopeIdInfoBuilder.setScopeUuid(UUID.randomUUID().toString())
-            scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid("ac40a8f0-fb4d-4197-99e9-818a75a3c51d")
+            scopeBuilder.scopeIdInfoBuilder.setScopeUuid(scopeUuid.toString())
+            scopeBuilder.scopeSpecIdInfoBuilder.setScopeSpecUuid(specificationUUID.toString())
 
             requestBuilder
                 .setIncludeRecords(true)

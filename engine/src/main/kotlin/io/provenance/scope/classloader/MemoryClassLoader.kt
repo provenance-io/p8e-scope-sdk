@@ -1,9 +1,12 @@
 package io.provenance.scope.classloader
 
+import io.provenance.scope.contract.contracts.ContractHash
+import io.provenance.scope.contract.proto.ProtoHash
 import org.apache.commons.io.FileUtils
 import java.io.*
 import java.net.URI
 import java.net.URLClassLoader
+import java.util.ServiceLoader
 import java.util.concurrent.ConcurrentHashMap
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
@@ -15,6 +18,17 @@ class MemoryClassLoader(
 ): URLClassLoader(
     arrayOf()
 ) {
+    companion object {
+        private val systemLoadedContracts = ServiceLoader.load(ContractHash::class.java).toList()
+            .flatMap {
+                it.getClasses().keys.map { it.split('$').first() }
+            }.toHashSet()
+        private val systemLoadedProtos = ServiceLoader.load(ProtoHash::class.java).toList()
+            .flatMap {
+                it.getClasses().keys.map { it.split('$').first() }
+            }.toHashSet()
+    }
+
     private val parentClassLoader = MemoryClassLoader::class.java.classLoader
     private val system = ClassLoader.getSystemClassLoader()
     private val classCache = ConcurrentHashMap<String, Class<*>>()
@@ -45,19 +59,13 @@ class MemoryClassLoader(
             return classCache[name]!!
         }
 
+        val rootClassName = name.split('$').first()
+        val parentFirst = name.startsWith("com.google.protobuf") || (!systemLoadedProtos.contains(rootClassName) && !systemLoadedContracts.contains(rootClassName))
+
         var loadedFromParent: Boolean? = false
         val clazz = try {
             when {
-                (name.startsWith("com.google.protobuf") ||
-                        // todo: it doesn't seem very extensible to check for all these hardcoded namespaces... how else can we determine if we should load/not from parent classloader?
-                        // todo: what are the core criteria for loading from parent or not, given that we are now running this engine in a process that will have contracts imported via gradle?
-                        name.startsWith("io.p8e") ||
-                        name.startsWith("io.provenance.p8e") ||
-                        name.startsWith("io.provenance.scope") ||
-                        name.startsWith("io.p8e.proto.Util\$Index") ||
-                        name.startsWith("io.provenance.proto.Util\$Index")) &&
-                        !name.startsWith("io.p8e.proto.contract") &&
-                        !name.startsWith("io.p8e.contracts") -> parentClassLoader.loadClass(name).also { loadedFromParent = true }
+                parentFirst  -> parentClassLoader.loadClass(name).also { loadedFromParent = true }
                 else -> findClass(name).also { loadedFromParent = false }
             }
         } catch (t: Throwable) {
@@ -66,14 +74,7 @@ class MemoryClassLoader(
                 is NoClassDefFoundError -> {
                     try {
                         when {
-                            (name.startsWith("com.google.protobuf") ||
-                                    name.startsWith("io.provenance.scope") ||
-                                    name.startsWith("io.p8e") ||
-                                    name.startsWith("io.provenance.p8e") ||
-                                    name.startsWith("io.p8e.proto.Util\$Index") ||
-                                    name.startsWith("io.provenance.proto.Util\$Index")) &&
-                                    !name.startsWith("io.p8e.proto.contract") &&
-                                    !name.startsWith("io.p8e.contracts") -> findClass(name).also { loadedFromParent = false }
+                            parentFirst -> findClass(name).also { loadedFromParent = false }
                             else -> parentClassLoader.loadClass(name).also { loadedFromParent = true }
                         }
                     } catch (t: Throwable) {
@@ -160,14 +161,5 @@ class MemoryClassLoader(
             output?.close()
         }
     }
-
-    fun <T> forThread(fn: () -> T): T {
-        val current = Thread.currentThread().contextClassLoader
-        try {
-            Thread.currentThread().contextClassLoader = this
-            return fn()
-        } finally {
-            Thread.currentThread().contextClassLoader = current
-        }
-    }
 }
+

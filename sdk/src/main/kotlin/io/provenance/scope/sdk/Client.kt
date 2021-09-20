@@ -28,6 +28,7 @@ import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.mailbox.MailHandlerFn
 import io.provenance.scope.sdk.mailbox.MailboxService
 import io.provenance.scope.sdk.mailbox.PollAffiliateMailbox
+import io.provenance.scope.util.ContractBootstrapException
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.io.Closeable
@@ -175,6 +176,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
         executor.scheduleAtFixedRate(PollAffiliateMailbox(
             inner.osClient.osClient,
+            inner.mailboxService,
             signingKeyRef = affiliate.signingKeyRef,
             encryptionKeyRef = affiliate.encryptionKeyRef,
             maxResults = 100,
@@ -238,13 +240,13 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     private fun <T: P8eContract> getContractHash(clazz: Class<T>): ContractHash {
         return contractHashes.find {
             it.getClasses()[clazz.name] == true
-        }.orThrow { IllegalStateException("Unable to find ContractHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
+        }.orThrow { ContractBootstrapException("Unable to find ContractHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
     }
 
     private fun getProtoHash(contractHash: ContractHash, clazz: Class<*>): ProtoHash {
         return protoHashes.find {
             it.getUuid() == contractHash.getUuid() && it.getClasses()[clazz.name] == true
-        }.orThrow { IllegalStateException("Unable to find ProtoHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
+        }.orThrow { ContractBootstrapException("Unable to find ProtoHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
     }
 
     fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()

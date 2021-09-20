@@ -6,6 +6,9 @@ import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.examples.SimpleExample.ExampleName
+import io.provenance.scope.examples.app.utils.BatchTx
+import io.provenance.scope.examples.app.utils.TransactionService
+import io.provenance.scope.examples.app.utils.persistBatchToProvenance
 import io.provenance.scope.examples.contract.SimpleExampleContract
 import io.provenance.scope.examples.contract.SimpleExampleScopeSpecification
 import io.provenance.scope.sdk.Affiliate
@@ -49,7 +52,6 @@ fun main(args: Array<String>) {
                 it.usePlaintext()
             }
         }
-        .usePlaintext()
         .build()
     val transactionService = TransactionService(System.getenv("CHAIN_ID"), channel)
 
@@ -83,7 +85,7 @@ fun main(args: Array<String>) {
             }
 
             println("Sending batch of 10 scopes to Provenance!")
-            persistBatchToProvenance(transactionService, batch, affiliate.signingKeyRef as DirectKeyRef)
+            persistBatchToProvenance(transactionService, BatchTx(batch), affiliate.signingKeyRef)
             println("Batch completed!")
             batch.clear()
         }

@@ -1,4 +1,4 @@
-package io.provenance.scope.examples.app
+package io.provenance.scope.examples.app.utils
 
 import com.google.protobuf.Any
 import cosmos.auth.v1beta1.Auth
@@ -11,6 +11,7 @@ import cosmos.tx.v1beta1.TxOuterClass
 import io.grpc.ManagedChannel
 import cosmos.auth.v1beta1.QueryGrpc
 import cosmos.base.abci.v1beta1.Abci
+import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.util.toByteString
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import java.security.KeyPair
@@ -51,8 +52,8 @@ class TransactionService(
         .get()
         .txResponse
 
-    fun signTx(body: TxOuterClass.TxBody, accountNumber: Long, sequenceNumber: Long, gasEstimate: GasEstimate = GasEstimate(0), keyPair: KeyPair): TxOuterClass.Tx {
-        val signer = PbSigner.signerFor(keyPair)
+    fun signTx(body: TxOuterClass.TxBody, accountNumber: Long, sequenceNumber: Long, gasEstimate: GasEstimate = GasEstimate(0), signerImpl: SignerImpl): TxOuterClass.Tx {
+        val signer = PbSigner.signerFor(signerImpl)
         val authInfo = TxOuterClass.AuthInfo.newBuilder()
             .setFee(
                 TxOuterClass.Fee.newBuilder()
@@ -61,13 +62,13 @@ class TransactionService(
                             .setDenom("nhash")
                             .setAmount((gasEstimate.fees).toString())
                             .build()
-                    )).setGasLimit((gasEstimate.limit).toLong())
+                    )).setGasLimit((gasEstimate.limit))
             )
             .addAllSignerInfos(listOf(
                 TxOuterClass.SignerInfo.newBuilder()
                     .setPublicKey(
                         Keys.PubKey.newBuilder()
-                            .setKey((keyPair.public as BCECPublicKey).q.getEncoded(true).toByteString())
+                            .setKey((signerImpl.getPublicKey() as BCECPublicKey).q.getEncoded(true).toByteString())
                             .build()
                             .let { Any.pack(it, "") }
                     )
@@ -97,8 +98,8 @@ class TransactionService(
             .build()
     }
 
-    fun estimateTx(body: TxOuterClass.TxBody, accountNumber: Long, sequenceNumber: Long, keyPair: KeyPair): GasEstimate =
-        signTx(body, accountNumber, sequenceNumber, keyPair = keyPair).let {
+    fun estimateTx(body: TxOuterClass.TxBody, accountNumber: Long, sequenceNumber: Long, signerImpl: SignerImpl): GasEstimate =
+        signTx(body, accountNumber, sequenceNumber, signerImpl = signerImpl).let {
             txService.withDeadlineAfter(10, TimeUnit.SECONDS)
                 .simulate(ServiceOuterClass.SimulateRequest.newBuilder()
                     .setTx(it)
@@ -106,8 +107,8 @@ class TransactionService(
                 ).get()
         }.let { GasEstimate(it.gasInfo.gasUsed) }
 
-    fun batchTxBlock(body: TxOuterClass.TxBody, accountNumber: Long, sequenceNumber: Long, estimate: GasEstimate, keyPair: KeyPair): ServiceOuterClass.BroadcastTxResponse =
-        signTx(body, accountNumber, sequenceNumber, estimate, keyPair).run {
+    fun batchTxBlock(body: TxOuterClass.TxBody, accountNumber: Long, sequenceNumber: Long, estimate: GasEstimate, signerImpl: SignerImpl): ServiceOuterClass.BroadcastTxResponse =
+        signTx(body, accountNumber, sequenceNumber, estimate, signerImpl).run {
             TxOuterClass.TxRaw.newBuilder()
                 .setBodyBytes(body.toByteString())
                 .setAuthInfoBytes(authInfo.toByteString())

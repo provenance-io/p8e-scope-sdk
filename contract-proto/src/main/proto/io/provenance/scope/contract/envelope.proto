@@ -61,16 +61,14 @@ message Envelope {
         ERROR = 11 [(description) = "Envelope is in error state."];
     }
 
-    UUID scopeUuid = 10;
-    UUID scopeSpecUuid = 11;
-    UUID sessionUuid = 12;
+    UUID scope_spec_uuid = 10;
 
-    bool newScope = 13;
-    bool newSession = 14;
+    bool new_scope = 11;
+    bool new_session = 12;
 
-    bool mainNet = 15;
+    bool main_net = 13;
 
-    repeated PublicKey data_access = 16;
+    repeated PublicKey data_access = 14;
 }
 
 message EnvelopeEvent {
@@ -113,7 +111,7 @@ message EnvelopeEvent {
 
 message EnvelopeError {
     UUID uuid = 1;
-    UUID group_uuid = 2;
+    UUID session_uuid = 2;
     UUID execution_uuid = 3;
 
     Type type = 4;

@@ -10,7 +10,7 @@ buildscript {
 }
 
 plugins {
-    id("io.provenance.p8e.p8e-publish") version "0.5.2-p8e-scope-sdk"
+    id("io.provenance.p8e.p8e-publish") version "0.5.3-p8e-scope-sdk"
 }
 
 p8e {
@@ -48,7 +48,11 @@ p8e {
                 "local5" to P8ePartyExtension().also {
                     it.publicKey =
                         "0A4104A37653602DA20D27936AF541084869B2F751953CB0F0D25D320788EDA54FB4BC9FB96A281BFFD97E64B749D78C85871A8E14AFD48048537E45E16F3D2FDDB44B"
-                }
+                },
+                "smart_key1" to P8ePartyExtension().also {
+                    it.publicKey =
+                        "0A4104B4495B4A4F24F70650E9104EA409B6108740C376FC2625BA0B5085DD12E4BC13EE34C8BFFBBC1762B20E79B74257D32F31409F3E56372CB9B671B590BC46F287"
+                },
             )
         }
     )

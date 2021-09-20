@@ -9,7 +9,7 @@ a good starting point.
 
 ### Build and Publish the SDK
 
-NOTE: Run this at the root of this repository.
+NOTE: Run this at the root of this repository. This will publish the SDK jars into the local maven repository.
 
 ```
 ./gradlew clean build publishToMavenLocal -xsignMavenPublication --info
@@ -18,9 +18,11 @@ NOTE: Run this at the root of this repository.
 ### Bootstrap Example Contracts
 
 If you are running using the dev-tools docker compose setup, first run the following to set up the proper environment variables.
+
 ```
 source ../dev-tools/compose/host.env
 ```
+
 and then to bootstrap the contracts
 
 ```
@@ -33,14 +35,37 @@ and then to bootstrap the contracts
 NOTE: Change the mainClass property to the desired example for execution.
 
 ```
-./gradlew -PmainClass=io.provenance.scope.examples.app.UpdateAndIndexContractKt app:run
+./gradlew -PmainClass=io.provenance.scope.examples.app.SimpleContractKt app:run
 ```
 
+### Example Descriptions
+
+SimpleContract.kt
+ - Simple execution to introduce Provenance scopes and P8eContract basics.
+DataAccess.kt
+ - A single party contract that includes additional data access addresses. The data access list can be thought
+ of as a READ ONLY party on the scope. The data access list will be audience members on all records persisted
+ to object-store.
+SmartKeyHsm.kt
+ - Mimics the simple execution example but makes use of a third party HSM (Smart Key) for cryptography operations.
+ - The following environment variables will have to be set that are associated with your Smart Key account.
+
+ ```bash
+ SMART_KEY_API_KEY, SMART_KEY_PUBLIC_KEY, SMART_KEY_UUID
+ ```
+
+UpdateAndIndexContract.kt
+ - Demonstrates updating records on a Provenance scope and the concept of the P8e index protobuf descriptor.
+BatchSendContracts.kt
+ - Demonstrates higher throughput Provenance writes by batching and sending transactions in a background process.
+
 ### TODO (steve docs) add examples of the following
-- [ ] smart key example
+- [x] smart key example
 - [x] single party execution with hydration
+- [x] data access example
 - [x] complex single party execution and then update single party execution with proto indexer and with hydration
 - [x] multiple contract batching and sending to chain
+- [ ] change scope ownership
 - [ ] multi party execution
 - [ ] multistep execution
 - [ ] skipping execution and using client strictly to save objects and persist to provenance

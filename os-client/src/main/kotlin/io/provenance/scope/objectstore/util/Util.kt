@@ -6,6 +6,7 @@ import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.objectstore.proto.Utils
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.encryption.proto.PK
+import io.provenance.scope.util.toHexString
 import java.nio.ByteBuffer
 import java.security.PublicKey
 import java.util.Base64
@@ -61,6 +62,7 @@ fun PublicKey.toPublicKeyProtoOS(): Utils.PublicKey =
             .build()
     }
 
+fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
 fun PublicKeys.PublicKey.toPublicKey(): PublicKey =
     this.let {

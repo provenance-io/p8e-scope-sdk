@@ -7,6 +7,7 @@ import io.provenance.scope.contract.proto.Commons.DefinitionSpec
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
+import io.provenance.scope.util.forThread
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.lang.reflect.Method
