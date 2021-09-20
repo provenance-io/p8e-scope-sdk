@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
 import java.security.PublicKey
+import io.opentracing.util.GlobalTracer;
+import java.lang.Exception
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -71,6 +73,7 @@ class SharedClient(val config: ClientConfig) : Closeable {
 class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     private val log = LoggerFactory.getLogger(this::class.java);
+    private val tracer = GlobalTracer.get()
 
     val indexer: ProtoIndexer = ProtoIndexer(inner.osClient, inner.config.mainNet, affiliate)
 
@@ -132,12 +135,11 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     fun execute(session: Session): ExecutionResult {
+        val span = tracer.buildSpan("Execution").start().also { tracer.activateSpan(it) }
         val input = session.packageContract(inner.config.mainNet)
         log.debug("Contract name: ${input.contract.definition.name}")
         log.debug("Session Id: ${session.sessionUuid}")
         log.debug("Execution UUID: ${input.executionUuid}")
-
-//        logger.trace("Input Hash: ${}")
 
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, input, session.dataAccessKeys)
 
@@ -155,7 +157,8 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
                 }
             }
             false -> FragmentResult(envelopeState)
-        }
+        }.also {
+            span.finish() }
     }
 
     fun execute(envelope: Envelope): ExecutionResult {
@@ -196,6 +199,8 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
+        val span = tracer.buildSpan("Hydration").start()
+        tracer.activateSpan(span)
         scope.validateRecordsRequested()
 
         val constructor = clazz.declaredConstructors
@@ -229,7 +234,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
                 inner.osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
             }.map { it.get() }
 
-        return clazz.cast(constructor.newInstance(*params.toList().toTypedArray()))
+        return clazz.cast(constructor.newInstance(*params.toList().toTypedArray())).also { span.finish() }
     }
 
     private fun <T: P8eContract> getContractHash(clazz: Class<T>): ContractHash {

@@ -7,6 +7,8 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.common.util.concurrent.SettableFuture
 import com.google.protobuf.Message
+import io.opentracing.Tracer
+import io.opentracing.util.GlobalTracer
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.model.signer
@@ -41,6 +43,8 @@ fun<T> withFutureSemaphore(semaphore: Semaphore, futureFn: () -> ListenableFutur
 }
 
 class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, osConcurrencySize: Short, cacheRecordSizeInBytes: Long) {
+
+    private val tracer: Tracer = GlobalTracer.get()
 
     val decryptionWorkerThreadPool = ThreadPoolFactory.newFixedDaemonThreadPool(
         osDecryptionWorkerThreads.toInt(),
@@ -101,6 +105,8 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         uuid: UUID = UUID.randomUUID(),
         loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
+        val span = tracer.buildSpan("PutRecord OS").start()
+
         val cacheKey = if (loHash) {
             RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256LoBytes().base64String())
         } else {
@@ -108,7 +114,11 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         }
 
         return if (recordCache.asMap().containsKey(cacheKey)) {
-            SettableFuture.create<ObjectHash>().also { it.set(ObjectHash(cacheKey.hash)) }
+            Futures.immediateFuture(ObjectHash(cacheKey.hash)).also {
+                span.setTag("Cached-Response", true)
+                span.finish()
+            }
+
         } else {
             val future = withFutureSemaphore(semaphore) {
                 osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, loHash = loHash)
@@ -117,6 +127,8 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
             Futures.transform(
                 future,
                 {
+                    span.setTag("Cached-Response", false)
+                    span.finish()
                     if (it != null) {
                         recordCache.put(cacheKey, message.toByteArray())
                         ObjectHash(it.hash.toByteArray().base64EncodeString())
@@ -135,12 +147,15 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         hash: ByteArray,
         encryptionKeyRef: KeyRef,
     ): ListenableFuture<Message> {
+        val span = tracer.buildSpan("GetRecord OS").start()
+
         val classLoader = Thread.currentThread().contextClassLoader
         val future = getRawBytes(hash, encryptionKeyRef)
 
         return Futures.transform(
             future,
             { byteArray ->
+                span.finish()
                 classLoader.forThread {
                     val clazz = Message::class.java
                     val instanceToReturn = parseFromLookup(classname).invoke(null, byteArray)
@@ -162,18 +177,25 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         hash: ByteArray,
         encryptionKeyRef: KeyRef,
     ): ListenableFuture<ByteArray> {
+        val span = tracer.buildSpan("GetRawBytes OS").start()
+
         // TODO add good error like we had previously
         val cacheKey = RecordCacheKey(encryptionKeyRef.publicKey, hash.base64String())
         val record = recordCache.asMap()[cacheKey]
 
         return if (record != null) {
-            SettableFuture.create<ByteArray>().also { it.set(record) }
+            Futures.immediateFuture(record).also {
+                span.setTag("Cached-Response", true)
+                span.finish()
+            }
         } else {
             val dimeFuture = withFutureSemaphore(semaphore) { osClient.get(hash, encryptionKeyRef.publicKey) }
 
             Futures.transform(
                 dimeFuture,
                 { dime ->
+                    span.setTag("Cached-Response", false)
+                    span.finish()
                     dime?.use { dimeInputStream ->
                         // TODO per audience cache used to happen right here
                         // dimeInputStream.dime.audienceList
