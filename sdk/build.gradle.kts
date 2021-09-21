@@ -19,5 +19,6 @@ dependencies {
     implementation("io.opentracing", "opentracing-util", Version.openTracing)
 
 
+    testImplementation(project(":contract-base", "testArtifacts"))
     testImplementation(project(":contract-proto", "testArtifacts"))
 }
