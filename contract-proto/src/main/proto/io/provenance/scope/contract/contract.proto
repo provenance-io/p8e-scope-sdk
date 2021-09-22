@@ -38,10 +38,6 @@ message Contract {
     google.protobuf.Timestamp start_time = 9;
 }
 
-message ContractState {
-    UUID executionUuid = 1;
-}
-
 message Recital {
     PartyType signer_role = 1;
     SigningAndEncryptionPublicKeys signer = 2;
@@ -74,17 +70,6 @@ message ProposedRecord {
     string classname = 3;
     // TODO do we need this?
     ProvenanceReference ancestor = 4;
-}
-
-message ValidationError {
-    repeated string errors = 1;
-    Result result = 2;
-
-    enum Result {
-        UNKNOWN = 0;
-        PASS = 1;
-        FAIL = 2;
-    }
 }
 
 message ExecutionResult {

@@ -32,10 +32,3 @@ message PublicKey {
   KeyCurve curve = 3;
   bool compressed = 4;
 }
-
-message PrivateKey {
-  bytes key_bytes = 1;
-  KeyType type = 2;
-  KeyCurve curve = 3;
-  bool compressed = 4;
-}

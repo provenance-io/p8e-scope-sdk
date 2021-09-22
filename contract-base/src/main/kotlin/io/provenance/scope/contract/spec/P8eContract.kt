@@ -13,9 +13,6 @@ abstract class P8eContract {
     val uuid = Utils.UUID.newBuilder().setValue(UUID.randomUUID().toString()).build()
     val currentTime = AtomicReference<OffsetDateTime?>()
 
-    // By invoking the consideration you are indicating your agreement with the consideration.
-    fun impliedConsent() = Utils.BooleanResult.newBuilder().setValue(true).build()
-
     protected fun getCurrentTime(): OffsetDateTime {
         return currentTime.get()
             ?: throw IllegalStateException("Current time wasn't set prior to contract construction.")

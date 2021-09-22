@@ -12,10 +12,6 @@ message UUID {
   string value = 1;
 }
 
-message BooleanResult {
-  bool value = 1;
-}
-
 //Audit
 message AuditFields {
   google.protobuf.Timestamp created_date = 1;
