@@ -16,6 +16,8 @@ dependencies {
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
     implementation("org.bouncycastle", "bcprov-jdk15on", Version.bouncy_castle)
 
+    implementation("io.grpc", "grpc-protobuf", Version.grpc_version)
+
     implementation("com.google.guava:guava:${Version.guava}")
 
     // TODO how to log in a library? What logging framework should this be?
