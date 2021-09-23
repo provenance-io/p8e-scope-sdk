@@ -16,7 +16,7 @@ plugins {
     kotlin
     java
 
-    id("com.google.protobuf") version "0.8.15"
+    id("com.google.protobuf") version "0.8.16"
 }
 
 repositories {
@@ -38,7 +38,7 @@ dependencies {
     compileOnly("io.provenance.scope:contract-base:1.0-SNAPSHOT")
 
     // Protobuf
-    implementation("com.google.protobuf", "protobuf-java", "3.6.1")
+    implementation("com.google.protobuf", "protobuf-java", "3.12.0")
 
     // Grpc
     implementation("io.grpc", "grpc-stub", "1.39.0")
@@ -54,21 +54,5 @@ protobuf {
     protoc {
         // The artifact spec for the Protobuf Compiler
         artifact = "com.google.protobuf:protoc:3.6.1"
-    }
-    plugins {
-        // Optional: an artifact spec for a protoc plugin, with "grpc" as
-        // the identifier, which can be referred to in the "plugins"
-        // container of the "generateProtoTasks" closure.
-        id("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.0.0-pre2"
-        }
-    }
-    generateProtoTasks {
-        ofSourceSet("main").forEach {
-            it.plugins {
-                // Apply the "grpc" plugin whose spec is defined above, without options.
-                id("grpc")
-            }
-        }
     }
 }
