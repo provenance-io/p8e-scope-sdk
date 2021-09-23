@@ -12,8 +12,9 @@ import "google/protobuf/any.proto";
 import "io/provenance/scope/contract/contract.proto";
 import "io/provenance/scope/contract/common.proto";
 import "io/provenance/scope/contract/specification.proto";
-import "io/provenance/scope/contract/public_key.proto";
-import "io/provenance/scope/contract/util.proto";
+import "public_key.proto";
+import "util.proto";
+import "common.proto";
 
 message EnvelopeState {
     Envelope input = 1;

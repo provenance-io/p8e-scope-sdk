@@ -11,6 +11,7 @@ plugins {
 
 dependencies {
     implementation(project(":util"))
+    protobuf(project(":proto"))
 
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
     implementation("org.bouncycastle", "bcprov-jdk15on", Version.bouncy_castle)

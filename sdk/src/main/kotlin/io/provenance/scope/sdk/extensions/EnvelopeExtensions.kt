@@ -1,8 +1,9 @@
 package io.provenance.scope.sdk.extensions
 
+import io.provenance.objectstore.proto.PublicKeys
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Envelopes.EnvelopeState
-import io.provenance.scope.contract.proto.PublicKeys
+import io.provenance.scope.proto.PK
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.ExecutionResult
@@ -19,7 +20,7 @@ fun Envelope.isSigned(): Boolean {
     return contract.recitalsList
         .filter { it.hasSigner() }
         .map {
-            val keyProto = PublicKeys.PublicKey.parseFrom(it.signer.signingPublicKey.toByteArray())
+            val keyProto = PK.PublicKey.parseFrom(it.signer.signingPublicKey.toByteArray())
             ECUtils.convertBytesToPublicKey(keyProto.publicKeyBytes.toByteArray()).getAddress(mainNet)
         }
         .plus(
@@ -27,7 +28,7 @@ fun Envelope.isSigned(): Boolean {
                 ?.map { it.address } ?: listOf()
         ).toSet().let {
             val signatureAddresses = signaturesList.map {
-                val keyProto = PublicKeys.PublicKey.parseFrom(it.signer.signingPublicKey.toByteArray())
+                val keyProto = PK.PublicKey.parseFrom(it.signer.signingPublicKey.toByteArray())
                 ECUtils.convertBytesToPublicKey(keyProto.publicKeyBytes.toByteArray()).getAddress(mainNet)
             }.toSet()
             it.all { address -> signatureAddresses.contains(address) }

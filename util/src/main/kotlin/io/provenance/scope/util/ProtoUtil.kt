@@ -9,7 +9,7 @@ import io.provenance.scope.contract.proto.Commons.Location
 import io.provenance.scope.contract.proto.Commons.OutputSpec
 import io.provenance.scope.contract.proto.Commons.ProvenanceReference
 import io.provenance.scope.contract.proto.Contracts.ProposedRecord
-import io.provenance.scope.contract.proto.Utils
+import io.provenance.scope.proto.Util
 import java.util.UUID
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
@@ -48,8 +48,8 @@ object ProtoUtil {
 
     fun provenanceReferenceOf(scopeUuid: UUID, sessionUuid: UUID, hash: String) =
         ProvenanceReference.newBuilder()
-            .setScopeUuid(Utils.UUID.newBuilder().setValue(scopeUuid.toString()).build())
-            .setSessionUuid(Utils.UUID.newBuilder().setValue(sessionUuid.toString()).build())
+            .setScopeUuid(Util.UUID.newBuilder().setValue(scopeUuid.toString()).build())
+            .setSessionUuid(Util.UUID.newBuilder().setValue(sessionUuid.toString()).build())
             .setHash(hash)
 
 
@@ -72,7 +72,7 @@ object ProtoUtil {
                 if (ancestorHash != null && scopeUuid != null) {
                     setAncestor(
                         ProvenanceReference.newBuilder()
-                            .setScopeUuid(Utils.UUID.newBuilder().setValue(scopeUuid.toString()).build())
+                            .setScopeUuid(Util.UUID.newBuilder().setValue(scopeUuid.toString()).build())
                             .setHash(ancestorHash)
                             .setName(name)
                     )

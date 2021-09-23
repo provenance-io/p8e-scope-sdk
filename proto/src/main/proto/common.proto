@@ -1,13 +1,11 @@
 syntax = "proto3";
 
-package io.provenance.scope.encryption;
+package io.provenance.scope;
 
-option java_package = "io.provenance.scope.encryption.proto";
+option java_package = "io.provenance.scope.proto";
 option java_outer_classname = "Common";
 
-import "google/protobuf/timestamp.proto";
-import "encryption/public_key.proto";
-import "encryption/util.proto";
+import "public_key.proto";
 
 message Signature {
     // Signature Detail

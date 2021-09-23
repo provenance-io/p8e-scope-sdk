@@ -9,7 +9,6 @@ import io.grpc.StatusRuntimeException
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.classloader.ClassLoaderCache
 import io.provenance.scope.classloader.MemoryClassLoader
-import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Contracts.ExecutionResult.Result.SKIP
@@ -19,11 +18,9 @@ import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.model.signer
-import io.provenance.scope.encryption.proto.Common
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.toHex
-import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
 import io.provenance.scope.util.forThread
@@ -139,7 +136,7 @@ class ContractEngine(
                         val contractForSignature = contractBuilder.build()
                         return envelope.toBuilder()
                             .setContract(contractForSignature)
-                            .addSignatures(signer.sign(contractForSignature).toContractSignature())
+                            .addSignatures(signer.sign(contractForSignature))
                             .build()
                     }
                     if (result == null) {
@@ -186,7 +183,7 @@ class ContractEngine(
         log.trace("Outputs list for execution: ${contractForSignature.considerationsList.map { it.result.output }}")
         return envelope.toBuilder()
             .setContract(contractForSignature)
-            .addSignatures(signer.sign(contractForSignature).toContractSignature())
+            .addSignatures(signer.sign(contractForSignature))
             .build()
     }
 
@@ -281,6 +278,3 @@ fun Contract.toAudience(scope: ScopeResponse?, shares: Collection<PublicKey>): S
     .map { ECUtils.convertBytesToPublicKey(it.publicKeyBytes.toByteArray()) }
     .plus(shares)
     .toSet()
-
-// todo: why do we have two identical signature protos currently between encryption/contract?
-fun Common.Signature.toContractSignature(): Commons.Signature = Commons.Signature.parseFrom(toByteArray())

@@ -9,8 +9,7 @@ import "google/protobuf/timestamp.proto";
 
 import "io/provenance/scope/contract/common.proto";
 import "io/provenance/scope/contract/specification.proto";
-import "io/provenance/scope/contract/public_key.proto";
-import "io/provenance/scope/contract/util.proto";
+import "public_key.proto";
 
 message Contract {
     reserved "type";

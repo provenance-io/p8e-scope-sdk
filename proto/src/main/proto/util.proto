@@ -1,9 +1,8 @@
 syntax = "proto3";
 
-package io.provenance.scope.contract;
+package io.provenance.scope;
 
-option java_package = "io.provenance.scope.contract.proto";
-option java_outer_classname = "Utils";
+option java_package = "io.provenance.scope.proto";
 
 import "google/protobuf/timestamp.proto";
 

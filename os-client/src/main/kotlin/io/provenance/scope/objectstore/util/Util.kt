@@ -2,10 +2,10 @@ package io.provenance.scope.objectstore.util
 
 import com.google.common.hash.Hashing
 import com.google.protobuf.ByteString
+import io.provenance.objectstore.proto.PublicKeys
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.objectstore.proto.Utils
-import io.provenance.scope.contract.proto.PublicKeys
-import io.provenance.scope.encryption.proto.PK
+import io.provenance.scope.proto.PK
 import io.provenance.scope.util.toHexString
 import java.nio.ByteBuffer
 import java.security.PublicKey
@@ -64,8 +64,8 @@ fun PublicKey.toPublicKeyProtoOS(): Utils.PublicKey =
 
 fun PublicKey.toHex() = toPublicKeyProtoOS().toByteArray().toHexString()
 
-fun PublicKeys.PublicKey.toPublicKey(): PublicKey =
+fun PK.PublicKey.toPublicKey(): PublicKey =
     this.let {
-        require(it.curve == PublicKeys.KeyCurve.SECP256K1) {"Unsupported Key Curve"}
+        require(it.curve == PK.KeyCurve.SECP256K1) {"Unsupported Key Curve"}
         ECUtils.convertBytesToPublicKey(it.publicKeyBytes.toByteArray())
     }

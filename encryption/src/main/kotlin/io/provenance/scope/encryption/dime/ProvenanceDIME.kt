@@ -20,9 +20,9 @@ import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.proto.Encryption.Audience
 import io.provenance.scope.encryption.proto.Encryption.ContextType
 import io.provenance.scope.encryption.proto.Encryption.DIME
-import io.provenance.scope.encryption.proto.Util.AuditFields
+import io.provenance.scope.proto.Util.AuditFields
 import io.provenance.scope.encryption.proto.Encryption.Payload
-import io.provenance.scope.encryption.proto.Util.UUID as UuidProto
+import io.provenance.scope.proto.Util.UUID as UuidProto
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.InputStream

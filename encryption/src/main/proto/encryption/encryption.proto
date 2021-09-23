@@ -5,8 +5,7 @@ package io.provenance.scope.encryption;
 option java_package = "io.provenance.scope.encryption.proto";
 
 import "google/protobuf/timestamp.proto";
-import "encryption/util.proto";
-
+import "util.proto";
 
 message DIME {
     UUID uuid                      = 1; // Unique identifier for this entity on the block chain

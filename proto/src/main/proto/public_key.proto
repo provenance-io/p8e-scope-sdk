@@ -1,21 +1,23 @@
 syntax = "proto3";
 
-package io.provenance.scope.encryption;
+package io.provenance.scope;
 
-option java_package = "io.provenance.scope.encryption.proto";
+option java_package = "io.provenance.scope.proto";
 option java_outer_classname = "PK";
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
-import "encryption/util.proto";
+import "util.proto";
 
 enum KeyType {
   ELLIPTIC = 0;
 }
 
 enum KeyCurve {
+  reserved "P256";
+  reserved 1;
+
   SECP256K1 = 0;
-  P256 = 1;
 }
 
 message SigningAndEncryptionPublicKeys {

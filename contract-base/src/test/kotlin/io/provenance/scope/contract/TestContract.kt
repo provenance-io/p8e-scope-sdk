@@ -4,7 +4,6 @@ import io.provenance.scope.contract.annotations.Participants
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.annotations.ScopeSpecification
 import io.provenance.scope.contract.annotations.ScopeSpecificationDefinition
-import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.contract.proto.TestContractProtos
 import io.provenance.scope.contract.spec.P8eContract
