@@ -2,8 +2,9 @@ package io.provenance.p8e.testframework
 
 import com.google.protobuf.ByteString
 import io.provenance.metadata.v1.*
+import io.provenance.objectstore.proto.PublicKeys
 import io.provenance.scope.contract.proto.Commons
-import io.provenance.scope.contract.proto.PublicKeys
+import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
@@ -50,8 +51,8 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
         .addInputSpecs(defSpec)
         .setFuncName("record2")
         .build()
-    val participants = HashMap<Specifications.PartyType, PublicKeys.PublicKey>()
-    participants[Specifications.PartyType.OWNER] = PublicKeys.PublicKey.newBuilder().build()
+    val participants = HashMap<Specifications.PartyType, PK.PublicKey>()
+    participants[Specifications.PartyType.OWNER] = PK.PublicKey.newBuilder().build()
     val spec = Specifications.ContractSpec.newBuilder()
         .setDefinition(defSpec)
         .addConditionSpecs(conditionSpec)

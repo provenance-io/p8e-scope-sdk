@@ -26,8 +26,6 @@ sourceSets {
 }
 
 dependencies {
-    protobuf(project(":proto"))
-
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
 }
 

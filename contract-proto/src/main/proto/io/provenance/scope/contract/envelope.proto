@@ -12,8 +12,9 @@ import "google/protobuf/any.proto";
 import "io/provenance/scope/contract/contract.proto";
 import "io/provenance/scope/contract/common.proto";
 import "io/provenance/scope/contract/specification.proto";
-import "io/provenance/scope/contract/public_key.proto";
-import "io/provenance/scope/contract/util.proto";
+import "public_key.proto";
+import "util.proto";
+import "common.proto";
 
 message EnvelopeState {
     Envelope input = 1;
@@ -69,44 +70,6 @@ message Envelope {
     bool main_net = 13;
 
     repeated PublicKey data_access = 14;
-}
-
-message EnvelopeEvent {
-    reserved 1;
-    reserved 2;
-
-    string classname = 3;
-
-    Envelope envelope = 4;
-    EnvelopeError error = 5;
-
-    EventType event = 6;
-
-    Action action = 7;
-
-    SigningAndEncryptionPublicKeys public_key = 8;
-
-    enum EventType {
-        UNUSED_TYPE = 0;
-        ENVELOPE_REQUEST = 1;
-        ENVELOPE_RESPONSE = 2;
-        ENVELOPE_ERROR = 3;
-        ENVELOPE_MAILBOX_OUTBOUND = 4;
-        ENVELOPE_ACCEPTED = 5;
-        ENVELOPE_EXECUTION_ERROR = 6;
-    }
-
-    enum Action {
-        UNUSED_ACTION = 0;
-        ACK = 1;
-        REJECT = 2;
-        EXECUTE = 3;
-        EXECUTE_FRAGMENT = 4;
-        HEARTBEAT = 5;
-        CONNECT = 6;
-    }
-
-    google.protobuf.Timestamp timestamp = 99;
 }
 
 message EnvelopeError {

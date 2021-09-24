@@ -7,15 +7,6 @@ option java_outer_classname = "Specifications";
 
 import "io/provenance/scope/contract/common.proto";
 
-// TODO check if this can be deleted
-message ScopeSpec {
-    string name = 1;
-    string description = 2;
-    string website_url = 3;
-    string icon_url = 4;
-    repeated PartyType parties_involved = 5;
-}
-
 message ContractSpec {
     reserved "consideration_specs";
     reserved 5;

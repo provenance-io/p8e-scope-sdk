@@ -2,7 +2,7 @@ package io.provenance.scope.encryption.util
 
 // import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.proto.PK
+import io.provenance.scope.proto.PK
 import io.provenance.scope.util.crypto.Bech32
 import io.provenance.scope.util.crypto.Hash
 import io.provenance.scope.util.crypto.toBech32Data

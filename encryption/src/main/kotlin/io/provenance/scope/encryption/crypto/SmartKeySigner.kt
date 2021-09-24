@@ -8,10 +8,9 @@ import com.google.protobuf.Message
 import io.provenance.scope.encryption.crypto.SignerImpl.Companion.DEFAULT_HASH
 import io.provenance.scope.encryption.crypto.SignerImpl.Companion.PROVIDER
 import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.proto.Common
-import io.provenance.scope.encryption.proto.PK
+import io.provenance.scope.proto.Common
+import io.provenance.scope.proto.PK
 import io.provenance.scope.encryption.util.orThrow
-import io.provenance.scope.util.ProtoUtil
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.lang.IllegalStateException
 import java.security.MessageDigest

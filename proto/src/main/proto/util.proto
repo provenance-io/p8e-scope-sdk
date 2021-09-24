@@ -1,19 +1,14 @@
 syntax = "proto3";
 
-package io.provenance.scope.contract;
+package io.provenance.scope;
 
-option java_package = "io.provenance.scope.contract.proto";
-option java_outer_classname = "Utils";
+option java_package = "io.provenance.scope.proto";
 
 import "google/protobuf/timestamp.proto";
 
 //UUID stored as a string
 message UUID {
   string value = 1;
-}
-
-message BooleanResult {
-  bool value = 1;
 }
 
 //Audit

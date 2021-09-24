@@ -9,6 +9,7 @@ import io.mockk.*
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.proto.PK
 import io.provenance.scope.sdk.Session
 
 class SessionBuilderTest : WordSpec({
@@ -35,10 +36,10 @@ class SessionBuilderTest : WordSpec({
             val session = builder.build()
             val envelopePopulatedRecord = session.packageContract(false)
 
-            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PK.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
                 .build()
-            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PK.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.encryptionKeyRef.publicKey)))
                 .build()
 
@@ -67,10 +68,10 @@ class SessionBuilderTest : WordSpec({
 
             val envelopePopulatedRecord = session.packageContract(false)
 
-            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+            envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PK.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
                 .build()
-            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PublicKeys.PublicKey.newBuilder()
+            envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PK.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.encryptionKeyRef.publicKey)))
                 .build()
 

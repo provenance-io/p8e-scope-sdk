@@ -1,8 +1,6 @@
 package io.provenance.scope.util
 
-import io.provenance.scope.contract.proto.Utils
-import java.util.*
-import io.provenance.scope.contract.proto.Utils.UUID
+import io.provenance.scope.proto.Util.UUID
 import java.util.UUID.randomUUID
 
 

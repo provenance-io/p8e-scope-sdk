@@ -25,7 +25,7 @@ import java.io.EOFException
 import java.io.FilterInputStream
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.proto.PK
+import io.provenance.scope.proto.PK
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.security.MessageDigest
