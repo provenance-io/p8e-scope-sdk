@@ -42,6 +42,11 @@ const val HASH_FIELD_NAME = "HASH"
 const val SIGNATURE_PUBLIC_KEY_FIELD_NAME = "SIGNATURE_PUBLIC_KEY"
 const val SIGNATURE_FIELD_NAME = "SIGNATURE"
 
+/**
+ * A client for communication with an Object Store instance
+ * @param [uri] the [URI] of the Object Store instance
+ * @param [deadlineMs] the timeout value in milliseconds for requests to Object Store
+ */
 open class OsClient(
     uri: URI,
     private val deadlineMs: Long
@@ -73,6 +78,10 @@ open class OsClient(
         mailboxBlockingClient = MailboxServiceGrpc.newBlockingStub(channel)
     }
 
+    /**
+     * Acknowledge the processing of a piece of mail from Object Store
+     * @param [uuid] the [UUID] of the mail to ack
+     */
     fun mailboxAck(uuid: UUID) {
         val request = Mailboxes.AckRequest.newBuilder()
             .setUuid(Utils.UUID.newBuilder().setValue(uuid.toString()).build())
@@ -81,6 +90,13 @@ open class OsClient(
         mailboxBlockingClient.ack(request)
     }
 
+    /**
+     * Fetch mail designated for a specific [PublicKey]
+     * @param [publicKey] the [PublicKey] to fetch mail for
+     * @param [maxResults] the maximum number of mail items to return
+     *
+     * @return a list of mail items (may be empty if there is no mail)
+     */
     fun mailboxGet(publicKey: PublicKey, maxResults: Int): Sequence<Pair<UUID, DIMEInputStream>> {
         val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
         val response = mailboxBlockingClient.get(
@@ -141,6 +157,16 @@ open class OsClient(
         return DIMEInputStream.parse(ByteArrayInputStream(bytes.toByteArray()))
     }
 
+    /**
+     * Fetch an object from Object Store by hash
+     * @param [hash] the hash of the object
+     * @param [publicKey] the [PublicKey] associated with this object, whose corresponding [PrivateKey][java.security.PrivateKey]
+     * should be able to decrypt the object
+     *
+     * @return a [ListenableFuture] containing the [DIMEInputStream] (if found)
+     *
+     * @throws [IllegalArgumentException] if the length of the [hash] is < 16
+     */
     fun get(hash: ByteArray, publicKey: PublicKey): ListenableFuture<DIMEInputStream> {
         if (hash.size < 16) {
             throw IllegalArgumentException("Provided hash must be byte array of at least size 16, found size: ${hash.size}")
@@ -165,6 +191,19 @@ open class OsClient(
         )
     }
 
+    /**
+     * Write an object to Object Store
+     *
+     * @param [message] the [Proto Message][Message] to write
+     * @param [encryptionPublicKey] the encryption [PublicKey] to use for encrypting the [Proto Message][Message]
+     * @param [signer] the [SignerImpl] to use for signing the request to Object Store
+     * @param [additionalAudiences] (optional) any additional [PublicKey]s to allow to decrypt the [Proto Message][Message]
+     * @param [metadata] (optional) any additional meatdata to set on the DIME
+     * @param [uuid] (optional) a uuid to set for this [Proto Message][Message] in Object Store
+     * @param [loHash] whether to use the first 16 bytes of this object's hash as the hash in Object Store
+     *
+     * @return a [ListenableFuture] containing the response from Object Store
+     */
     fun put(
         message: Message,
         encryptionPublicKey: PublicKey,
@@ -188,6 +227,20 @@ open class OsClient(
         )
     }
 
+    /**
+     * Write a stream of bytes to Object Store
+     *
+     * @param [inputStream] the stream of bytes to write
+     * @param [encryptionPublicKey] the encryption [PublicKey] to use for encrypting the [Proto Message][Message]
+     * @param [signer] the [SignerImpl] to use for signing the request to Object Store
+     * @param [contentLength] the length of the [inputStream]
+     * @param [additionalAudiences] (optional) any additional [PublicKey]s to allow to decrypt the [Proto Message][Message]
+     * @param [metadata] (optional) any additional meatdata to set on the DIME
+     * @param [uuid] (optional) a uuid to set for this [Proto Message][Message] in Object Store
+     * @param [loHash] whether to use the first 16 bytes of this object's hash as the hash in Object Store
+     *
+     * @return a [ListenableFuture] containing the response from Object Store
+     */
     fun put(
         inputStream: InputStream,
         encryptionPublicKey: PublicKey,
@@ -264,12 +317,23 @@ open class OsClient(
         return responseObserver.future
     }
 
-    fun createPublicKey(publicKey: PublicKey): PublicKeys.PublicKeyResponse? =
+    /**
+     * Register a local or remote affiliate key with Object Store
+     * @param [publicKey] the [PublicKey] of the affiliate to register
+     * @param [objectStoreUrl] the url of the affiliate's Object Store instance (leave null for an affiliate sharing the same Object Store)
+     *
+     * @return the response from Object Store
+     */
+    fun createPublicKey(publicKey: PublicKey, objectStoreUrl: String? = null): PublicKeys.PublicKeyResponse? =
         publicKeyBlockingClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS)
             .add(
                 PublicKeys.PublicKeyRequest.newBuilder()
                     .setPublicKey(publicKey.toPublicKeyProtoOS())
-                    .setUrl("http://localhost") // todo: what is this supposed to be?
+                    .apply {
+                        if (objectStoreUrl != null) {
+                            url = objectStoreUrl
+                        }
+                    }
                     .build()
             )
 
@@ -277,6 +341,11 @@ open class OsClient(
         channel.shutdown()
     }
 
+    /**
+     * Wait for the underlying communication channel to shut down after calling [close]
+     * @param [timeout] the amount of time (in units of [unit]) to wait for shutdown before giving up
+     * @param [unit] the units represented by [timeout]
+     */
     fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
         return channel.awaitTermination(timeout, unit)
     }

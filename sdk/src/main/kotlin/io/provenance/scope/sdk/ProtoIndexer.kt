@@ -15,9 +15,7 @@ import io.provenance.scope.contract.proto.IndexProto.Index
 import io.provenance.scope.contract.proto.IndexProto.Index.Behavior
 import io.provenance.scope.contract.proto.IndexProto.Index.Behavior.*
 import io.provenance.scope.definition.DefinitionService
-import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.crypto.SignerImpl
-import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.util.getAddress
@@ -27,11 +25,19 @@ import io.provenance.scope.sdk.extensions.resultType
 import io.provenance.scope.util.MetadataAddress
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
-import java.security.KeyPair
 
+/**
+ * A utility for producing a key/value map of all records in a scope according to the indexing behavior rules defined
+ * on the protos using the [Index] proto descriptor
+ *
+ * @param [osClient] the client for fetching objects from Object Store
+ * @param [mainNet] whether the associated chain is main or test net
+ * @param [affiliate] the affiliate to index fields for
+ * @param [definitionServiceFactory] a function for producing a [DefinitionService] from a [CachedOsClient] and [MemoryClassLoader]
+ */
 class ProtoIndexer(
     private val osClient: CachedOsClient,
-    private val mainNet: Boolean,
+    mainNet: Boolean,
     private val affiliate: Affiliate,
     private val definitionServiceFactory: (CachedOsClient, MemoryClassLoader) -> DefinitionService =
         { osClient, memoryClassLoader -> DefinitionService(osClient, memoryClassLoader) },
@@ -40,6 +46,14 @@ class ProtoIndexer(
     private val messageIndexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
     private val affiliateAddress = affiliate.encryptionKeyRef.publicKey.getAddress(mainNet)
 
+    /**
+     * Produce a key/value map of all records in a scope according to the indexing behavior rules defined
+     * on the protos using the [Index] proto descriptor
+     *
+     * @param [scope] the [ScopeResponse] to index
+     *
+     * @return the key/value map of indexable fields. Note: this is recursive map for indexable proto fields consisting of indexable protos
+     */
     fun indexFields(scope: ScopeResponse): Map<String, Any> {
         // find all record groups where there's at least one party member that's an affiliate on this p8e instance
         val sessionMap: Map<ByteString, SessionWrapper> = makeSessionIdMap(scope.sessionsList)
@@ -93,7 +107,7 @@ class ProtoIndexer(
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <T: Message> indexFields(
+    private fun <T: Message> indexFields(
         definitionService: DefinitionService,
         encryptionKeyRef: KeyRef,
         t: T,
@@ -265,7 +279,7 @@ class ProtoIndexer(
         sessionArray.associateBy { it.session.sessionId }
 }
 
-fun FieldDescriptor.getIndex(
+private fun FieldDescriptor.getIndex(
     extensionDescriptor: FieldDescriptor
 ): Index? {
     // return options.getField(extensionDescriptor) as? Index
@@ -284,7 +298,7 @@ fun FieldDescriptor.getIndex(
     }
 }
 
-fun Descriptor.getIndex(
+private fun Descriptor.getIndex(
     extensionDescriptor: FieldDescriptor
 ): Index? {
     // return options.getField(extensionDescriptor) as? Index
