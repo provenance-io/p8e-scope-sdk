@@ -11,6 +11,7 @@ plugins {
 
 dependencies {
     implementation(project(":util"))
+    protobuf(project(":proto"))
 
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
     implementation("org.bouncycastle", "bcprov-jdk15on", Version.bouncy_castle)
@@ -44,22 +45,6 @@ protobuf {
     protoc {
         // The artifact spec for the Protobuf Compiler
         artifact = "com.google.protobuf:protoc:${Version.protobuf}"
-    }
-    plugins {
-        // Optional: an artifact spec for a protoc plugin, with "grpc" as
-        // the identifier, which can be referred to in the "plugins"
-        // container of the "generateProtoTasks" closure.
-        id("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.0.0-pre2"
-        }
-    }
-    generateProtoTasks {
-        ofSourceSet("main").forEach {
-            it.plugins {
-                // Apply the "grpc" plugin whose spec is defined above, without options.
-                id("grpc")
-            }
-        }
     }
 }
 

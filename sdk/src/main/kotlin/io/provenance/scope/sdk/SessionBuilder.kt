@@ -17,6 +17,8 @@ import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.toPublicKey
+import io.provenance.scope.proto.PK
+import io.provenance.scope.proto.Util
 import io.provenance.scope.sdk.extensions.sessionUuid
 import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.extensions.validateSessionsRequested
@@ -28,7 +30,7 @@ import java.util.UUID
 import java.util.UUID.randomUUID
 
 class Session(
-    val participants: HashMap<Specifications.PartyType, PublicKeys.PublicKey>,
+    val participants: HashMap<Specifications.PartyType, PK.PublicKey>,
     val proposedRecords: HashMap<String, Message>,
     val client: Client, // TODO (wyatt) should probably move this class into the client so we have access to the
     val spec: Specifications.ContractSpec,
@@ -58,7 +60,7 @@ class Session(
     class Builder(val scopeSpecUuid: java.util.UUID) {
         var proposedRecords: HashMap<String, Message> = HashMap()
             private set
-        var participants: HashMap<Specifications.PartyType, PublicKeys.PublicKey> = HashMap()
+        var participants: HashMap<Specifications.PartyType, PK.PublicKey> = HashMap()
             private set
         var client: Client? = null
 
@@ -141,7 +143,7 @@ class Session(
             proposedRecords[name] = record
         }
 
-        fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PublicKeys.PublicKey) = apply {
+        fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PK.PublicKey) = apply {
             val recitalSpec = spec!!.partiesInvolvedList
                 .filter { it == party }
                 .firstOrNull()
@@ -161,13 +163,13 @@ class Session(
         val builder = spec.newContract()
             .setDefinition(spec.definition)
 
-        builder.invoker = PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
+        builder.invoker = PK.SigningAndEncryptionPublicKeys.newBuilder()
             .setEncryptionPublicKey(
-                PublicKeys.PublicKey.newBuilder()
+                PK.PublicKey.newBuilder()
                     .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.encryptionKeyRef.publicKey)))
                     .build()
             ).setSigningPublicKey(
-                PublicKeys.PublicKey.newBuilder()
+                PK.PublicKey.newBuilder()
                     .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(client.affiliate.signingKeyRef.publicKey)))
                     .build()
             ).build()
@@ -234,11 +236,11 @@ class Session(
                                                     .setHash(it.hash)
                                                     // TODO where can these be retrieved
                                                     .setSessionUuid(
-                                                        Utils.UUID.newBuilder()
+                                                        Util.UUID.newBuilder()
                                                             .setValueBytes(envelope.ref.sessionUuid.valueBytes).build()
                                                     )
                                                     .setScopeUuid(
-                                                        Utils.UUID.newBuilder()
+                                                        Util.UUID.newBuilder()
                                                             .setValueBytes(envelope.ref.scopeUuid.valueBytes).build()
                                                     )
                                                     .build()
@@ -342,7 +344,7 @@ class Session(
                     recitalBuilder
                         .setSigner(
                             // Setting single key for both Signing and Encryption key fields, service will handle updating key fields.
-                            PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
+                            PK.SigningAndEncryptionPublicKeys.newBuilder()
                                 .setSigningPublicKey(publicKey)
                                 .setEncryptionPublicKey(publicKey)
                                 .build()
@@ -431,11 +433,11 @@ class Session(
                 .setRef(
                     Commons.ProvenanceReference.newBuilder()
                         .setSessionUuid(
-                            Utils.UUID.newBuilder().setValueBytes(record.dataLocation.ref.sessionUuid.valueBytes).build()
+                            Util.UUID.newBuilder().setValueBytes(record.dataLocation.ref.sessionUuid.valueBytes).build()
                         )
                         .setHash(record.dataLocation.ref.hash)
                         .setScopeUuid(
-                            Utils.UUID.newBuilder().setValueBytes(record.dataLocation.ref.scopeUuid.valueBytes).build()
+                            Util.UUID.newBuilder().setValueBytes(record.dataLocation.ref.scopeUuid.valueBytes).build()
                         )
                         .setName(record.dataLocation.ref.name)
                         .build()

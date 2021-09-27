@@ -8,9 +8,10 @@ import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.provenance.objectstore.proto.PublicKeys
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Envelopes
-import io.provenance.scope.contract.proto.PublicKeys
+import io.provenance.scope.proto.PK
 import io.provenance.scope.encryption.crypto.SignatureInputStream
 import io.provenance.scope.encryption.crypto.verify
 import io.provenance.scope.encryption.domain.inputstream.DIMEInputStream
@@ -51,7 +52,8 @@ class PollAffiliateMailboxTest: WordSpec() {
         .apply {
             contractBuilder.addAllRecitals(recitals.map {
                 Contracts.Recital.newBuilder()
-                    .setSigner(PublicKeys.SigningAndEncryptionPublicKeys.newBuilder()
+                    .setSigner(
+                        PK.SigningAndEncryptionPublicKeys.newBuilder()
                         .setSigningPublicKey(it.signingPublicKey.toPublicKeyProto())
                         .setEncryptionPublicKey(it.encryptionPublicKey.toPublicKeyProto())
                     ).build()

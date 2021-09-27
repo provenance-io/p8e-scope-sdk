@@ -1,8 +1,8 @@
 package io.provenance.scope.encryption.crypto
 
 import com.google.protobuf.Message
-import io.provenance.scope.encryption.proto.Common
-import io.provenance.scope.encryption.proto.PK
+import io.provenance.scope.proto.Common
+import io.provenance.scope.proto.PK
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.PublicKey
 

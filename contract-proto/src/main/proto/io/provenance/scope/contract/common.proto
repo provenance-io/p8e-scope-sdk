@@ -5,18 +5,8 @@ package io.provenance.scope.contract;
 option java_package = "io.provenance.scope.contract.proto";
 option java_outer_classname = "Commons";
 
-import "io/provenance/scope/contract/public_key.proto";
-import "io/provenance/scope/contract/util.proto";
-
-message Signature {
-    // Signature Detail
-    string algo = 1;
-    string provider = 2;
-    string signature = 3;
-
-    // Identity of signer
-    SigningAndEncryptionPublicKeys signer = 4;
-}
+import "util.proto";
+import "common.proto";
 
 message DefinitionSpec {
     string name = 1;

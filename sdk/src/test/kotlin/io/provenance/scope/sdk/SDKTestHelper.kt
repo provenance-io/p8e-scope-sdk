@@ -7,7 +7,7 @@ import io.provenance.scope.contract.annotations.Function
 import io.provenance.scope.contract.annotations.ScopeSpecification
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.HelloWorldExample
-import io.provenance.scope.contract.proto.PublicKeys
+import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
@@ -55,8 +55,8 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
         .addInputSpecs(defSpec)
         .setFuncName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
         .build()
-    val participants = HashMap<Specifications.PartyType, PublicKeys.PublicKey>()
-    participants[Specifications.PartyType.OWNER] = PublicKeys.PublicKey.newBuilder().build()
+    val participants = HashMap<Specifications.PartyType, PK.PublicKey>()
+    participants[Specifications.PartyType.OWNER] = PK.PublicKey.newBuilder().build()
     val spec = Specifications.ContractSpec.newBuilder()
         .setDefinition(defSpec)
         .addConditionSpecs(conditionSpec)

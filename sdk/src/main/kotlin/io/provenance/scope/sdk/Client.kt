@@ -7,11 +7,10 @@ import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.annotations.ScopeSpecificationDefinition
 import io.provenance.scope.contract.contracts.ContractHash
-import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Envelopes.EnvelopeState
 import io.provenance.scope.contract.proto.ProtoHash
-import io.provenance.scope.contract.proto.PublicKeys
+import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.ecies.ECUtils
@@ -33,9 +32,8 @@ import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
-import java.security.PublicKey
 import io.opentracing.util.GlobalTracer;
-import java.lang.Exception
+import io.provenance.scope.contract.proto.Commons
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -45,10 +43,10 @@ import java.util.concurrent.TimeUnit
 // make resolver that can go from byte array to Message class
 
 // todo: need to consolidate/organize key helpers
-fun java.security.PublicKey.toPublicKeyProto(): PublicKeys.PublicKey =
-    PublicKeys.PublicKey.newBuilder()
-        .setCurve(PublicKeys.KeyCurve.SECP256K1)
-        .setType(PublicKeys.KeyType.ELLIPTIC)
+fun java.security.PublicKey.toPublicKeyProto(): PK.PublicKey =
+    PK.PublicKey.newBuilder()
+        .setCurve(PK.KeyCurve.SECP256K1)
+        .setType(PK.KeyType.ELLIPTIC)
         .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(this)))
         .setCompressed(false)
         .build()

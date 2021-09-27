@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package io.provenance.scope;
+
+option java_package = "io.provenance.scope.proto";
+option java_outer_classname = "Common";
+
+import "public_key.proto";
+
+message Signature {
+    // Signature Detail
+    string algo = 1;
+    string provider = 2;
+    string signature = 3;
+
+    // Identity of signer
+    SigningAndEncryptionPublicKeys signer = 4;
+}

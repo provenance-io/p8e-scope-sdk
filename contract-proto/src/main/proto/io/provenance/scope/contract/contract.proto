@@ -9,8 +9,7 @@ import "google/protobuf/timestamp.proto";
 
 import "io/provenance/scope/contract/common.proto";
 import "io/provenance/scope/contract/specification.proto";
-import "io/provenance/scope/contract/public_key.proto";
-import "io/provenance/scope/contract/util.proto";
+import "public_key.proto";
 
 message Contract {
     reserved "type";
@@ -36,10 +35,6 @@ message Contract {
 
     // This is only set once when the contract is initially executed
     google.protobuf.Timestamp start_time = 9;
-}
-
-message ContractState {
-    UUID executionUuid = 1;
 }
 
 message Recital {
@@ -74,17 +69,6 @@ message ProposedRecord {
     string classname = 3;
     // TODO do we need this?
     ProvenanceReference ancestor = 4;
-}
-
-message ValidationError {
-    repeated string errors = 1;
-    Result result = 2;
-
-    enum Result {
-        UNKNOWN = 0;
-        PASS = 1;
-        FAIL = 2;
-    }
 }
 
 message ExecutionResult {
