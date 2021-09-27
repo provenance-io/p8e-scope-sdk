@@ -30,7 +30,7 @@ class SessionBuilderTest : WordSpec({
             val builder = createSessionBuilderNoRecords(osClient)
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
-            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
+            builder.addProposedRecord("record2", exampleName)
 
             // Create Session and run package contract for tests
             val session = builder.build()
@@ -44,7 +44,7 @@ class SessionBuilderTest : WordSpec({
                 .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
-            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
             envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 1
             envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
         }
@@ -60,7 +60,7 @@ class SessionBuilderTest : WordSpec({
 
             val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
 
-            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
+            builder.addProposedRecord("record2", exampleName)
 
             val session = builder.build()
 
@@ -74,12 +74,12 @@ class SessionBuilderTest : WordSpec({
                 .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
-            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
             envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 1
             envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
 
             envelopePopulatedRecord.contract.inputsCount shouldBe 1
-            envelopePopulatedRecord.contract.inputsList[0].name shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+            envelopePopulatedRecord.contract.inputsList[0].name shouldBe "record2"
             envelopePopulatedRecord.contract.inputsList[0].dataLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
         }
 
@@ -119,7 +119,7 @@ class SessionBuilderTest : WordSpec({
 
             val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
 
-            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
+            builder.addProposedRecord("record2", exampleName)
             builder.dataAccessKeys.clear()
             builder.addDataAccessKey(localKeys[2].public)
 
@@ -144,7 +144,7 @@ class SessionBuilderTest : WordSpec({
 
             val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
 
-            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
+            builder.addProposedRecord("record2", exampleName)
             builder.dataAccessKeys.clear()
 
             val session = builder.build()

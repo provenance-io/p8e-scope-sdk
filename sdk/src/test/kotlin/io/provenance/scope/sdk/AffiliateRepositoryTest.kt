@@ -1,4 +1,4 @@
-package io.provenance.p8e.testframework.io.provenance.scope.sdk
+package io.provenance.scope.sdk
 
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.test.TestCase
@@ -10,7 +10,7 @@ import io.provenance.scope.sdk.AffiliateRepository
 import java.security.PublicKey
 
 class AffiliateRepositoryTest : WordSpec() {
-    lateinit var affiliateRepository: io.provenance.scope.sdk.AffiliateRepository
+    lateinit var affiliateRepository: AffiliateRepository
     lateinit var signingPublicKey: PublicKey
     lateinit var signingAddress: String
     lateinit var encryptionPublicKey: PublicKey
@@ -19,7 +19,7 @@ class AffiliateRepositoryTest : WordSpec() {
     override fun beforeTest(testCase: TestCase) {
         super.beforeTest(testCase)
 
-        affiliateRepository = io.provenance.scope.sdk.AffiliateRepository(false)
+        affiliateRepository = AffiliateRepository(false)
         signingPublicKey = ProvenanceKeyGenerator.generateKeyPair().public
         signingAddress = signingPublicKey.getAddress(false)
         encryptionPublicKey = ProvenanceKeyGenerator.generateKeyPair().public

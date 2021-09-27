@@ -1,4 +1,4 @@
-package io.provenance.scope.sdk.test
+package io.provenance.scope.sdk
 
 import com.google.common.util.concurrent.Futures
 import com.google.protobuf.Message
