@@ -1,4 +1,4 @@
-package io.provenance.scope.sdk
+package io.provenance.scope.sdk.test
 
 import com.google.common.util.concurrent.Futures
 import com.google.protobuf.Message
@@ -21,6 +21,8 @@ import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.toByteArray
+import io.provenance.scope.sdk.Affiliate
+import io.provenance.scope.sdk.ProtoIndexer
 import io.provenance.scope.util.MetadataAddress
 import java.security.KeyPair
 import java.util.UUID

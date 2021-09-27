@@ -9,7 +9,11 @@ import io.mockk.*
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.util.getAddress
-import io.provenance.scope.sdk.Session
+import io.provenance.scope.sdk.*
+import io.provenance.scope.sdk.createClientDummy
+import io.provenance.scope.sdk.createExistingScope
+import io.provenance.scope.sdk.createSessionBuilderNoRecords
+import io.provenance.scope.sdk.localKeys
 
 class SessionBuilderTest : WordSpec({
 
@@ -24,12 +28,8 @@ class SessionBuilderTest : WordSpec({
 
             val builder = createSessionBuilderNoRecords(osClient)
 
-            // Setting up dummy Record
-            val dataLocation =
-                Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record")
-                    .setRef(builder.provenanceReference).build()
-            val record = Contracts.Record.newBuilder().setDataLocation(dataLocation).setName("record2").build()
-            builder.addProposedRecord("record2", record)
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
+            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
 
             // Create Session and run package contract for tests
             val session = builder.build()
@@ -43,9 +43,9 @@ class SessionBuilderTest : WordSpec({
                 .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
-            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
+            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
             envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 1
-            envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.Contracts\$Record"
+            envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
         }
 
         "Package Contract Existing Scope" {
@@ -55,13 +55,11 @@ class SessionBuilderTest : WordSpec({
 
             val scopeResponse = createExistingScope()
 
-            val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
-            val dataLocation = Commons.Location.newBuilder().setClassname("record2").setRef(provenanceReference).build()
-            val record = Contracts.Record.newBuilder().setDataLocation(dataLocation).setName("record2").build()
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
             val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
 
-            builder.addProposedRecord("record2", record)
+            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
 
             val session = builder.build()
 
@@ -75,13 +73,13 @@ class SessionBuilderTest : WordSpec({
                 .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
-            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
+            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
             envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 1
-            envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.Contracts\$Record"
+            envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
 
             envelopePopulatedRecord.contract.inputsCount shouldBe 1
-            envelopePopulatedRecord.contract.inputsList[0].name shouldBe "record2"
-            envelopePopulatedRecord.contract.inputsList[0].dataLocation.classname shouldBe "io.provenance.scope.contract.proto.Contracts\$Record"
+            envelopePopulatedRecord.contract.inputsList[0].name shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+            envelopePopulatedRecord.contract.inputsList[0].dataLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
         }
 
         "disallow adding a scope when sessions were not requested" {
@@ -116,13 +114,11 @@ class SessionBuilderTest : WordSpec({
                     .clearDataAccess()
             }
 
-            val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
-            val dataLocation = Commons.Location.newBuilder().setClassname("record2").setRef(provenanceReference).build()
-            val record = Contracts.Record.newBuilder().setDataLocation(dataLocation).setName("record2").build()
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("hello").build()
 
             val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
 
-            builder.addProposedRecord("record2", record)
+            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
             builder.dataAccessKeys.clear()
             builder.addDataAccessKey(localKeys[2].public)
 
@@ -143,13 +139,11 @@ class SessionBuilderTest : WordSpec({
                     .addDataAccess(localKeys[2].public.getAddress(false))
             }
 
-            val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
-            val dataLocation = Commons.Location.newBuilder().setClassname("record2").setRef(provenanceReference).build()
-            val record = Contracts.Record.newBuilder().setDataLocation(dataLocation).setName("record2").build()
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
             val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
 
-            builder.addProposedRecord("record2", record)
+            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
             builder.dataAccessKeys.clear()
 
             val session = builder.build()

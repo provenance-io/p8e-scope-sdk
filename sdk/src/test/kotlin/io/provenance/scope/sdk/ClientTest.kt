@@ -1,19 +1,32 @@
-package io.provenance.p8e.testframework.io.provenance.scope.sdk
+package io.provenance.scope.sdk.test
 
+import com.google.common.util.concurrent.Futures
+import com.google.protobuf.ByteString
+import com.google.protobuf.Message
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.collections.shouldContain
-import io.provenance.p8e.testframework.createExistingScope
+import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkConstructor
+import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.TestContract
-import io.provenance.scope.contract.proto.Specifications
-import io.provenance.scope.contract.spec.P8eContract
+import io.provenance.scope.contract.TestContractScopeSpecificationDefinition
+import io.provenance.scope.contract.proto.*
+import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
-import io.provenance.scope.sdk.Affiliate
-import io.provenance.scope.sdk.Client
-import io.provenance.scope.sdk.ClientConfig
-import io.provenance.scope.sdk.SharedClient
+import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.client.ObjectHash
+import io.provenance.scope.objectstore.client.OsClient
+import io.provenance.scope.sdk.*
+import io.provenance.scope.sdk.HelloWorldData
+import io.provenance.scope.sdk.createExistingScope
+import io.provenance.scope.util.toProtoUuid
 import java.net.URI
+import java.util.*
 
 class ClientTest : WordSpec() {
     init {
@@ -28,18 +41,144 @@ class ClientTest : WordSpec() {
                         .addDataAccess(encryptionKeyPair.public.getAddress(false))
                 }
 
-                val client = Client(SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)), Affiliate(
-                    DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
-                    DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
-                    Specifications.PartyType.OWNER
-                ))
+                val client = Client(
+                    SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
+                    Affiliate(
+                        DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
+                        DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
+                        Specifications.PartyType.OWNER
+                    )
+                )
 
-                client.inner.affiliateRepository.addAffiliate(signingPublicKey = signingKeyPair.public, encryptionPublicKey = encryptionKeyPair.public)
+                client.inner.affiliateRepository.addAffiliate(
+                    signingPublicKey = signingKeyPair.public,
+                    encryptionPublicKey = encryptionKeyPair.public
+                )
 
                 val session = client.newSession(TestContract::class.java, scope.build())
 
                 session.dataAccessKeys shouldContain encryptionKeyPair.public
             }
+            "set new session for non existing scope" {
+
+                val signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+                val encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+
+                val client = Client(
+                    SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
+                    Affiliate(
+                        DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
+                        DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
+                        Specifications.PartyType.OWNER
+                    )
+                )
+
+                client.inner.affiliateRepository.addAffiliate(
+                    signingPublicKey = signingKeyPair.public,
+                    encryptionPublicKey = encryptionKeyPair.public
+                )
+
+                val session =
+                    client.newSession(TestContract::class.java, TestContractScopeSpecificationDefinition::class.java)
+
+                session.spec!!.definition.name shouldBe "TestContract"
+                session.spec!!.functionSpecsList[0].funcName shouldBe "printTest"
+                session.spec!!.functionSpecsList[0].outputSpec.spec.name shouldBe "testRecord"
+            }
+        }
+        "Client.hydrate" should {
+            val signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+            val encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+
+            val scope = createExistingScope().apply {
+                scopeBuilder.scopeBuilder
+                    .clearDataAccess()
+                    .addDataAccess(encryptionKeyPair.public.getAddress(false))
+            }
+
+            mockkConstructor(CachedOsClient::class)
+            every { anyConstructed<CachedOsClient>().getRecord(any(), any(), any()) } returns
+                    Futures.immediateFuture(
+                        HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").setLastName("TestLast").build()
+                    )
+            val client = Client(
+                SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
+                Affiliate(
+                    DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
+                    DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
+                    Specifications.PartyType.OWNER
+                )
+            )
+
+            client.inner.affiliateRepository.addAffiliate(
+                signingPublicKey = signingKeyPair.public,
+                encryptionPublicKey = encryptionKeyPair.public
+            )
+
+            shouldNotThrowAny {
+                client.hydrate(HelloWorldData::class.java, scope.build())
+            }
+        }
+
+        "Client.execute" should {
+            val signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+            val encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+
+            val provenanceReference = Commons.ProvenanceReference.newBuilder().setHash(
+                "M8PWxG2TFfO0YzL3sDW/l9"
+            ).build()
+            val dataLocation = Commons.Location.newBuilder().setClassname("record2").setRef(provenanceReference).build()
+
+            mockkConstructor(ContractEngine::class)
+            every { anyConstructed<ContractEngine>().handle(any(), any(), any(), any()) } returns
+                    Envelopes.Envelope.newBuilder()
+                        .setNewScope(true)
+                        .setScopeSpecUuid(UUID.randomUUID().toProtoUuid())
+                        .setNewSession(true)
+                        .setRef(
+                            Commons.ProvenanceReference.newBuilder()
+                                .setScopeUuid(UUID.randomUUID().toProtoUuid())
+                                .setSessionUuid(UUID.randomUUID().toProtoUuid())
+                                .build()
+                        )
+                        .setContract(
+                            Contracts.Contract.newBuilder().setSpec(
+                                Contracts.Record.newBuilder().setDataLocation(dataLocation)
+                            )
+                                .addConsiderations(
+                                    Contracts.ConsiderationProto.newBuilder()
+                                        .setConsiderationName("TestConsideration")
+                                        .setResult(Contracts.ExecutionResult.newBuilder()
+                                            .setResult(Contracts.ExecutionResult.Result.PASS)
+                                        ).addInputs(Contracts.ProposedRecord.newBuilder()
+                                            .setName("Test Proposed Record")
+                                            .setClassname("Test Class Name")
+                                            .setHash("1234567890")
+                                        )
+                                )
+                                .build()
+                        ).build()
+
+            val client = Client(
+                SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
+                Affiliate(
+                    DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
+                    DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
+                    Specifications.PartyType.OWNER
+                )
+            )
+
+            val builder = createSessionBuilderNoRecords(client)
+
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
+            builder.addProposedRecord("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName", exampleName)
+
+            // Create Session and run package contract for tests
+            val session = builder.build()
+            val envelopePopulatedRecord = session.packageContract(false)
+
+            shouldNotThrowAny { client.execute(session) }
+            shouldNotThrowAny { client.execute(envelopePopulatedRecord) }
         }
     }
 }

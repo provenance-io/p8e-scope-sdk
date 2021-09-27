@@ -1,22 +1,27 @@
-package io.provenance.p8e.testframework
+package io.provenance.scope.sdk
 
-import com.google.protobuf.ByteString
+import io.provenance.scope.contract.annotations.Record as AnRecord
 import io.provenance.metadata.v1.*
+import io.provenance.scope.contract.annotations.*
+import io.provenance.scope.contract.annotations.Function
+import io.provenance.scope.contract.annotations.ScopeSpecification
 import io.provenance.scope.contract.proto.Commons
+import io.provenance.scope.contract.proto.HelloWorldExample
 import io.provenance.scope.contract.proto.PublicKeys
 import io.provenance.scope.contract.proto.Specifications
+import io.provenance.scope.contract.spec.P8eContract
+import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toJavaPrivateKey
 import io.provenance.scope.encryption.util.toJavaPublicKey
-import io.provenance.scope.sdk.*
-import io.provenance.scope.sdk.Session
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuid
 import java.net.URI
 import java.security.KeyPair
 import java.util.*
+
 
 val localKeys = listOf(
     "0A41046C57E9E25101D5E553AE003E2F79025E389B51495607C796B4E95C0A94001FBC24D84CD0780819612529B803E8AD0A397F474C965D957D33DD64E642B756FBC4" to "0A2071E487C3FB00642F1863D57749F32D94F13892FA68D02049F7EA9E8FC58D6E63",
@@ -35,7 +40,7 @@ fun createClientDummy(localKeyIndex: Int): Client {
     val encryptionKeyRef = DirectKeyRef(localKeys[localKeyIndex].public, localKeys[localKeyIndex].private)
     val signingKeyRef = DirectKeyRef(localKeys[localKeyIndex + 1].public, localKeys[localKeyIndex + 1].private)
     val partyType = Specifications.PartyType.OWNER
-    val affiliate = Affiliate(signingKeyRef, encryptionKeyRef, partyType)
+    val affiliate = io.provenance.scope.sdk.Affiliate(signingKeyRef, encryptionKeyRef, partyType)
 
     val clientConfig = ClientConfig(jarCacheSize, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs, mainNet = false)
     return Client(SharedClient(clientConfig), affiliate)
@@ -44,18 +49,18 @@ fun createClientDummy(localKeyIndex: Int): Client {
 fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = null): Session.Builder{
     val defSpec = Commons.DefinitionSpec.newBuilder()
         .setType(Commons.DefinitionSpec.Type.PROPOSED)
-        .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.Contracts\$Record"))
-        .setName("record2")
+        .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"))
+        .setName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
     val conditionSpec = Specifications.ConditionSpec.newBuilder()
         .addInputSpecs(defSpec)
-        .setFuncName("record2")
+        .setFuncName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
         .build()
     val participants = HashMap<Specifications.PartyType, PublicKeys.PublicKey>()
     participants[Specifications.PartyType.OWNER] = PublicKeys.PublicKey.newBuilder().build()
     val spec = Specifications.ContractSpec.newBuilder()
         .setDefinition(defSpec)
         .addConditionSpecs(conditionSpec)
-        .addFunctionSpecs(Specifications.FunctionSpec.newBuilder().setFuncName("record2").addInputSpecs(defSpec).setInvokerParty(Specifications.PartyType.OWNER))
+        .addFunctionSpecs(Specifications.FunctionSpec.newBuilder().setFuncName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName").addInputSpecs(defSpec).setInvokerParty(Specifications.PartyType.OWNER))
     if(existingScope != ScopeResponse.getDefaultInstance()) {
         spec.addInputSpecs(defSpec)
     }
@@ -86,13 +91,13 @@ fun createExistingScope(): ScopeResponse.Builder {
     val scopeRecord = Record.newBuilder()
         .addInputs(
             RecordInput.newBuilder()
-            .setName("record2")
-            .setHash("1234567890")
+            .setName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
+            .setHash("M8PWxG2TFfO0YzL3sDW/l9kX325y+3v+5liGcjZoi4Q=")
             .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED))
-        .addOutputs(RecordOutput.newBuilder().setHash("234567834567").build())
-        .setProcess(Process.newBuilder().setName("io.provenance.scope.contract.proto.Contracts\$Record").build())
+        .addOutputs(RecordOutput.newBuilder().setHash("M8PWxG2TFfO0YzL3sDW/l9kX325y+3v+5liGcjZoi4Q=").build())
+        .setProcess(Process.newBuilder().setName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName").build())
         .setSessionId(MetadataAddress.forSession(scopeUuid, sessionUUID).bytes.toByteString())
-        .setName("record2")
+        .setName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
     val scope = Scope.newBuilder()
         .addDataAccess(localKeys[3].public.getAddress(false))
@@ -118,3 +123,7 @@ fun createExistingScope(): ScopeResponse.Builder {
     return scopeResponseBuilder
 
 }
+
+data class HelloWorldData(@AnRecord(name = "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName") val name: HelloWorldExample.ExampleName) {}
+
+
