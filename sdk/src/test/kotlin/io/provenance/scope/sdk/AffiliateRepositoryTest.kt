@@ -1,4 +1,4 @@
-package io.provenance.p8e.testframework.io.provenance.scope.sdk
+package io.provenance.scope.sdk
 
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.test.TestCase

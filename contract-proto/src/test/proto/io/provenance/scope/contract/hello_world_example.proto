@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package io.provenance.scope.contract;
+
+option java_package = "io.provenance.scope.contract.proto";
+option java_outer_classname = "HelloWorldExample";
+
+message ExampleName {
+    string first_name = 1;
+    string last_name = 2;
+    string middle_name = 3;
+    string prefix = 4;
+    string suffix = 5;
+}
