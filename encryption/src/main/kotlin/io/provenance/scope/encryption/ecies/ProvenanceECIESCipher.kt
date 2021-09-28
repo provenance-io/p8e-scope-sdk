@@ -63,8 +63,11 @@ class ProvenanceECIESCipher {
     /**
      * Decrypt provided encrypted payload.
      *
-     * @param payload {@code ProvenanceECIESCryptogram} Payload to be decrypted.
+     * @param [payload] [ProvenanceECIESCryptogram] Payload to be decrypted.
+     * @param [keyRef] the [KeyRef] used to decrypt the payload
+     *
      * @return Decrypted bytes.
+     *
      * @throws ProvenanceECIESDecryptException In case decryption fails due to invalid key or invalid MAC value.
      * @throws IllegalArgumentException In case decryption fails due to invalid life-cycle phase,
      */

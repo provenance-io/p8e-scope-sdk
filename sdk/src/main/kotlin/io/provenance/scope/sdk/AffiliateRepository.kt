@@ -6,19 +6,40 @@ import io.provenance.scope.encryption.util.orThrow
 import io.provenance.scope.util.AffiliateNotFoundException
 import java.security.PublicKey
 
+/**
+ * A registry of affiliates to facilitate looking up signing/encryption keys based on Provenance account address
+ */
 class AffiliateRepository(private val mainNet: Boolean) {
     private val affiliateAddressToPublicKeys = HashMap<String, SigningAndEncryptionPublicKeys>()
 
+    /**
+     * Add an affiliate to the repository
+     *
+     * @param [signingPublicKey] the signing public key of the affiliate
+     * @param [encryptionPublicKey] the encryption public key of the affiliate
+     */
     fun addAffiliate(signingPublicKey: PublicKey, encryptionPublicKey: PublicKey) {
         val keys = SigningAndEncryptionPublicKeys(signingPublicKey, encryptionPublicKey)
         affiliateAddressToPublicKeys.put(signingPublicKey.getAddress(mainNet), keys)
         affiliateAddressToPublicKeys.put(encryptionPublicKey.getAddress(mainNet), keys)
     }
 
+    /**
+     * Add multiple affiliates to the repository
+     *
+     * @param [affiliateKeys] a list of signing/encryption public keys for affiliates to add
+     */
     fun addAllAffiliates(affiliateKeys: List<SigningAndEncryptionPublicKeys>) {
         affiliateAddressToPublicKeys.putAll(affiliateKeys.map { it.signingPublicKey.getAddress(mainNet) to it })
         affiliateAddressToPublicKeys.putAll(affiliateKeys.map { it.encryptionPublicKey.getAddress(mainNet) to it })
     }
 
+    /**
+     * Look up an affiliate's keys by address
+     *
+     * @param [affiliateAddress] the address of the affiliate. Note: this may be the address of either their signing or encryption public key
+     *
+     * @return the [signing and encryption public keys][SigningAndEncryptionPublicKeys] of the affiliate
+     */
     fun getAffiliateKeysByAddress(affiliateAddress: String) = affiliateAddressToPublicKeys.get(affiliateAddress).orThrow { AffiliateNotFoundException("Affiliate with address $affiliateAddress not found") }
 }

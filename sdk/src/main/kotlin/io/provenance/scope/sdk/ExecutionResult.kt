@@ -19,7 +19,14 @@ import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuid
 
+/** The result of contract execution */
 sealed class ExecutionResult
+
+/**
+ * A result indicating a contract execution that has been signed by all participants and is ready for memorialization to chain
+ * @property [envelopeState] the resultant [EnvelopeState] from contract execution
+ * @property [messages] a list of Provenance messages to package into a transaction for memorialization to chain
+ */
 class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
     private val mainNet = envelopeState.result.mainNet
     private val signers = envelopeState.result.signaturesList.map { ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet) }  // todo: correct address/pk?
@@ -32,6 +39,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
     private val sessionId = MetadataAddress.forSession(envelopeState.result.ref.scopeUuid.toUuid(), envelopeState.result.ref.sessionUuid.toUuid()).bytes.toByteString()
     private val contractSpecId = envelopeState.result.contract.spec.dataLocation.ref.hash.base64Decode().toUuid().let { uuid -> MetadataAddress.forContractSpecification(uuid) }
 
+    /** @suppress */
     val executionInfo = mutableListOf<Triple<String, String, String>>()
     val messages: List<Message> = mutableListOf<Message>().apply {
         if (envelopeState.result.newScope) {
@@ -121,4 +129,11 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
             msgWriteRecordRequest
         }
 }
+
+/**
+ * A result indicating that the contract execution is only partially signed and needs to be persisted and
+ * mailed to other participants for signing
+ *
+ * @property [envelopeState] the resultant [EnvelopeState] from contract execution
+ */
 class FragmentResult(val envelopeState: EnvelopeState): ExecutionResult()
