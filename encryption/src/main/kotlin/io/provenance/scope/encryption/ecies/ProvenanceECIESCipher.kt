@@ -74,20 +74,7 @@ class ProvenanceECIESCipher {
     @Throws(ProvenanceECIESDecryptException::class)
     fun decrypt(payload: ProvenanceECIESCryptogram, keyRef: KeyRef, additionalAuthenticatedData: String?): ByteArray {
         try {
-            val ephemeralDerivedSecretKey = when (keyRef) {
-                is SmartKeyRef -> {
-                    // Create a transient security object out of the ephemeral public key from the payload.
-                    val transientEphemeralSObj = payload.ephemeralPublicKey.toTransientSecurityObject()
-
-                    // Compute the shared/agree key via SmartKey's API
-                    val secretKey = keyRef.uuid.toString().toAgreeKey(transientEphemeralSObj.transientKey)
-                    ProvenanceHKDFSHA256.derive(secretKey.value, null, ECUtils.KDF_SIZE)
-                }
-                is DirectKeyRef -> {
-                    val secretKey = ProvenanceKeyGenerator.computeSharedKey(keyRef.privateKey, payload.ephemeralPublicKey)
-                    ProvenanceHKDFSHA256.derive(ECUtils.convertSharedSecretKeyToBytes(secretKey), null, ECUtils.KDF_SIZE)
-                }
-            }
+            val ephemeralDerivedSecretKey = ProvenanceHKDFSHA256.derive(keyRef.getSecretKey(payload), null, ECUtils.KDF_SIZE)
 
             // Validate data MAC value
             val encKeyBytes = Arrays.copyOf(ephemeralDerivedSecretKey, 32)

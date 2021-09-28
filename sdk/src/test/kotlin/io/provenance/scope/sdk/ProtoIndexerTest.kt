@@ -115,8 +115,8 @@ class ProtoIndexerTest: AnnotationSpec(){
     @BeforeAll
     fun setUp(){
         val affiliate = Affiliate(
-            signingKeyRef = DirectKeyRef(keyPair.public, keyPair.private),
-            encryptionKeyRef = DirectKeyRef(keyPair.public, keyPair.private),
+            signingKeyRef = DirectKeyRef(keyPair),
+            encryptionKeyRef = DirectKeyRef(keyPair),
             partyType = OWNER,
         )
         mockDefinitionService = mockk<DefinitionService>()
