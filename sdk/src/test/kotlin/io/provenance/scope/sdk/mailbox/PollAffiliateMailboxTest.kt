@@ -18,7 +18,6 @@ import io.provenance.scope.encryption.domain.inputstream.DIMEInputStream
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.SigningAndEncryptionPublicKeys
-import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.proto.Encryption
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.mailbox.ExecutionErrorEvent
@@ -38,8 +37,8 @@ import java.util.UUID
 class PollAffiliateMailboxTest: WordSpec() {
     lateinit var osClient: OsClient
     lateinit var mailboxService: MailboxService
-    val signingKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it.public, it.private) }
-    val encryptionKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it.public, it.private) }
+    val signingKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it) }
+    val encryptionKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it) }
 
     override fun beforeTest(testCase: TestCase) {
         super.beforeTest(testCase)

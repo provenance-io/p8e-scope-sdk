@@ -14,7 +14,6 @@ import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.ContractSpecMapper.dehydrateSpec

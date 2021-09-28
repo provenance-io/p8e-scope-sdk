@@ -11,7 +11,6 @@ import io.opentracing.Tracer
 import io.opentracing.util.GlobalTracer
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.encryption.model.KeyRef
-import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.objectstore.util.base64Encode
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.sha256LoBytes

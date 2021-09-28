@@ -4,7 +4,6 @@ import io.provenance.metadata.v1.Scope
 import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.model.KeyRef
-import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.proto.Encryption.Audience
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.orThrow

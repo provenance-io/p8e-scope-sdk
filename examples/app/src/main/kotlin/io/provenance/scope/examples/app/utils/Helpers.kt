@@ -8,7 +8,6 @@ import io.provenance.metadata.v1.ScopeRequest
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.model.KeyRef
-import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.SignedResult
 import java.util.UUID
