@@ -1,8 +1,11 @@
 package io.provenance.scope.sdk
 
 import com.google.common.util.concurrent.Futures
+import com.google.protobuf.Message
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.WordSpec
+import io.kotest.core.test.TestCase
+import io.kotest.core.test.TestResult
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -15,31 +18,56 @@ import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.client.ObjectHash
 import io.provenance.scope.util.toProtoUuid
 import java.net.URI
+import java.security.KeyPair
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class ClientTest : WordSpec() {
+    lateinit var signingKeyPair: KeyPair
+    lateinit var encryptionKeyPair: KeyPair
+    lateinit var cleanupHandlers: MutableList<() -> Unit>
+
+    override fun beforeTest(testCase: TestCase) {
+        super.beforeTest(testCase)
+
+        signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+        encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+        cleanupHandlers = mutableListOf()
+    }
+
+    override fun afterTest(testCase: TestCase, result: TestResult) {
+        super.afterTest(testCase, result)
+
+        cleanupHandlers.forEach { it.invoke() }
+    }
+
+    private fun getClient(): Client = Client(
+        SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
+        Affiliate(
+            DirectKeyRef(signingKeyPair),
+            DirectKeyRef(encryptionKeyPair),
+            Specifications.PartyType.OWNER
+        )
+    ).also {
+        cleanupHandlers.add {
+            it.inner.close()
+            it.inner.awaitTermination(1, TimeUnit.SECONDS)
+        }
+    }
+
     init {
         "Client.newSession" should {
             "look up data share affiliates on existing scope that have different signing/encryption keys" {
-                val signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-                val encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-
                 val scope = createExistingScope().apply {
                     scopeBuilder.scopeBuilder
                         .clearDataAccess()
                         .addDataAccess(encryptionKeyPair.public.getAddress(false))
                 }
                 
-                val client = Client(
-                    SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
-                    Affiliate(
-                        DirectKeyRef(signingKeyPair),
-                        DirectKeyRef(encryptionKeyPair),
-                        Specifications.PartyType.OWNER
-                    )
-                )
+                val client = getClient()
 
                 client.inner.affiliateRepository.addAffiliate(
                     signingPublicKey = signingKeyPair.public,
@@ -51,18 +79,7 @@ class ClientTest : WordSpec() {
                 session.dataAccessKeys shouldContain encryptionKeyPair.public
             }
             "set new session for non existing scope" {
-
-                val signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-                val encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-
-                val client = Client(
-                    SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
-                    Affiliate(
-                        DirectKeyRef(signingKeyPair),
-                        DirectKeyRef(encryptionKeyPair),
-                        Specifications.PartyType.OWNER
-                    )
-                )
+                val client = getClient()
 
                 client.inner.affiliateRepository.addAffiliate(
                     signingPublicKey = signingKeyPair.public,
@@ -72,16 +89,13 @@ class ClientTest : WordSpec() {
                 val session =
                     client.newSession(TestContract::class.java, TestContractScopeSpecificationDefinition::class.java)
 
-                session.spec!!.definition.name shouldBe "TestContract"
-                session.spec!!.functionSpecsList[0].funcName shouldBe "printTest"
-                session.spec!!.functionSpecsList[0].outputSpec.spec.name shouldBe "testRecord"
+                session.contractSpec!!.definition.name shouldBe "TestContract"
+                session.contractSpec!!.functionSpecsList[0].funcName shouldBe "printTest"
+                session.contractSpec!!.functionSpecsList[0].outputSpec.spec.name shouldBe "testRecord"
             }
         }
         "Client.hydrate" should {
             "hydrate data for the given class" {
-                val signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-                val encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-
                 val scope = createExistingScope().apply {
                     scopeBuilder.scopeBuilder
                         .clearDataAccess()
@@ -94,14 +108,7 @@ class ClientTest : WordSpec() {
                             HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").setLastName("TestLast")
                                 .build()
                         )
-                val client = Client(
-                    SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
-                    Affiliate(
-                        DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
-                        DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
-                        Specifications.PartyType.OWNER
-                    )
-                )
+                val client = getClient()
 
                 client.inner.affiliateRepository.addAffiliate(
                     signingPublicKey = signingKeyPair.public,
@@ -119,15 +126,17 @@ class ClientTest : WordSpec() {
 
         "Client.execute" should {
             "execute and return a signed result" {
-                val signingKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-                val encryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
-
                 val provenanceReference = Commons.ProvenanceReference.newBuilder().setHash(
                     "M8PWxG2TFfO0YzL3sDW/l9"
                 ).build()
                 val dataLocation = Commons.Location.newBuilder()
                     .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
                     .setRef(provenanceReference).build()
+
+                val proposedRecord = Contracts.ProposedRecord.newBuilder()
+                    .setName("record2")
+                    .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
+                    .setHash("1234567890")
 
                 mockkConstructor(ContractEngine::class)
                 every { anyConstructed<ContractEngine>().handle(any(), any(), any(), any()) } returns
@@ -145,30 +154,24 @@ class ClientTest : WordSpec() {
                                 Contracts.Contract.newBuilder().setSpec(
                                     Contracts.Record.newBuilder().setDataLocation(dataLocation)
                                 )
-                                    .addConsiderations(
-                                        Contracts.ConsiderationProto.newBuilder()
-                                            .setConsiderationName("TestConsideration")
-                                            .setResult(
-                                                Contracts.ExecutionResult.newBuilder()
-                                                    .setResult(Contracts.ExecutionResult.Result.PASS)
-                                            ).addInputs(
-                                                Contracts.ProposedRecord.newBuilder()
-                                                    .setName("Test Proposed Record")
-                                                    .setClassname("Test Class Name")
-                                                    .setHash("1234567890")
-                                            )
-                                    )
-                                    .build()
+                                .addConsiderations(
+                                    Contracts.ConsiderationProto.newBuilder()
+                                        .setConsiderationName("record2")
+                                        .setResult(
+                                            Contracts.ExecutionResult.newBuilder()
+                                                .setResult(Contracts.ExecutionResult.Result.PASS)
+                                                .setOutput(proposedRecord)
+                                        ).addInputs(proposedRecord)
+                                )
+                                .build()
                             ).build()
 
-                val client = Client(
-                    SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
-                    Affiliate(
-                        DirectKeyRef(signingKeyPair),
-                        DirectKeyRef(encryptionKeyPair),
-                        Specifications.PartyType.OWNER
-                    )
+                mockkConstructor(CachedOsClient::class)
+                every { anyConstructed<CachedOsClient>().putRecord(any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
+                    ObjectHash("1234567890")
                 )
+
+                val client = getClient()
 
                 val builder = createSessionBuilderNoRecords(client)
 
@@ -179,15 +182,15 @@ class ClientTest : WordSpec() {
                 val session = builder.build()
                 val envelopePopulatedRecord = session.packageContract(false)
 
-                var executionResult = client.execute(session)
+                val executionResult = client.execute(session)
 
                 (executionResult as SignedResult).envelopeState.input.contract.definition.name shouldBe "record2"
                 executionResult.envelopeState.input.contract.definition.resourceLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
 
-                executionResult = client.execute(envelopePopulatedRecord)
+                val executionResult2 = client.execute(envelopePopulatedRecord)
 
-                (executionResult as FragmentResult).envelopeState.input.contract.definition.name shouldBe "record2"
-                executionResult.envelopeState.input.contract.definition.resourceLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+                (executionResult2 as FragmentResult).envelopeState.input.contract.definition.name shouldBe "record2"
+                executionResult2.envelopeState.input.contract.definition.resourceLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
 
             }
         }
