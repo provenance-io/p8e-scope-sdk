@@ -67,8 +67,8 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     /**
      * Write a jar from an [InputStream] to Object Store
      * @param [inputStream] the [InputStream] of the jar file
-     * @param [signingKeyRef] the key to sign the put request to Object Store with
-     * @param [encryptionKeyRef] the key to use for encrypting the jar
+     * @param [signingKeyRef] the [KeyRef] to sign the put request to Object Store with
+     * @param [encryptionKeyRef] the [KeyRef] to use for encrypting the jar
      * @param [contentLength] the length of the jar
      * @param [audience] (optional) the other [PublicKey]s whose corresponding [PrivateKey][java.security.PrivateKey]s should be permitted to decrypt the jar
      * @param [uuid] (optional) a uuid to set for this jar in Object Store
@@ -97,7 +97,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     /**
      * Fetch a jar from Object Store by hash
      * @param [hash] the hash of the jar
-     * @param [encryptionKeyRef] the [PrivateKey][java.security.PrivateKey] to use to decrypt the jar
+     * @param [encryptionKeyRef] the [KeyRef] to use to decrypt the jar
      *
      * @return a [ListenableFuture] containing the [InputStream] of the jar
      */
@@ -115,8 +115,8 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     /**
      * Write a [ContractSpec] to Object Store
      * @param [contractSpec] the [ContractSpec] to write to Object Store
-     * @param [signingKeyRef] the key to sign the put request to Object Store with
-     * @param [encryptionKeyRef] the key to use for encrypting the [ContractSpec]
+     * @param [signingKeyRef] the [KeyRef] to sign the put request to Object Store with
+     * @param [encryptionKeyRef] the [KeyRef] to use for encrypting the [ContractSpec]
      * @param [audience] (optional) the other [PublicKey]s whose corresponding [PrivateKey][java.security.PrivateKey]s should be permitted to decrypt the [ContractSpec]
      * @param [uuid] (optional) a uuid to set for this [ContractSpec] in Object Store
      *
@@ -135,8 +135,8 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     /**
      * Write a [Proto Message][Message] to Object Store
      * @param [contractSpec] the [Proto Message][Message] to write to Object Store
-     * @param [signingKeyRef] the key to sign the put request to Object Store with
-     * @param [encryptionKeyRef] the key to use for encrypting the [Proto Message][Message]
+     * @param [signingKeyRef] the [KeyRef] to sign the put request to Object Store with
+     * @param [encryptionKeyRef] the [KeyRef] to use for encrypting the [Proto Message][Message]
      * @param [audience] (optional) the other [PublicKey]s whose corresponding [PrivateKey][java.security.PrivateKey]s should be permitted to decrypt the [Proto Message][Message]
      * @param [uuid] (optional) a uuid to set for this [Proto Message][Message] in Object Store
      *
@@ -191,7 +191,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
      * Fetch a [Proto Message][Message] from Object Store by hash
      * @param [classname] the type of [Proto Message][Message] stored in Object Store to cast the result to
      * @param [hash] the hash of the [Proto Message][Message]
-     * @param [encryptionKeyRef] the [PrivateKey][java.security.PrivateKey] to use to decrypt the [Proto Message][Message]
+     * @param [encryptionKeyRef] the [KeyRef] to use to decrypt the [Proto Message][Message]
      *
      * @return a [ListenableFuture] containing the [InputStream] of the jar
      *
