@@ -25,8 +25,8 @@ import java.util.UUID
 
 class CachedOsClientTest: WordSpec() {
     lateinit var osClient: OsClient
-    val signingKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it.public, it.private) }
-    val encryptionKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it.public, it.private) }
+    val signingKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it) }
+    val encryptionKeyRef = ProvenanceKeyGenerator.generateKeyPair().let { DirectKeyRef(it) }
 
     override fun beforeTest(testCase: TestCase) {
         super.beforeTest(testCase)

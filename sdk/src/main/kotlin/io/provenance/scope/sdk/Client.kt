@@ -14,7 +14,6 @@ import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.model.signer
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.ContractSpecMapper.dehydrateSpec
@@ -51,28 +50,62 @@ fun java.security.PublicKey.toPublicKeyProto(): PK.PublicKey =
         .setCompressed(false)
         .build()
 
+/**
+ * A base client containing configuration (object store location, cache sizes, etc.) and shared services that can be
+ * used by [Clients][Client] for various individual affiliates.
+ *
+ * Note: This class implements [Closeable] and should be properly closed when no longer in use
+ */
 class SharedClient(val config: ClientConfig) : Closeable {
+    /**
+     * A client for communcation with the Object Store
+     */
     val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
+
+    /** @suppress */
     val contractEngine: ContractEngine = ContractEngine(osClient)
 
+    /**
+     * A registry of all other affiliates (identified by signing and encryption public keys) that you interact with in contract execution.
+     * Used to look up appropriate public keys based on blockchain account addresses.
+     */
     val affiliateRepository = AffiliateRepository(config.mainNet)
 
+    /** @suppress */
     val mailboxService = MailboxService(osClient.osClient, affiliateRepository)
 
     override fun close() {
         osClient.osClient.close()
     }
 
+    /**
+     * Wait for all resources to properly close and be cleaned up
+     *
+     * @param [timeout] the timeout value, after which to give up on waiting
+     * @param [unit] the time unit corresponding to the [timeout] value
+     *
+     * @return whether the resources were fully terminated
+     */
     fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
         return osClient.osClient.awaitTermination(timeout, unit)
     }
 }
 
+/**
+ * An SDK Client for interacting with contracts as a particular affiliate.
+ *
+ * @property [inner] the base [SharedClient] instance containing configuration and shared resources
+ * @property [affiliate] an object representing an affiliate with the appropriate keys for signing/encryption and the role of this affiliate on contracts
+ */
 class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
     private val log = LoggerFactory.getLogger(this::class.java);
     private val tracer = GlobalTracer.get()
 
+    /**
+     * The [ProtoIndexer] utility class to use for generating an indexable map of record values from a scope
+     * according to the indexing behavior defined on the contract proto messages.
+     */
     val indexer: ProtoIndexer = ProtoIndexer(inner.osClient, inner.config.mainNet, affiliate)
 
     companion object {
@@ -81,6 +114,15 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         private val protoHashes = ServiceLoader.load(ProtoHash::class.java).toList()
     }
 
+    /**
+     * Create a new contract session against an existing scope on chain.
+     *
+     * @param [clazz] the contract class to run in this session
+     * @param [scope] the [ScopeResponse] queried from chain. Note: this must include all sessions/records on the scope
+     *
+     * @return a [Session Builder][Session.Builder] object allowing you to set proposed record (Input) values, contract participants and
+     *          various properties on the session before proceeding to execution.
+     */
     fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse): Session.Builder {
         val contractHash = getContractHash(clazz)
         val protoHash = clazz.methods
@@ -104,7 +146,18 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .addDataAccessKeys(scope.scope.scope.dataAccessList.map { inner.affiliateRepository.getAffiliateKeysByAddress(it).encryptionPublicKey })
     }
 
-    // executes the first session against a non-existent scope
+    /**
+     * Create a new contract session against a new scope. Both the provided contract and scope specification must have been
+     * properly bootstrapped in order for the messages produced by executing this session to be accepted by the Provenance chain.
+     *
+     * @param [clazz] the contract class to run in this session
+     * @param [scopeSpecificationDef] the [P8eScopeSpecification] class annotated with the [ScopeSpecificationDefinition]
+     *          annotation. Note: In order for this session to be written/accepted by the Provenance chain, the contract class
+     *          must be allowed to run against this scope specification via the [ScopeSpecification][io.provenance.scope.contract.annotations.ScopeSpecification] annotation.
+     *
+     * @return a [Session Builder][Session.Builder] object allowing you to set proposed record (Input) values, contract participants and
+     *          various properties on the session before proceeding to execution.
+     */
     fun<T: P8eContract, S: P8eScopeSpecification> newSession(clazz: Class<T>, scopeSpecificationDef: Class<S>): Session.Builder {
         val contractHash = getContractHash(clazz)
         val protoHash = clazz.methods
@@ -132,6 +185,18 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
     }
 
+    /**
+     * Execute a built contract [Session], storing the results of executed functions in Object Store.
+     *
+     * This will actually run the contract code, executing functions for this affiliate's role that have all necessary arguments present.
+     *
+     * @param [session] the [Session] object containing details about the contract, session and scope to execute, including
+     *          all proposed records (inputs to functions)
+     *
+     * @return an [ExecutionResult] either a
+     * [SignedResult] consisting of Provenance Proto Messages to submit to chain in a transaction, or a
+     * [FragmentResult] with the results of execution in order to persist and notify other parties of a request to sign.
+     */
     fun execute(session: Session): ExecutionResult {
         val span = tracer.buildSpan("Execution").start().also { tracer.activateSpan(it) }
         val input = session.packageContract(inner.config.mainNet)
@@ -159,6 +224,14 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             span.finish() }
     }
 
+    /**
+     * Execute a contract based on an envelope received from another party. Only execute the envelope if you have inspected
+     * its contents and approve of the proposed inputs/function results
+     *
+     * @param [envelope] the envelope received for execution.
+     *
+     * @return a [FragmentResult] containing the result of the execution, to be mailed back to the invoking affiliate for memorialization
+     */
     fun execute(envelope: Envelope): ExecutionResult {
         // todo: should affiliateSharePublicKeys be an empty list in this non-invoking-party-execution-case?
         val result = inner.contractEngine.handle(affiliate.encryptionKeyRef, affiliate.signingKeyRef, envelope, listOf())
@@ -171,6 +244,14 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         return FragmentResult(envelopeState)
     }
 
+    /**
+     * Register a mail handler to process incoming mail from other affiliates.
+     *
+     * @param [executor] a [ScheduledExecutorService] on which to poll for mail
+     * @param [handler] a [MailHandlerFn] to receive incoming mail for this client's affiliate
+     *
+     * @return a [ScheduledFuture] that can be used to cancel the scheduled polling for this handler
+     */
     fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
         executor.scheduleAtFixedRate(PollAffiliateMailbox(
             inner.osClient.osClient,
@@ -182,6 +263,11 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             handler
         ), 1, 1, TimeUnit.SECONDS)
 
+    /**
+     * Submit an envelope to other contract parties for execution
+     *
+     * @param [envelopeState] the [EnvelopeState] object from an execution [FragmentResult] for mailing
+     */
     fun requestAffiliateExecution(envelopeState: EnvelopeState) {
         // todo: verify this Client instance's affiliate is on the envelope?
 
@@ -192,10 +278,25 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.input)
     }
 
+    /**
+     * Return an envelope to the invoking party with the result of execution
+     *
+     * @param [envelopeState] the result of executing an incoming envelope
+     */
     fun respondWithSignedResult(envelopeState: EnvelopeState) {
         inner.mailboxService.result(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.result)
     }
 
+    /**
+     * Hydrate records from a scope into a class
+     *
+     * @param [clazz] the class to hydrate records into. This class *must* have a constructor with at least one parameter
+     *          where each parameter is annotated with the [Record] annotation specifying which scope record
+     *          to populate the parameter with and a type that is a [proto Message][Message] that matches the type of the record
+     * @param [scope] the [ScopeResponse] to hydrate hashes from into their respective concrete types in the provided [clazz]
+     *
+     * @return the hydrated [clazz] of type [T]
+     */
     fun<T> hydrate(clazz: Class<T>, scope: ScopeResponse): T {
         val span = tracer.buildSpan("Hydration").start()
         tracer.activateSpan(span)
@@ -247,5 +348,5 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         }.orThrow { ContractBootstrapException("Unable to find ProtoHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
     }
 
-    fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()
+    private fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()
 }

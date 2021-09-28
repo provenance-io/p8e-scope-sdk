@@ -13,6 +13,8 @@ import io.provenance.scope.util.scopeOrNull
 
 /**
  * Determine if an envelope is fully signed by comparing its signatures with recitals.
+ *
+ * @return whether the [Envelope] is fully signed by all participants
  */
 fun Envelope.isSigned(): Boolean {
     val scopeResponse = scopeOrNull()
@@ -45,6 +47,10 @@ fun EnvelopeState.addSignature(envelope: Envelope): EnvelopeState {
 
 /**
  * Merge an envelope's signature into an existing executed envelope
+ *
+ * @param [envelopeState] the existing [EnvelopeState] to merge this [Envelope] into
+ *
+ * @return a new [EnvelopeState] with the [Envelope]'s results merged in
  */
 fun Envelope.mergeInto(envelopeState: EnvelopeState): ExecutionResult {
     val merged = envelopeState.addSignature(this)

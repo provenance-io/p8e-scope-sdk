@@ -29,11 +29,27 @@ import java.util.*
 import java.util.UUID
 import java.util.UUID.randomUUID
 
+/**
+ * A Session containing details about the participants, proposed records, new/existing scope, and various other metadata
+ * about a session to be executed and memorialized to the blockchain
+ *
+ * @property [participants] the roles/public keys of affiliates participating in this session
+ * @property [proposedRecords] the records proposed by the invoking party of this session execution
+ * @property [client] a [Client] object to be used for invoking affiliate details and saving objects to Object Store
+ * @property [contractSpec] the [ContractSpec][Specifications.ContractSpec] of the contract being executed in this session
+ * @property [provenanceReference] the location (by object store hash) of the contract code being executed in this session
+ * @property [scope] the existing scope that this session is being run against, if one exists
+ * @property [executionUuid] a client-side reference uuid for identifying a particular execution within a session
+ * @property [scopeUuid] the uuid of the scope this session is being run against, whether new or existing
+ * @property [sessionUuid] the uuid of the session
+ * @property [scopeSpecUuid] the uuid of the scope specification associated with the new/existing scope
+ * @property [dataAccessKeys] a list of public keys for non-participants with which to share data
+ */
 class Session(
     val participants: HashMap<Specifications.PartyType, PK.PublicKey>,
     val proposedRecords: HashMap<String, Message>,
     val client: Client, // TODO (wyatt) should probably move this class into the client so we have access to the
-    val spec: Specifications.ContractSpec,
+    val contractSpec: Specifications.ContractSpec,
     val provenanceReference: Commons.ProvenanceReference,
     val scope: ScopeResponse?,
     val executionUuid: UUID,
@@ -41,13 +57,17 @@ class Session(
     val sessionUuid: UUID,
     val scopeSpecUuid: UUID,
     val dataAccessKeys: Set<PublicKey>,
-    val stagedProposedProtos: MutableList<Message> = mutableListOf(),
 ) {
+    /**
+     * protos of proposed records to save to object store
+     */
+    private val stagedProposedProtos: MutableList<Message> = mutableListOf()
+
     private constructor(builder: Builder) : this(
         builder.participants,
         builder.proposedRecords,
         builder.client!!,
-        builder.spec!!,
+        builder.contractSpec!!,
         builder.provenanceReference!!,
         builder.scope,
         builder.executionUuid!!,
@@ -57,51 +77,80 @@ class Session(
         builder.dataAccessKeys.toSet(),
     )
 
-    class Builder(val scopeSpecUuid: java.util.UUID) {
+    /**
+     * A builder to set various properties on in order to produce a fully-populated [Session] object
+     *
+     * @property [scopeSpecUuid] the uuid of the scope specification associated with the new/existing scope
+     */
+    class Builder(val scopeSpecUuid: UUID) {
+        /** The records proposed by the invoking party of this session execution */
         var proposedRecords: HashMap<String, Message> = HashMap()
             private set
+        /** The roles/public keys of affiliates participating in this session */
         var participants: HashMap<Specifications.PartyType, PK.PublicKey> = HashMap()
             private set
+        /** A [Client] object to be used for invoking affiliate details and saving objects to Object Store */
         var client: Client? = null
-
-        var spec: Specifications.ContractSpec? = null
-
+        /** The [ContractSpec][Specifications.ContractSpec] of the contract being executed in this session */
+        var contractSpec: Specifications.ContractSpec? = null
+        /** The location (by object store hash) of the contract code being executed in this session */
         var provenanceReference: Commons.ProvenanceReference? = null
-
-        var scopeUuid: java.util.UUID = randomUUID()
+        /** The uuid of the scope this session is being run against, whether new or existing */
+        var scopeUuid: UUID = randomUUID()
             private set
-
+        /** The existing scope that this session is being run against, if one exists */
         var scope: ScopeResponse? = null
             private set
-
+        /** A client-side reference uuid for identifying a particular execution within a session */
         var executionUuid: UUID = randomUUID()
-
+        /** The uuid of the session */
         var sessionUuid: UUID = randomUUID()
-
+        /** A list of public keys for non-participants with which to share data */
         val dataAccessKeys: MutableList<PublicKey> = mutableListOf()
 
+        /**
+         * Build the resultant [Session] object from the current state of this [Builder]
+         */
         fun build() = Session(this)
 
+        /** Set the [executionUuid] property
+         * @return this
+         */
         fun setExecutionUuid(uuid: UUID) = apply {
             executionUuid = uuid
         }
 
-        fun setSessionUuid(sessionUuid: java.util.UUID) = apply {
+        /** Set the [sessionUuid] property
+         * @return this
+         */
+        fun setSessionUuid(sessionUuid: UUID) = apply {
             this.sessionUuid = sessionUuid
         }
 
+        /** Set the [contractSpec] property
+         * @return this
+         */
         fun setContractSpec(contractSpec: Specifications.ContractSpec) = apply {
-            spec = contractSpec
+            this.contractSpec = contractSpec
         }
 
+        /** Set the [provReference] property
+         * @return this
+         */
         fun setProvenanceReference(provReference: Commons.ProvenanceReference) = apply {
             provenanceReference = provReference
         }
 
+        /** Set the [client] property
+         * @return this
+         */
         fun setClient(client: Client) = apply {
             this.client = client
         }
 
+        /** Set the [scope] property, also sets the [scopeUuid] property accordingly
+         * @return this
+         */
         fun setScope(scopeResponse: ScopeResponse) = apply {
             scopeResponse.validateSessionsRequested()
                 .validateRecordsRequested()
@@ -109,27 +158,51 @@ class Session(
             scopeUuid = scopeResponse.scope.scopeIdInfo.scopeUuid.toUuid()
         }
 
-        fun setScopeUuid(scopeUUID: java.util.UUID) = apply {
+        /** Set the [scopeUuid] property
+         * @throws [IllegalStateException] if the [scope] property is set
+         * @return this
+         */
+        fun setScopeUuid(scopeUUID: UUID) = apply {
             if (scope != null) {
                 throw IllegalStateException("Scope UUID cannot be set once the scope is already set")
             }
             this.scopeUuid = scopeUUID
         }
 
+        /** Add the provided [Collection] of [PublicKey]s to the [dataAccessKeys] list for sharing contract data with these keys
+         * @param [keys] the keys to add for data access
+         * @return this
+         */
         fun addDataAccessKeys(keys: Collection<PublicKey>) = apply {
             dataAccessKeys.addAll(keys)
         }
 
+        /** Add a single [PublicKey] to the [dataAccessKeys] list for sharing contract data with this key
+         * @param [key] the key to add for data access
+         * @return this
+         */
         fun addDataAccessKey(key: PublicKey) = apply {
             dataAccessKeys.add(key)
         }
 
+        /**
+         * Add a proposed record for this session execution
+         * @param [name] the name of the proposed record to set
+         * @param [record] the proto message to propose as a value for this record
+         *
+         * @return this
+         *
+         * @throws [NotFoundException][io.provenance.scope.sdk.ContractSpecMapper.NotFoundException] if an input with the provided [name] cannot be found
+         * @throws [IllegalArgumentException] if the provided [record]'s type does not match the type of the input with the provided [name]
+         *
+         * @see [io.provenance.scope.contract.annotations.Input]
+         */
         fun addProposedRecord(name: String, record: Message) = apply {
             val proposedSpec = listOf(
-                spec!!.conditionSpecsList
+                contractSpec!!.conditionSpecsList
                     .flatMap { it.inputSpecsList }
                     .filter { it.type == PROPOSED },
-                spec!!.functionSpecsList
+                contractSpec!!.functionSpecsList
                     .flatMap { it.inputSpecsList }
                     .filter { it.type == PROPOSED }
             )
@@ -143,8 +216,20 @@ class Session(
             proposedRecords[name] = record
         }
 
+        /**
+         * Add a participant to this session
+         * @param [party] the [PartyType][Specifications.PartyType] role of this participant in this session
+         * @param [encryptionPublicKey] the encryption public key of this party
+         *
+         * @return this
+         *
+         * @throws [NotFoundException][io.provenance.scope.sdk.ContractSpecMapper.NotFoundException] if no party of the
+         * provided [party] type is found on the [contractSpec]
+         * @throws [ContractDefinitionException][ContractSpecMapper.ContractDefinitionException] if a party of the
+         * provided [party] type already exists in the [participants] list
+         */
         fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PK.PublicKey) = apply {
-            val recitalSpec = spec!!.partiesInvolvedList
+            val recitalSpec = contractSpec!!.partiesInvolvedList
                 .filter { it == party }
                 .firstOrNull()
                 .orThrowNotFound("Can't find participant for party type ${party}")
@@ -157,11 +242,10 @@ class Session(
         }
     }
 
-    //    // TODO add execute function - packages ContractScope.Envelope and calls execute on it
     private fun populateContract(): Contract {
         val envelope = Envelope.getDefaultInstance()
-        val builder = spec.newContract()
-            .setDefinition(spec.definition)
+        val builder = contractSpec.newContract()
+            .setDefinition(contractSpec.definition)
 
         builder.invoker = PK.SigningAndEncryptionPublicKeys.newBuilder()
             .setEncryptionPublicKey(
@@ -212,7 +296,7 @@ class Session(
 //                .build()
 //        )
 
-        spec.functionSpecsList
+        contractSpec.functionSpecsList
             .filter { it.hasOutputSpec() }
             .map { it.outputSpec }
             .map { defSpec ->
@@ -279,7 +363,7 @@ class Session(
 //                 }
 //             }
 
-        spec.functionSpecsList
+        contractSpec.functionSpecsList
             .filter { it.inputSpecsList.find { it.type == PROPOSED } != null }
             .forEach { considerationSpec ->
                 // Find the consideration impl for the spec.

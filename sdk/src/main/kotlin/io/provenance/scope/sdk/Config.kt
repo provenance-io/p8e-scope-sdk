@@ -2,6 +2,9 @@ package io.provenance.scope.sdk
 
 import java.net.URI
 
+/**
+ * Configuration values to supply to a [SharedClient] instance
+ */
 data class ClientConfig(
     // caching
     val cacheJarSizeInBytes: Long,

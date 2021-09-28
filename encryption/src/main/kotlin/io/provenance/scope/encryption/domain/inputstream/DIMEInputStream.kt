@@ -186,8 +186,8 @@ class DIMEInputStream(
      * Retrieve the payload as a SignatureInputStream containing the CipherInputStream
      * in decrypt mode using the public key the item was stored with.
      *
-     * @param keyPair - The encryption key pair to decrypt the stream
-     * @return - SignatureInputStream containing a CipherInputStream in DECRYPT mode.
+     * @param [encryptionKeyRef] - The encryption [KeyRef] used to decrypt the stream
+     * @return - [SignatureInputStream] containing a CipherInputStream in DECRYPT mode.
      */
     fun getDecryptedPayload(encryptionKeyRef: KeyRef): SignatureInputStream {
         // seek past the header
@@ -202,8 +202,8 @@ class DIMEInputStream(
      * Retrieve the payload as a SignatureInputStream containing the CipherInputStream
      * in decrypt mode using the public key the item was stored with.
      *
-     * @param keyPair - The encryption key pair to decrypt the stream
-     * @param signaturePublicKey - The signature public key to use for signature verification
+     * @param [encryptionKeyRef] - The encryption [KeyRef] used to decrypt the stream
+     * @param [signaturePublicKey] - The signature [PublicKey] to use for signature verification
      * @return - SignatureInputStream containing a CipherInputStream in DECRYPT mode.
      */
     fun getDecryptedPayload(encryptionKeyRef: KeyRef, signaturePublicKey: PublicKey): SignatureInputStream {

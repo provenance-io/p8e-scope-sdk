@@ -33,8 +33,8 @@ val recordCacheSizeInBytes = 20000L
 val osGrpcUri = URI.create("https://localhost:5000")
 
 fun createClientDummy(localKeyIndex: Int): Client {
-    val encryptionKeyRef = DirectKeyRef(localKeys[localKeyIndex].public, localKeys[localKeyIndex].private)
-    val signingKeyRef = DirectKeyRef(localKeys[localKeyIndex + 1].public, localKeys[localKeyIndex + 1].private)
+    val encryptionKeyRef = DirectKeyRef(localKeys[localKeyIndex])
+    val signingKeyRef = DirectKeyRef(localKeys[localKeyIndex + 1])
     val partyType = Specifications.PartyType.OWNER
     val affiliate = Affiliate(signingKeyRef, encryptionKeyRef, partyType)
 

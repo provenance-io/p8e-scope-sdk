@@ -31,12 +31,12 @@ class ClientTest : WordSpec() {
                         .clearDataAccess()
                         .addDataAccess(encryptionKeyPair.public.getAddress(false))
                 }
-
+                
                 val client = Client(
                     SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
                     Affiliate(
-                        DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
-                        DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
+                        DirectKeyRef(signingKeyPair),
+                        DirectKeyRef(encryptionKeyPair),
                         Specifications.PartyType.OWNER
                     )
                 )
@@ -58,8 +58,8 @@ class ClientTest : WordSpec() {
                 val client = Client(
                     SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
                     Affiliate(
-                        DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
-                        DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
+                        DirectKeyRef(signingKeyPair),
+                        DirectKeyRef(encryptionKeyPair),
                         Specifications.PartyType.OWNER
                     )
                 )
@@ -164,8 +164,8 @@ class ClientTest : WordSpec() {
                 val client = Client(
                     SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
                     Affiliate(
-                        DirectKeyRef(signingKeyPair.public, signingKeyPair.private),
-                        DirectKeyRef(encryptionKeyPair.public, encryptionKeyPair.private),
+                        DirectKeyRef(signingKeyPair),
+                        DirectKeyRef(encryptionKeyPair),
                         Specifications.PartyType.OWNER
                     )
                 )
