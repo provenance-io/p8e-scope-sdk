@@ -7,6 +7,7 @@ import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.HelloWorldExample
 import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.proto.Specifications
+import io.provenance.scope.contract.proto.TestContractProtos
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toJavaPrivateKey
@@ -121,5 +122,6 @@ fun createExistingScope(): ScopeResponse.Builder {
 }
 
 data class HelloWorldData(@AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName) {}
+data class HelloWorldDataNullable(@AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName, @AnnotationRecord(name = "nullableRecord") val nullableRecord: TestContractProtos.TestProto?) {}
 
 

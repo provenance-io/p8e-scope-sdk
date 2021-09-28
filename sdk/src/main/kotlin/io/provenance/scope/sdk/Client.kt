@@ -1,5 +1,6 @@
 package io.provenance.scope.sdk
 
+import com.google.common.util.concurrent.Futures
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.ScopeResponse
@@ -325,12 +326,14 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         val params = constructor.parameters
             .map { it.getAnnotation(Record::class.java).name to it.type }
             .map { (name, type) ->
-                // TODO change this to find or null and throw exception message
-                scope.recordsList.first { wrapper ->
+                scope.recordsList.firstOrNull { wrapper ->
                     wrapper.record.name == name && wrapper.record.resultType() == type.name
-                }.record to type
+                }?.record to type
             }.map { (record, type) ->
-                inner.osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
+                when (record) {
+                    null -> Futures.immediateFuture(record)
+                    else -> inner.osClient.getRecord(type.name, record.resultHash(), affiliate.encryptionKeyRef)
+                }
             }.map { it.get() }
 
         return clazz.cast(constructor.newInstance(*params.toList().toTypedArray())).also { span.finish() }

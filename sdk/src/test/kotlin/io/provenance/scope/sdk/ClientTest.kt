@@ -114,13 +114,37 @@ class ClientTest : WordSpec() {
                     signingPublicKey = signingKeyPair.public,
                     encryptionPublicKey = encryptionKeyPair.public
                 )
-                var hydrateResponse: HelloWorldData =
-                    HelloWorldData(name = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test3").build())
-                shouldNotThrowAny {
-                    hydrateResponse = client.hydrate(HelloWorldData::class.java, scope.build())
+                val hydrateResponse = shouldNotThrowAny {
+                    client.hydrate(HelloWorldData::class.java, scope.build())
                 }
                 hydrateResponse.name.firstName shouldBe "Test"
                 hydrateResponse.name.lastName shouldBe "TestLast"
+            }
+            "allow for null values for nullable records" {
+                val scope = createExistingScope().apply {
+                    scopeBuilder.scopeBuilder
+                        .clearDataAccess()
+                        .addDataAccess(encryptionKeyPair.public.getAddress(false))
+                }
+
+                mockkConstructor(CachedOsClient::class)
+                every { anyConstructed<CachedOsClient>().getRecord(any(), any(), any()) } returns
+                        Futures.immediateFuture(
+                            HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").setLastName("TestLast")
+                                .build()
+                        )
+                val client = getClient()
+
+                client.inner.affiliateRepository.addAffiliate(
+                    signingPublicKey = signingKeyPair.public,
+                    encryptionPublicKey = encryptionKeyPair.public
+                )
+                val hydrateResponse = shouldNotThrowAny {
+                    client.hydrate(HelloWorldDataNullable::class.java, scope.build())
+                }
+                hydrateResponse.name.firstName shouldBe "Test"
+                hydrateResponse.name.lastName shouldBe "TestLast"
+                hydrateResponse.nullableRecord shouldBe  null
             }
         }
 
