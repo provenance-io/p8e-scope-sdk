@@ -20,7 +20,7 @@ import java.util.UUID
  */
 abstract class KeyRef(val publicKey: PublicKey) {
     /** @return a computed secret key for a given payload */
-    abstract fun getSecretKey(payload: ProvenanceECIESCryptogram): ByteArray
+    abstract fun getSecretKey(ephemeralPublicKey: PublicKey): ByteArray
     /** @return a [SignerImpl] object for a given [KeyRef] */
     abstract fun signer(): SignerImpl
 }
@@ -32,9 +32,9 @@ abstract class KeyRef(val publicKey: PublicKey) {
  * @property [signAndVerifyApi] an Equinix SmartKey api instance to provide communication for signing/encryption/decryption operations
  */
 class SmartKeyRef(publicKey: PublicKey, val uuid: UUID, val signAndVerifyApi: SignAndVerifyApi) : KeyRef(publicKey) {
-    override fun getSecretKey(payload: ProvenanceECIESCryptogram): ByteArray {
-        // Create a transient security object out of the ephemeral public key from the payload.
-        val transientEphemeralSObj = payload.ephemeralPublicKey.toTransientSecurityObject()
+    override fun getSecretKey(ephemeralPublicKey: PublicKey): ByteArray {
+        // Create a transient security object out of the ephemeral public key
+        val transientEphemeralSObj = ephemeralPublicKey.toTransientSecurityObject()
 
         // Compute the shared/agree key via SmartKey's API
         val secretKey = uuid.toString().toAgreeKey(transientEphemeralSObj.transientKey)
@@ -53,8 +53,8 @@ class SmartKeyRef(publicKey: PublicKey, val uuid: UUID, val signAndVerifyApi: Si
 class DirectKeyRef(publicKey: PublicKey, private val privateKey: PrivateKey) : KeyRef(publicKey) {
     constructor(keyPair: KeyPair) : this(keyPair.public, keyPair.private)
 
-    override fun getSecretKey(payload: ProvenanceECIESCryptogram): ByteArray {
-        val secretKey = ProvenanceKeyGenerator.computeSharedKey(privateKey, payload.ephemeralPublicKey)
+    override fun getSecretKey(ephemeralPublicKey: PublicKey): ByteArray {
+        val secretKey = ProvenanceKeyGenerator.computeSharedKey(privateKey, ephemeralPublicKey)
 
         return ECUtils.convertSharedSecretKeyToBytes(secretKey)
     }

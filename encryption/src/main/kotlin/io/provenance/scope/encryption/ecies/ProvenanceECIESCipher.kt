@@ -74,7 +74,7 @@ class ProvenanceECIESCipher {
     @Throws(ProvenanceECIESDecryptException::class)
     fun decrypt(payload: ProvenanceECIESCryptogram, keyRef: KeyRef, additionalAuthenticatedData: String?): ByteArray {
         try {
-            val ephemeralDerivedSecretKey = ProvenanceHKDFSHA256.derive(keyRef.getSecretKey(payload), null, ECUtils.KDF_SIZE)
+            val ephemeralDerivedSecretKey = ProvenanceHKDFSHA256.derive(keyRef.getSecretKey(payload.ephemeralPublicKey), null, ECUtils.KDF_SIZE)
 
             // Validate data MAC value
             val encKeyBytes = Arrays.copyOf(ephemeralDerivedSecretKey, 32)
