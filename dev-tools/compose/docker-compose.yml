@@ -34,7 +34,7 @@ services:
       - 16686:16686
 
   object-store:
-    image: ghcr.io/provenance-io/object-store:0.2.0
+    image: ghcr.io/provenance-io/object-store:0.6.2
     container_name: object-store
     networks:
       - p8e
@@ -61,7 +61,7 @@ services:
       - object_store:/mnt/data
 
   provenance:
-    image: provenanceio/provenance:v1.5.0
+    image: provenanceio/provenance:v1.7.2
     container_name: provenance
     command: bash -c "cp -rn /home/provenance_seed/* /home/provenance && /usr/bin/provenanced -t --home /home/provenance start"
     networks:
