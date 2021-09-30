@@ -36,9 +36,15 @@ nexusPublishing {
     }
 }
 
+val scopeSdkGroup = "io.provenance.scope"
+val scopeSdkVersion = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
+
+group = scopeSdkGroup
+version = scopeSdkVersion
+
 subprojects {
-    group = "io.provenance.scope"
-    version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
+    group = scopeSdkGroup
+    version = scopeSdkVersion
 
     val subProjectName = name
 
