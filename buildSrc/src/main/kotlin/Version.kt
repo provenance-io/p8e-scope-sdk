@@ -1,5 +1,6 @@
 object Version {
     const val protobufPlugin = "0.8.16"
+    const val nexusPublishPlugin = "1.1.0"
 
     const val kotlin = "1.4.31"
     const val protobuf = "3.12.0"
