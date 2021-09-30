@@ -1,6 +1,8 @@
+import org.codehaus.groovy.tools.shell.util.Logger.io
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+import org.gradle.internal.impldep.org.bouncycastle.cms.RecipientId.password
 
 buildscript {
     repositories {
@@ -20,12 +22,24 @@ plugins {
     `java-library`
 
     id("org.jetbrains.kotlin.jvm") version Version.kotlin apply(false)
+    id("io.github.gradle-nexus.publish-plugin") version Version.nexusPublishPlugin
+}
+
+group = "io.provenance.scope"
+version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+            username.set(findProject("ossrhUsername")?.toString() ?: System.getenv("OSSRH_USERNAME"))
+            password.set(findProject("ossrhPassword")?.toString() ?: System.getenv("OSSRH_PASSWORD"))
+        }
+    }
 }
 
 subprojects {
-    group = "io.provenance.scope"
-    version = project.property("version")?.takeIf { it != "unspecified" } ?: "1.0-SNAPSHOT"
-
     val subProjectName = name
 
     apply(plugin = "maven-publish")
@@ -76,21 +90,6 @@ subprojects {
     }
 
     publishing {
-        repositories {
-            maven {
-                name = "MavenCentral"
-                url = if (version == "1.0-SNAPSHOT") {
-                   uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-                } else {
-                    uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-                }
-
-                credentials {
-                    username = findProject("ossrhUsername")?.toString() ?: System.getenv("OSSRH_USERNAME")
-                    password = findProject("ossrhPassword")?.toString() ?: System.getenv("OSSRH_PASSWORD")
-                }
-            }
-        }
         publications {
             create<MavenPublication>("maven") {
                 groupId = "io.provenance.scope"
