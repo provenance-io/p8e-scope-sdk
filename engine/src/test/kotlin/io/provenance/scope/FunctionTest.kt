@@ -8,9 +8,11 @@ import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.test.TestCase
 import io.mockk.every
 import io.mockk.mockk
+import io.provenance.scope.contract.BadTestContract
 import io.provenance.scope.contract.TestContract
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.TestContractProtos
+import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.orThrow
@@ -25,7 +27,7 @@ import kotlin.test.assertNotNull
 class FunctionTest: WordSpec() {
     private lateinit var osClient: CachedOsClient
     private val encryptionKeyRef = DirectKeyRef(ProvenanceKeyGenerator.generateKeyPair())
-    private lateinit var contract: TestContract
+    private lateinit var testContract: TestContract
 
     private val inputs = listOf(
         Contracts.ProposedRecord.newBuilder().setName("testRecordInputOne").setClassname(TestContractProtos.TestProto::class.java.name).setHash("0000000000000000").build(),
@@ -39,17 +41,17 @@ class FunctionTest: WordSpec() {
 
     override fun beforeTest(testCase: TestCase) {
         osClient = mockk()
-        contract = TestContract()
+        testContract = TestContract()
     }
 
-    private fun getMethod(name: String) = TestContract::class.java.methods.find { it.name == name }.orThrow { NotFoundException("Contract method '$name' not found") }
+    private fun P8eContract.getMethod(name: String) = this::class.java.methods.find { it.name == name }.orThrow { NotFoundException("Contract method '$name' not found") }
 
-    private fun buildFunction(name: String, inputs: List<Contracts.ProposedRecord> = listOf(), records: List<RecordInstance> = listOf()) = Function(
+    private fun buildFunction(name: String, inputs: List<Contracts.ProposedRecord> = listOf(), records: List<RecordInstance> = listOf(), contract: P8eContract = testContract) = Function(
         encryptionKeyRef,
         osClient,
         contract,
         Contracts.ConsiderationProto.newBuilder().addAllInputs(inputs),
-        getMethod(name),
+        contract.getMethod(name),
         records
     )
 
@@ -117,7 +119,7 @@ class FunctionTest: WordSpec() {
         "Function construction" should {
             "throw a ContractDefinitionException for a parameter without an Input or Record annotation" {
                 shouldThrow<ContractDefinitionException> {
-                    buildFunction("testRecordNonAnnotatedArgument")
+                    buildFunction("testRecordNonAnnotatedArgument", contract = BadTestContract())
                 }
             }
             "throw a ContractDefinitionException for a parameter with both an Input and Record annotation" {

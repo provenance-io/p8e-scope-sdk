@@ -51,20 +51,24 @@ class TestContract(@Record(name = "testRecord") val testRecordValue: List<HelloW
         .setValue(testRecordOne.value + testRecordInputOne.value)
         .build()
 
-    @Record(name = "testRecordNonAnnotatedArgument")
-    @Function(Specifications.PartyType.OWNER)
-    fun testRecordNonAnnotatedArgument(
-        testRecordOneNoAnnotation: TestContractProtos.TestProto,
-    ) = TestContractProtos.TestProto.newBuilder()
-        .setValue(testRecordOneNoAnnotation.value + "-modified")
-        .build()
-
     @Record(name = "testRecordDoubleAnnotatedArgument")
     @Function(Specifications.PartyType.OWNER)
     fun testRecordDoubleAnnotatedArgument(
         @Record(name = "testRecordOne") @Input(name = "testRecordInputOne") testRecordOneDoubleAnnotation: TestContractProtos.TestProto,
     ) = TestContractProtos.TestProto.newBuilder()
         .setValue(testRecordOneDoubleAnnotation.value + "-modified")
+        .build()
+}
+
+@Participants([Specifications.PartyType.OWNER])
+@ScopeSpecification(names = ["io.provenance.scope.contract.testcontract"])
+class BadTestContract(): P8eContract() {
+    @Record(name = "testRecordNonAnnotatedArgument")
+    @Function(Specifications.PartyType.OWNER)
+    fun testRecordNonAnnotatedArgument(
+        testRecordOneNoAnnotation: TestContractProtos.TestProto,
+    ) = TestContractProtos.TestProto.newBuilder()
+        .setValue(testRecordOneNoAnnotation.value + "-modified")
         .build()
 }
 
