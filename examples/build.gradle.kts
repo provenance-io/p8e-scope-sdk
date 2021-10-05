@@ -10,7 +10,7 @@ buildscript {
 }
 
 plugins {
-    id("io.provenance.p8e.p8e-publish") version "0.5.4"
+    id("io.provenance.p8e.p8e-publish") version "0.6.0"
 }
 
 p8e {
