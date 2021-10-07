@@ -10,6 +10,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.provenance.scope.contract.BadTestContract
 import io.provenance.scope.contract.TestContract
+import io.provenance.scope.contract.VaryingInputsTestContract
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.TestContractProtos
 import io.provenance.scope.contract.spec.P8eContract
@@ -27,7 +28,7 @@ import kotlin.test.assertNotNull
 class FunctionTest: WordSpec() {
     private lateinit var osClient: CachedOsClient
     private val encryptionKeyRef = DirectKeyRef(ProvenanceKeyGenerator.generateKeyPair())
-    private lateinit var testContract: TestContract
+    private lateinit var testContract: P8eContract
 
     private val inputs = listOf(
         Contracts.ProposedRecord.newBuilder().setName("testRecordInputOne").setClassname(TestContractProtos.TestProto::class.java.name).setHash("0000000000000000").build(),
@@ -35,13 +36,13 @@ class FunctionTest: WordSpec() {
     )
 
     private val records = listOf(
-        RecordInstance("testRecordOne", TestContractProtos.TestProto::class.java, TestContractProtos.TestProto.newBuilder().setValue("testRecordInputOneValue").build().left()),
-        RecordInstance("testRecordTwo", TestContractProtos.TestProto::class.java, TestContractProtos.TestProto.newBuilder().setValue("testRecordInputTwoValue").build().left()),
+        RecordInstance("testRecordOne", TestContractProtos.TestProto::class.java, testProto("testRecordInputOneValue").left()),
+        RecordInstance("testRecordTwo", TestContractProtos.TestProto::class.java, testProto("testRecordInputTwoValue").left()),
     )
 
     override fun beforeTest(testCase: TestCase) {
         osClient = mockk()
-        testContract = TestContract()
+        testContract = VaryingInputsTestContract()
     }
 
     private fun P8eContract.getMethod(name: String) = this::class.java.methods.find { it.name == name }.orThrow { NotFoundException("Contract method '$name' not found") }
@@ -63,55 +64,55 @@ class FunctionTest: WordSpec() {
             "return true when all parameters are available and all parameters are inputs (proposed records)" {
                 osClient.returnAll(TestContractProtos.TestProto.getDefaultInstance())
 
-                val function = buildFunction("testRecordTwoInputs", inputs = inputs)
+                val function = buildFunction("testRecordTwoInputsFn", inputs = inputs)
 
                 assert(function.canExecute()) { "Function.canExecute return false when all required inputs were supplied properly" }
             }
             "return false when not all parameters are available and all parameters are inputs (proposed records)" {
                 osClient.returnAll(TestContractProtos.TestProto.getDefaultInstance())
 
-                val function = buildFunction("testRecordTwoInputs", inputs = inputs.subList(0, 1))
+                val function = buildFunction("testRecordTwoInputsFn", inputs = inputs.subList(0, 1))
 
                 assertFalse(function.canExecute(), "Function.canExecute returned true when it not all required inputs were supplied")
             }
             "return true when all parameters are available and all parameters are records" {
-                val function = buildFunction("testRecordTwoRecords", records = records)
+                val function = buildFunction("testRecordTwoRecordsFn", records = records)
 
                 assert(function.canExecute()) { "Function.canExecute returned false all required records were supplied" }
             }
             "return false when not all parameters are available and all parameters are records" {
-                val function = buildFunction("testRecordTwoRecords", records = records.subList(0, 1))
+                val function = buildFunction("testRecordTwoRecordsFn", records = records.subList(0, 1))
 
                 assertFalse(function.canExecute(), "Function.canExecute returned true when not all required records were supplied")
             }
             "return true when all inputs/records are supplied and parameters are both inputs and records" {
                 osClient.returnAll(TestContractProtos.TestProto.getDefaultInstance())
 
-                val function = buildFunction("testRecordOneInputOneRecord", inputs = inputs.subList(0, 1), records = records.subList(0, 1))
+                val function = buildFunction("testRecordOneInputOneRecordFn", inputs = inputs.subList(0, 1), records = records.subList(0, 1))
 
                 assert(function.canExecute()) { "Function.canExecute returned false when all required inputs and records were supplied" }
             }
             "return false when only all inputs are supplied and parameters are both inputs and records" {
                 osClient.returnAll(TestContractProtos.TestProto.getDefaultInstance())
 
-                val function = buildFunction("testRecordOneInputOneRecord", inputs = inputs.subList(0, 1))
+                val function = buildFunction("testRecordOneInputOneRecordFn", inputs = inputs.subList(0, 1))
 
                 assertFalse(function.canExecute(), "Function.canExecute returned true not all required records were supplied")
             }
             "return false when only all records are supplied and parameters are both inputs and records" {
-                val function = buildFunction("testRecordOneInputOneRecord", records = records)
+                val function = buildFunction("testRecordOneInputOneRecordFn", records = records)
 
                 assertFalse(function.canExecute(), "Function.canExecute returned true when not all required inputs were supplied")
             }
             "return false when input supplied is of wrong type" {
                 osClient.returnAll(TestContractProtos.TestProto2.getDefaultInstance())
 
-                val function = buildFunction("testRecordTwoInputs", inputs = inputs)
+                val function = buildFunction("testRecordTwoInputsFn", inputs = inputs)
 
                 assertFalse(function.canExecute(), "Function.canExecute returned true when required input was of wrong type")
             }
             "return false when record supplied is of wrong type" {
-                val function = buildFunction("testRecordTwoRecords", records = records.map { RecordInstance(it.name, TestContractProtos.TestProto2::class.java, it.messageOrCollection) })
+                val function = buildFunction("testRecordTwoRecordsFn", records = records.map { RecordInstance(it.name, TestContractProtos.TestProto2::class.java, it.messageOrCollection) })
 
                 assertFalse(function.canExecute(), "Function.canExecute returned true when required record was of wrong type")
             }
@@ -119,21 +120,21 @@ class FunctionTest: WordSpec() {
         "Function construction" should {
             "throw a ContractDefinitionException for a parameter without an Input or Record annotation" {
                 shouldThrow<ContractDefinitionException> {
-                    buildFunction("testRecordNonAnnotatedArgument", contract = BadTestContract())
+                    buildFunction("testRecordNonAnnotatedArgumentFn", contract = BadTestContract())
                 }
             }
             "throw a ContractDefinitionException for a parameter with both an Input and Record annotation" {
                 shouldThrow<ContractDefinitionException> {
-                    buildFunction("testRecordDoubleAnnotatedArgument")
+                    buildFunction("testRecordDoubleAnnotatedArgumentFn", contract = BadTestContract())
                 }
             }
         }
         "Function invoke" should {
             "Return the expected value" {
-                osClient.register(inputs[0], TestContractProtos.TestProto.newBuilder().setValue("testRecordInputOneValue").build())
-                osClient.register(inputs[1], TestContractProtos.TestProto.newBuilder().setValue("testRecordInputTwoValue").build())
+                osClient.register(inputs[0], testProto("testRecordInputOneValue"))
+                osClient.register(inputs[1], testProto("testRecordInputTwoValue"))
 
-                val function = buildFunction("testRecordTwoInputs", inputs = inputs)
+                val function = buildFunction("testRecordTwoInputsFn", inputs = inputs)
 
                 val result = function.invoke()
 
@@ -144,7 +145,7 @@ class FunctionTest: WordSpec() {
             "Throw an exception if the all parameters are not provided" {
                 osClient.returnAll(TestContractProtos.TestProto.getDefaultInstance())
 
-                val function = buildFunction("testRecordTwoInputs", inputs = inputs.subList(0, 1))
+                val function = buildFunction("testRecordTwoInputsFn", inputs = inputs.subList(0, 1))
 
                 shouldThrow<IllegalArgumentException> {
                     function.invoke()

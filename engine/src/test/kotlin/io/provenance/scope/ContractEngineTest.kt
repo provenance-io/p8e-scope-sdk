@@ -12,6 +12,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.provenance.scope.contract.SimpleTestContract
 import io.provenance.scope.contract.TestContract
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.definition.DefinitionService
@@ -34,7 +35,7 @@ class ContractEngineTest : WordSpec() {
     private val encryptionKeyRef = DirectKeyRef(ProvenanceKeyGenerator.generateKeyPair())
     private val signingKeyRef = DirectKeyRef(ProvenanceKeyGenerator.generateKeyPair())
 
-    private lateinit var testContract: TestContract
+    private lateinit var testContract: SimpleTestContract
 
     fun createContractSpec(className: String, hash: String): Specifications.ContractSpec.Builder {
         val defSpec = Commons.DefinitionSpec.newBuilder()
@@ -129,7 +130,7 @@ class ContractEngineTest : WordSpec() {
         )
         contractEngine = ContractEngine(osClient)
 
-        testContract = TestContract()
+        testContract = SimpleTestContract()
     }
 
 
@@ -148,8 +149,8 @@ class ContractEngineTest : WordSpec() {
                         Futures.immediateFuture(
                             ObjectHash("M8PWxG2TFfO0YzL3sDW/l9")
                         )
-                every { anyConstructed<DefinitionService>().loadClass(any(), any()) } returns TestContract::class.java
-                every { anyConstructed<DefinitionService>().loadClass(any()) } returns TestContract::class.java
+                every { anyConstructed<DefinitionService>().loadClass(any(), any()) } returns SimpleTestContract::class.java
+                every { anyConstructed<DefinitionService>().loadClass(any()) } returns SimpleTestContract::class.java
 
                 val envelope =
                     createInputEnvelope(className = "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName").build()
@@ -166,7 +167,7 @@ class ContractEngineTest : WordSpec() {
                 contract.signaturesList.map { it.signer.signingPublicKey.publicKeyBytes} shouldContain signingKeyRef.publicKey.toPublicKeyProtoOS().secp256K1
                 contract.contract.spec.dataLocation.ref.hash shouldBe "M8PWxG2TFfO0YzL3sDW/l9"
             }
-            "handle an error from executable contract function" {
+            "handle an error from executable contract function and fill out data" {
                 val spec = createContractSpec(
                     "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName",
                     "M8PWxG2TFfO0YzL3sDW/l9"
@@ -175,8 +176,8 @@ class ContractEngineTest : WordSpec() {
                         Futures.immediateFuture(
                             spec.build()
                         )
-                every { anyConstructed<DefinitionService>().loadClass(any(), any()) } returns TestContract::class.java
-                every { anyConstructed<DefinitionService>().loadClass(any()) } returns TestContract::class.java
+                every { anyConstructed<DefinitionService>().loadClass(any(), any()) } returns SimpleTestContract::class.java
+                every { anyConstructed<DefinitionService>().loadClass(any()) } returns SimpleTestContract::class.java
 
                 val proposedRecord = Contracts.ProposedRecord.newBuilder()
                     .setName("testRecordOne")
@@ -256,8 +257,8 @@ class ContractEngineTest : WordSpec() {
                         Futures.immediateFuture(
                             spec.build()
                         )
-                every { anyConstructed<DefinitionService>().loadClass(any(), any()) } returns TestContract::class.java
-                every { anyConstructed<DefinitionService>().loadClass(any()) } returns TestContract::class.java
+                every { anyConstructed<DefinitionService>().loadClass(any(), any()) } returns SimpleTestContract::class.java
+                every { anyConstructed<DefinitionService>().loadClass(any()) } returns SimpleTestContract::class.java
 
                 val proposedRecord = Contracts.ProposedRecord.newBuilder()
                     .setName("testRecordOne")

@@ -55,16 +55,16 @@ class ContractWrapper(
             .takeIf { it.size == 1 }
             ?.first()
             .orThrowContractDefinition("Class ${clazz.name} must have only one constructor.")
+            .takeIf { it.parameters.all { parameter -> parameter.getAnnotation(io.provenance.scope.contract.annotations.Record::class.java) != null } }
+            .orThrowContractDefinition("All constructor arguments for ${clazz.name} must have an @Record annotation ")
 
     private fun getConstructorParameters(
         constructor: Constructor<*>,
         records: List<RecordInstance>
     ): List<Any> =
         constructor.parameters
-            .map { getParameterRecord(it, records) }
-            .filterNotNull()
-            .map { it.messageOrCollection.fold(::identity, ::identity) }
-
+            .mapNotNull { getParameterRecord(it, records) }
+            .map { it.messageOrCollection }
 
     private fun getParameterRecord(
         parameter: Parameter,
