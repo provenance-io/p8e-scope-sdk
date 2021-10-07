@@ -14,15 +14,23 @@ import io.provenance.scope.contract.spec.P8eScopeSpecification
 
 @Participants([Specifications.PartyType.OWNER])
 @ScopeSpecification(names = ["io.provenance.scope.contract.testcontract"])
-class TestContract(@Record(name = "testRecord") val testRecordValue: List<HelloWorldExample.ExampleName> = mutableListOf(
-    HelloWorldExample.ExampleName.newBuilder().setFirstName("testRecordValue").build())): P8eContract() {
+class TestContract(): P8eContract() {
 
     @Record(name = "testRecord")
-    fun testRecord(): TestContractProtos.TestProto = TestContractProtos.TestProto.newBuilder().setValue(testRecordValue[0].firstName).build()
+    @Function(Specifications.PartyType.OWNER)
+    fun testRecord(): TestContractProtos.TestProto = TestContractProtos.TestProto.newBuilder().build()
 
     @Record(name = "testRecord")
     @Function(Specifications.PartyType.OWNER)
     fun printTest(@Record(name = "testRecord") testPrintValue: String) { println("TestRecordValue for $testPrintValue")}
+
+    @Record(name = "testRecord")
+    @Function(Specifications.PartyType.OWNER)
+    fun testReturnNull(): Unit? { return null }
+
+    @Record(name = "testRecord")
+    @Function(Specifications.PartyType.OWNER)
+    fun testThrowError(): Unit? { throw IllegalArgumentException("Test error being thrown") }
 
     @Record(name = "testRecordTwoInputs")
     @Function(Specifications.PartyType.OWNER)

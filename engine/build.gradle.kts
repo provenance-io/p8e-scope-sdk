@@ -40,4 +40,5 @@ dependencies {
 
     testImplementation(project(":contract-base", "testArtifacts"))
     testImplementation(project(":contract-proto", "testArtifacts"))
+    testImplementation(project(":sdk", "testArtifacts"))
 }

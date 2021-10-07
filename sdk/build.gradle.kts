@@ -22,4 +22,18 @@ dependencies {
     testImplementation(project(":contract-base", "testArtifacts"))
     testImplementation(project(":contract-proto", "testArtifacts"))
     testImplementation(project(":util"))
+
+    val testConfig = configurations.create("testArtifacts") {
+        extendsFrom(configurations["testCompile"])
+    }
+
+    tasks.register("testJar", Jar::class.java) {
+        dependsOn("testClasses")
+        classifier += "test"
+        from(sourceSets["test"].output)
+    }
+
+    artifacts {
+        add("testArtifacts", tasks.named<Jar>("testJar") )
+    }
 }
