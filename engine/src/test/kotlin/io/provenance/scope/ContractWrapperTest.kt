@@ -74,7 +74,7 @@ class ContractWrapperTest: WordSpec() {
         record
     }
     private fun CachedOsClient.register(input: Contracts.ProposedRecord, message: Message) = every { getRecord(input.classname, input.hash.base64Decode(), encryptionKeyRef) } returns Futures.immediateFuture(message)
-    private fun addConsideration(functionName: String, inputs: List<Pair<String, Message>>) {
+    private fun addConsideration(functionName: String, inputs: List<Pair<String, Message>>, result: Contracts.ExecutionResult = Contracts.ExecutionResult.getDefaultInstance()) {
         contractBuilder
             .addConsiderations(Contracts.ConsiderationProto.newBuilder()
                 .setConsiderationName(functionName)
@@ -89,7 +89,7 @@ class ContractWrapperTest: WordSpec() {
                             osClient.register(it, inputValue)
                         }
 
-                })
+                }).setResult(result)
             )
     }
 
@@ -153,6 +153,24 @@ class ContractWrapperTest: WordSpec() {
                 result.second shouldNotBe null
                 result.second!!.javaClass shouldBe TestContractProtos.TestProto::class.java
                 (result.second!! as TestContractProtos.TestProto).value shouldBe inputValue.value + "-modified"
+            }
+            "omit functions that already have a non-default result" {
+                definitionService.register(SimpleTestContract::class)
+
+                val inputValue = testProto("testRecordInputValue")
+                addConsideration("testRecordOneInputFn", listOf("testRecordInput" to inputValue), Contracts.ExecutionResult.newBuilder()
+                    .setResult(Contracts.ExecutionResult.Result.PASS)
+                    .setOutput(Contracts.ProposedRecord.newBuilder()
+                        .setName("testRecordOneInput")
+                        .setClassname(TestContractProtos.TestProto::class.java.name)
+                        .setHash(generateHash().base64EncodeString())
+                    )
+                    .build()
+                )
+
+                val wrapper = getContractWrapper(SimpleTestContract::class)
+
+                wrapper.functions.count() shouldBe 0
             }
         }
     }
