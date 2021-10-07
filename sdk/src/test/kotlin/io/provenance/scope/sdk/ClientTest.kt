@@ -90,7 +90,7 @@ class ClientTest : WordSpec() {
                     client.newSession(TestContract::class.java, TestContractScopeSpecificationDefinition::class.java)
 
                 session.contractSpec!!.definition.name shouldBe "TestContract"
-                session.contractSpec!!.functionSpecsList[0].funcName shouldBe "printTest"
+                session.contractSpec!!.functionSpecsList[0].funcName shouldBe "testRecordFn"
                 session.contractSpec!!.functionSpecsList[0].outputSpec.spec.name shouldBe "testRecord"
             }
         }
