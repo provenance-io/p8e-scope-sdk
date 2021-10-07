@@ -1,6 +1,7 @@
 package io.provenance.scope
 
 import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import io.kotest.assertions.throwables.shouldThrow
@@ -18,6 +19,7 @@ import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
+import io.provenance.scope.objectstore.client.ObjectHash
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.objectstore.util.toPublicKeyProtoOS
 import io.provenance.scope.proto.PK
@@ -141,6 +143,10 @@ class ContractEngineTest : WordSpec() {
                 every { anyConstructed<CachedOsClient>().getRecord(any(), any(), any()) } returns
                         Futures.immediateFuture(
                             spec.build()
+                        )
+                every { anyConstructed<CachedOsClient>().putRecord(any(), any(), any(), any(), any(), any()) } returns
+                        Futures.immediateFuture(
+                            ObjectHash("M8PWxG2TFfO0YzL3sDW/l9")
                         )
                 every { anyConstructed<DefinitionService>().loadClass(any(), any()) } returns TestContract::class.java
                 every { anyConstructed<DefinitionService>().loadClass(any()) } returns TestContract::class.java
