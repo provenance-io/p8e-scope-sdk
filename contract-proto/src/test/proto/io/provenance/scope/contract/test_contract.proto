@@ -8,3 +8,7 @@ option java_outer_classname = "TestContractProtos";
 message TestProto {
   string value = 1;
 }
+
+message TestProto2 {
+  string value = 1;
+}

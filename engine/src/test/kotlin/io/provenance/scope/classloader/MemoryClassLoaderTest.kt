@@ -33,8 +33,8 @@ class MemoryClassLoaderTest: WordSpec() {
                 assert(TestContract::class.java.name == clazz.name) { "loaded contract class name was different than requested" }
                 assert(TestContract::class.java != clazz) { "loaded contract class was the same as system contract class" }
 
-                val publicKeyResultClass = clazz.declaredMethods.find { it.name == "testRecord" }?.returnType
-                assert(publicKeyResultClass != null) { "testRecord method not found on TestContract" }
+                val publicKeyResultClass = clazz.declaredMethods.find { it.name == "testRecordFn" }?.returnType
+                assert(publicKeyResultClass != null) { "testRecordFn method not found on TestContract" }
                 assert(publicKeyResultClass?.name == TestContractProtos.TestProto::class.java.name) { "testRecord return type name does not match" }
                 assert(publicKeyResultClass == TestContractProtos.TestProto::class.java) { "testRecord return type does not match" }
 
