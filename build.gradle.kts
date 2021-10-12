@@ -1,8 +1,6 @@
-import org.codehaus.groovy.tools.shell.util.Logger.io
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-import org.gradle.internal.impldep.org.bouncycastle.cms.RecipientId.password
 
 buildscript {
     repositories {
@@ -12,6 +10,10 @@ buildscript {
     dependencies {
         classpath("com.google.protobuf", "protobuf-gradle-plugin", Version.protobufPlugin)
     }
+}
+
+repositories {
+    mavenCentral()
 }
 
 plugins {
@@ -143,4 +145,40 @@ subprojects {
             }
         }
     }
+}
+
+task<JacocoReport>("jacocoRootReport") {
+    dependsOn(subprojects.map { it.tasks.withType<Test>() })
+    dependsOn(subprojects.map { it.tasks.withType<JacocoReport>() })
+    additionalSourceDirs.setFrom(subprojects.map { it.the<SourceSetContainer>()["main"].allSource.srcDirs })
+    sourceDirectories.setFrom(subprojects.map { it.the<SourceSetContainer>()["main"].allSource.srcDirs })
+    classDirectories.setFrom(subprojects.map { it.the<SourceSetContainer>()["main"].output })
+    executionData.setFrom(project.fileTree(".") {
+        include("sdk/build/jacoco/test.exec", "engine/build/jacoco/test.exec")
+    })
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.map {
+            fileTree(it).exclude(
+                "com/google/*",
+                "io/provenance/objectstore/*",
+                "io/provenance/scope/contract/*",
+                "io/provenance/scope/proto",
+                "io/provenance/scope/encryption/*",
+                "io/provenance/scope/objectstore/*",
+                "io/provenance/scope/util",
+                "io/provenance/scope/classloader",
+                "io/provenance/scope/definition",
+            )})
+        )
+    }
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        html.outputLocation.set(File("${buildDir}/reports/jacoco"))
+        csv.required.set(false)
+    }
+}
+
+tasks.check {
+    dependsOn("jacocoRootReport")
 }
