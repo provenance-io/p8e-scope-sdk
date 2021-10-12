@@ -39,14 +39,24 @@ fun createClientDummy(localKeyIndex: Int): Client {
     val partyType = Specifications.PartyType.OWNER
     val affiliate = Affiliate(signingKeyRef, encryptionKeyRef, partyType)
 
-    val clientConfig = ClientConfig(jarCacheSize, specCacheSizeInBytes, recordCacheSizeInBytes, osGrpcUri, osGrpcDeadlineMs, mainNet = false)
+    val clientConfig = ClientConfig(
+        jarCacheSize,
+        specCacheSizeInBytes,
+        recordCacheSizeInBytes,
+        osGrpcUri,
+        osGrpcDeadlineMs,
+        mainNet = false
+    )
     return Client(SharedClient(clientConfig), affiliate)
 }
 
-fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = null): Session.Builder{
+fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = null): Session.Builder {
     val defSpec = Commons.DefinitionSpec.newBuilder()
         .setType(Commons.DefinitionSpec.Type.PROPOSED)
-        .setResourceLocation(Commons.Location.newBuilder().setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"))
+        .setResourceLocation(
+            Commons.Location.newBuilder()
+                .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
+        )
         .setName("record2")
     val conditionSpec = Specifications.ConditionSpec.newBuilder()
         .addInputSpecs(defSpec)
@@ -57,13 +67,19 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
     val spec = Specifications.ContractSpec.newBuilder()
         .setDefinition(defSpec)
         .addConditionSpecs(conditionSpec)
-        .addFunctionSpecs(Specifications.FunctionSpec.newBuilder().setFuncName("record2").addInputSpecs(defSpec).setInvokerParty(Specifications.PartyType.OWNER))
-    if(existingScope != ScopeResponse.getDefaultInstance()) {
+        .addFunctionSpecs(
+            Specifications.FunctionSpec.newBuilder()
+                .setFuncName("record2")
+                .addInputSpecs(defSpec)
+                .setOutputSpec(Commons.OutputSpec.newBuilder().setSpec(defSpec))
+                .setInvokerParty(Specifications.PartyType.OWNER)
+        )
+    if (existingScope != ScopeResponse.getDefaultInstance()) {
         spec.addInputSpecs(defSpec)
     }
     val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
     var scopeSpecUuid: UUID
-    if(!existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid.isNullOrEmpty()) {
+    if (!existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid.isNullOrEmpty()) {
         scopeSpecUuid = existingScope?.scope?.scopeSpecIdInfo?.scopeSpecUuid!!.toUuid()
     } else {
         scopeSpecUuid = UUID.randomUUID()
@@ -88,11 +104,14 @@ fun createExistingScope(): ScopeResponse.Builder {
     val scopeRecord = Record.newBuilder()
         .addInputs(
             RecordInput.newBuilder()
-            .setName("record2")
-            .setHash("M8PWxG2TFfO0YzL3sDW/l9kX325y+3v+5liGcjZoi4Q=")
-            .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED))
+                .setName("record2")
+                .setHash("M8PWxG2TFfO0YzL3sDW/l9kX325y+3v+5liGcjZoi4Q=")
+                .setStatus(RecordInputStatus.RECORD_INPUT_STATUS_PROPOSED)
+        )
         .addOutputs(RecordOutput.newBuilder().setHash("M8PWxG2TFfO0YzL3sDW/l9kX325y+3v+5liGcjZoi4Q=").build())
-        .setProcess(Process.newBuilder().setName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName").build())
+        .setProcess(
+            Process.newBuilder().setName("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName").build()
+        )
         .setSessionId(MetadataAddress.forSession(scopeUuid, sessionUUID).bytes.toByteString())
         .setName("record2")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
@@ -122,6 +141,9 @@ fun createExistingScope(): ScopeResponse.Builder {
 }
 
 data class HelloWorldData(@AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName) {}
-data class HelloWorldDataNullable(@AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName, @AnnotationRecord(name = "nullableRecord") val nullableRecord: TestContractProtos.TestProto?) {}
+data class HelloWorldDataNullable(
+    @AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName,
+    @AnnotationRecord(name = "nullableRecord") val nullableRecord: TestContractProtos.TestProto?
+) {}
 
 

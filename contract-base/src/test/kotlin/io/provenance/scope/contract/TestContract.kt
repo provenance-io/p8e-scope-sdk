@@ -27,9 +27,30 @@ class TestContract(@Record(name = "testRecord") val testRecordValue: List<HelloW
 open class SimpleTestContract(): P8eContract() {
     @Record(name = "testRecordOneInput")
     @Function(Specifications.PartyType.OWNER)
-    fun testRecordOneInputFn(@Input(name = "testRecordInput") testRecordInput: TestContractProtos.TestProto): TestContractProtos.TestProto = TestContractProtos.TestProto.newBuilder()
-        .setValue(testRecordInput.value + "-modified")
-        .build()
+    fun testRecordOneInputFn(@Input(name = "testRecordInput") testRecordInput: TestContractProtos.TestProto): TestContractProtos.TestProto =
+        TestContractProtos.TestProto.newBuilder()
+            .setValue(testRecordInput.value + "-modified")
+            .build()
+
+    @Record(name = "testRecord")
+    @Function(Specifications.PartyType.OWNER)
+    fun testReturnNull(): Unit? {
+        return null
+    }
+
+    @Record(name = "testRecord")
+    @Function(Specifications.PartyType.OWNER)
+    fun testThrowError(): Unit? {
+        throw IllegalArgumentException("Test error being thrown")
+    }
+
+    @Record(name = "testRecord")
+    @Function(Specifications.PartyType.OWNER)
+    fun testRecord(): TestContractProtos.TestProto = TestContractProtos.TestProto.newBuilder().build()
+
+    @Record(name = "testRecord")
+    @Function(Specifications.PartyType.OWNER)
+    fun printTest(@Record(name = "testRecord") testPrintValue: String) { println("TestRecordValue for $testPrintValue")}
 }
 
 class VaryingInputsTestContract() : SimpleTestContract() {
