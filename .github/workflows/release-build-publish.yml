@@ -60,7 +60,7 @@ jobs:
         uses: codecov/codecov-action@v1.2.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          directory: sdk/build/reports/jacoco/test/*.xml
+          directory: build/reports/jacoco/jacocoRootReport/*.xml
 
   build_integration_test:
     name: Compile Integration Tests
