@@ -29,12 +29,12 @@ services:
     networks:
       - p8e
     ports:
-      - 6831:6831
+      - 6831:6831/udp
       - 5775:5775/udp
       - 16686:16686
 
   object-store:
-    image: ghcr.io/provenance-io/object-store:0.6.2
+    image: ghcr.io/provenance-io/object-store:0.6.4
     container_name: object-store
     networks:
       - p8e
@@ -55,6 +55,8 @@ services:
       - STORAGE_TYPE=file_system
       - STORAGE_BASE_PATH=/mnt/data
       - RUST_LOG=warn,object_store=debug
+      - TRACE_HEADER=x-trace-header
+      - LOGGING_THRESHOLD_SECONDS=1
     ports:
       - 5000:8080
     volumes:
