@@ -12,7 +12,9 @@ import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.contract.proto.TestProtos
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.util.toByteString
+import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.spec.style.AnnotationSpec
+import io.kotest.core.test.TestCase
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.provenance.scope.contract.proto.Specifications.PartyType.OWNER
@@ -21,13 +23,11 @@ import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64EncodeString
 import io.provenance.scope.objectstore.util.toByteArray
-import io.provenance.scope.sdk.Affiliate
-import io.provenance.scope.sdk.ProtoIndexer
 import io.provenance.scope.util.MetadataAddress
 import java.security.KeyPair
 import java.util.UUID
 
-class ProtoIndexerTest: AnnotationSpec(){
+class ProtoIndexerTest : WordSpec() {
 
     lateinit var mockDefinitionService: DefinitionService
     lateinit var mockOsClient: CachedOsClient
@@ -38,75 +38,96 @@ class ProtoIndexerTest: AnnotationSpec(){
     fun contractSpecAddr(uuid: UUID = UUID.randomUUID()) = MetadataAddress.forContractSpecification(uuid)
     fun randomHash() = UUID.randomUUID().toByteArray().base64EncodeString()
 
-    fun createContractSpec(): ContractSpec{
+    fun createContractSpec(): ContractSpec {
         return ContractSpec.newBuilder()
             .apply {
 //                                    definitionBuilder.resourceLocationBuilder.refBuilder.setHash("contractspechash")
-                addAllFunctionSpecs(listOf(FunctionSpec.newBuilder()
-                    .setFuncName("person")
-                    .build(),
-                FunctionSpec.newBuilder()
-                    .setFuncName("cat")
-                    .build()
-                ))
+                addAllFunctionSpecs(
+                    listOf(
+                        FunctionSpec.newBuilder()
+                            .setFuncName("person")
+                            .build(),
+                        FunctionSpec.newBuilder()
+                            .setFuncName("cat")
+                            .build()
+                    )
+                )
             }
             .build()
     }
 
-    fun createSingleRecordScope(keyPair: KeyPair): ScopeResponse{
+    fun createSingleRecordScope(keyPair: KeyPair): ScopeResponse {
         return ScopeResponse.newBuilder()
             // set up the scope response with whatever is needed
-            .addSessions(SessionWrapper.newBuilder()
-                .setSession(Session.newBuilder()
-                    .setSessionId("sessionid".toByteString())
-                    .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
-                )
-                .setContractSpecIdInfo(ContractSpecIdInfo.newBuilder()
-                    .setContractSpecAddr(contractSpecAddr().toString())
+            .addSessions(
+                SessionWrapper.newBuilder()
+                    .setSession(
+                        Session.newBuilder()
+                            .setSessionId("sessionid".toByteString())
+                            .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
+                    )
+                    .setContractSpecIdInfo(
+                        ContractSpecIdInfo.newBuilder()
+                            .setContractSpecAddr(contractSpecAddr().toString())
+                    )
+            )
+            .addRecords(
+                RecordWrapper.newBuilder().setRecord(
+                    Record.newBuilder()
+                        .setName("person")
+                        .setSessionId("sessionid".toByteString())
+                        .addOutputs(
+                            RecordOutput.newBuilder()
+                                .setHash(randomHash())
+                                .build()
+                        )
+                        .build()
                 )
             )
-            .addRecords(RecordWrapper.newBuilder().setRecord(Record.newBuilder()
-                .setName("person")
-                .setSessionId("sessionid".toByteString())
-                .addOutputs(RecordOutput.newBuilder()
-                    .setHash(randomHash())
-                    .build()
-                )
-                .build()
-            ))
             .build()
     }
 
-    fun createMultiRecordScope(keyPair: KeyPair): ScopeResponse{
+    fun createMultiRecordScope(keyPair: KeyPair): ScopeResponse {
         return ScopeResponse.newBuilder()
             // set up the scope response with whatever is needed
-            .addSessions(SessionWrapper.newBuilder()
-                .setSession(Session.newBuilder()
-                    .setSessionId("sessionid".toByteString())
-                    .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
-                )
-                .setContractSpecIdInfo(ContractSpecIdInfo.newBuilder()
-                    .setContractSpecAddr(contractSpecAddr().toString())
+            .addSessions(
+                SessionWrapper.newBuilder()
+                    .setSession(
+                        Session.newBuilder()
+                            .setSessionId("sessionid".toByteString())
+                            .addParties(Party.newBuilder().setAddress(keyPair.public.getAddress(false)))
+                    )
+                    .setContractSpecIdInfo(
+                        ContractSpecIdInfo.newBuilder()
+                            .setContractSpecAddr(contractSpecAddr().toString())
+                    )
+            )
+            .addRecords(
+                RecordWrapper.newBuilder().setRecord(
+                    Record.newBuilder()
+                        .setName("person")
+                        .setSessionId("sessionid".toByteString())
+                        .addOutputs(
+                            RecordOutput.newBuilder()
+                                .setHash(randomHash())
+                                .build()
+                        )
+                        .build()
                 )
             )
-            .addRecords(RecordWrapper.newBuilder().setRecord(Record.newBuilder()
-                .setName("person")
-                .setSessionId("sessionid".toByteString())
-                .addOutputs(RecordOutput.newBuilder()
-                    .setHash(randomHash())
-                    .build()
+            .addRecords(
+                RecordWrapper.newBuilder().setRecord(
+                    Record.newBuilder()
+                        .setName("cat")
+                        .setSessionId("sessionid".toByteString())
+                        .addOutputs(
+                            RecordOutput.newBuilder()
+                                .setHash(randomHash())
+                                .build()
+                        )
+                        .build()
                 )
-                .build()
-            ))
-            .addRecords(RecordWrapper.newBuilder().setRecord(Record.newBuilder()
-                .setName("cat")
-                .setSessionId("sessionid".toByteString())
-                .addOutputs(RecordOutput.newBuilder()
-                    .setHash(randomHash())
-                    .build()
-                )
-                .build()
-            ))
+            )
             .build()
     }
 
@@ -114,8 +135,7 @@ class ProtoIndexerTest: AnnotationSpec(){
         every { mockOsClient.getRecord(any(), any(), any()) } returnsMany messages.map { Futures.immediateFuture(it) }
     }
 
-    @BeforeAll
-    fun setUp(){
+    override fun beforeTest(testCase: TestCase) {
         val affiliate = Affiliate(
             signingKeyRef = DirectKeyRef(keyPair),
             encryptionKeyRef = DirectKeyRef(keyPair),
@@ -126,641 +146,637 @@ class ProtoIndexerTest: AnnotationSpec(){
         protoIndexer = ProtoIndexer(mockOsClient, false, affiliate) { _, _ -> mockDefinitionService }
     }
 
-    @Test
-    fun oneIndexableOneNot(){
-        // set up fake data
-        val testScope = createSingleRecordScope(keyPair)
-        val testProto = TestProtos.OneIndexableOneNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .build()
+    init {
+        "ProtoIndexer.indexFields" should {
+            "Index fields, one indexable one not" {
+                // set up fake data
+                val testScope = createSingleRecordScope(keyPair)
+                val testProto = TestProtos.OneIndexableOneNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            testProto,
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    testProto,
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        /*
-        * scope is essentially an array of records, which can be hydrated to the actual data, like [{ name: "person", value: { name: "cool name", ssn: "123-456-789" } }, { name: "some other record", value: <some other proto> }]
-        *
-        * the result of indexing, is the scope filtered down to only the data listed as indexable (top-level is a map of records that contained something indexable)
-        * so, the result of the above scope example, assuming the only indexable field anywhere was the person.name, would result in a map like:
-        * { "person" : { "name" : "cool name" } }
-        * note, the distinct lack of non-indexable things like the ssn field, or the other record that presumably didn't contain anything indexable
-        *
-        * General format is:
-        *  {nameOfRecord: {indexableFieldName: indexableFieldValue, repeat for other indexable fields}, repeat for other records}
-        *
-        * In example of person with an address, result could be
-        *
-        * { "person" : { "name" : "cool name", "address" : { "city": "Bozeman", "state": "Montana" } } }
-        * */
+                /*
+            * scope is essentially an array of records, which can be hydrated to the actual data, like [{ name: "person", value: { name: "cool name", ssn: "123-456-789" } }, { name: "some other record", value: <some other proto> }]
+            *
+            * the result of indexing, is the scope filtered down to only the data listed as indexable (top-level is a map of records that contained something indexable)
+            * so, the result of the above scope example, assuming the only indexable field anywhere was the person.name, would result in a map like:
+            * { "person" : { "name" : "cool name" } }
+            * note, the distinct lack of non-indexable things like the ssn field, or the other record that presumably didn't contain anything indexable
+            *
+            * General format is:
+            *  {nameOfRecord: {indexableFieldName: indexableFieldValue, repeat for other indexable fields}, repeat for other records}
+            *
+            * In example of person with an address, result could be
+            *
+            * { "person" : { "name" : "cool name", "address" : { "city": "Bozeman", "state": "Montana" } } }
+            * */
 
 //        throw Exception("Index Fields is $indexFields")
-        indexFields.size shouldBe 1
-        indexFields.containsKey("person") shouldBe true
-        val nameMessage = indexFields.get("person")!!
+                indexFields.size shouldBe 1
+                indexFields.containsKey("person") shouldBe true
+                val nameMessage = indexFields["person"]!!
 //        throw Exception("type is ${nameMessage.javaClass.name}")
-        nameMessage.shouldBeInstanceOf<Map<String, String>>()
-        (nameMessage as Map<String, Any>).size shouldBe 1
-        (nameMessage as Map<String, Any>).get("name") shouldBe testProto.name
-    }
+                nameMessage.shouldBeInstanceOf<Map<String, Any>>()
+                nameMessage.size shouldBe 1
+                (nameMessage["name"] as Map<String, String>)["first"] shouldBe "Person"
+                (nameMessage["name"] as Map<String, String>)["last"] shouldBe "Jones"
+            }
 
-    @Test
-    fun noneIndexable(){
-        val testScope = createSingleRecordScope(keyPair)
-        val testProto = TestProtos.NoneIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .build()
+            "return empty list when no indexable fields are given" {
+                val testScope = createSingleRecordScope(keyPair)
+                val testProto = TestProtos.NoneIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            testProto,
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    testProto,
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        indexFields.size shouldBe 0
-    }
+                indexFields.size shouldBe 0
+            }
 
-    @Test
-    fun allIndexable(){
-        val testScope = createSingleRecordScope(keyPair)
-        val testProto = TestProtos.AllIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .build()
+            "index all fields if all given fields are indexable" {
+                val testScope = createSingleRecordScope(keyPair)
+                val testProto = TestProtos.AllIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            testProto,
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    testProto,
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        indexFields.size shouldBe 1
-        val record = indexFields.get("person")
-        record.shouldBeInstanceOf<Map<String, String>>()
-        (record as Map<String, Any>).size shouldBe 3
-        (record as Map<String, Any>).get("food") shouldBe "Bagel"
-    }
+                indexFields.size shouldBe 1
+                val record = indexFields["person"]
+                record.shouldBeInstanceOf<Map<String, String>>()
+                (record as Map<String, Any>).size shouldBe 3
+                (record["food"] as List<String>)[0] shouldBe "Bagel"
+            }
 
-    @Test
-    fun someIndexableSomeNot(){
-        val testScope = createSingleRecordScope(keyPair)
-        val testProto = TestProtos.SomeIndexableSomeNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .setShape("Circle")
-            .setMaterial("Metal")
-            .build()
+            "index all indexable fields and leave all that aren't " {
+                val testScope = createSingleRecordScope(keyPair)
+                val testProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .setShape("Circle")
+                    .setMaterial("Metal")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            testProto,
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    testProto,
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        indexFields.size shouldBe 1
-        val record = indexFields.get("person")
-        record.shouldBeInstanceOf<Map<String, String>>()
-        (record as Map<String, Any>).size shouldBe 3
-        (record as Map<String, Any>).get("food") shouldBe "Bagel"
-    }
+                indexFields.size shouldBe 1
+                val record = indexFields["person"]
+                record.shouldBeInstanceOf<Map<String, String>>()
+                (record as Map<String, Any>).size shouldBe 3
+                ((record as Map<String, Any>)["food"] as List<String>)[0] shouldBe "Bagel"
+            }
 
-    //TODO: Create multi record Scope tests
-    @Test
-    fun multiRecordOneIndexable(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val personProto = TestProtos.OneIndexableOneNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .build()
-        val catProto = TestProtos.OneIndexableOneNot.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .build()
+            //TODO: Create multi record Scope tests
+            "index fields when mutliple records are given" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val personProto = TestProtos.OneIndexableOneNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .build()
+                val catProto = TestProtos.OneIndexableOneNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Luna"), Pair("last", "L")))
+                    .setSsn("098-765-4321")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto,
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto,
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        //throw Exception("indexFields is: $indexFields")
-        indexFields.size shouldBe 2
-        val personVal = indexFields.get("person") as Map<String, Any>
-        val catVal = indexFields.get("cat") as Map<String, Any>
-        personVal.size shouldBe 1
-        personVal.get("name") shouldBe "cool name"
-        catVal.size shouldBe 1
-        catVal.get("name") shouldBe "Luna"
-    }
+                //throw Exception("indexFields is: $indexFields")
+                indexFields.size shouldBe 2
+                val personVal = indexFields["person"] as Map<String, Any>
+                val catVal = indexFields["cat"] as Map<String, Any>
+                personVal.size shouldBe 1
+                (personVal["name"] as Map<String, String>)["first"] shouldBe "Person"
+                (personVal["name"] as Map<String, String>)["last"] shouldBe "Jones"
+                catVal.size shouldBe 1
+                (catVal["name"] as Map<String, String>)["first"] shouldBe "Luna"
+            }
 
-    @Test
-    fun multiRecordNoneIndexable(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val personProto = TestProtos.NoneIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .build()
-        val catProto = TestProtos.NoneIndexable.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .setFood("Treats")
-            .build()
+            "index no fields when multiple records are given and no fields should be indexable" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val personProto = TestProtos.NoneIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .build()
+                val catProto = TestProtos.NoneIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("098-765-4321")
+                    .addFood("Treats")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto,
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto,
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        indexFields.size shouldBe 0
-    }
+                indexFields.size shouldBe 0
+            }
 
-    @Test
-    fun multiRecordAllIndexable(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val personProto = TestProtos.AllIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .build()
-        val catProto = TestProtos.AllIndexable.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .setFood("Treats")
-            .build()
+            "index all fields when multiple records are given with all indexable fields" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val personProto = TestProtos.AllIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .build()
+                val catProto = TestProtos.AllIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("098-765-4321")
+                    .addFood("Treats")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        //throw Exception("indexFields is: $indexFields")
-        indexFields.size shouldBe 2
-        val personVal = indexFields.get("person") as Map<String, Any>
-        val catVal = indexFields.get("cat") as Map<String, Any>
-        personVal.size shouldBe 3
-        personVal.get("name") shouldBe "cool name"
-        catVal.size shouldBe 3
-        catVal.get("food") shouldBe "Treats"
-    }
+                //throw Exception("indexFields is: $indexFields")
+                indexFields.size shouldBe 2
+                val personVal = indexFields["person"] as Map<String, Any>
+                val catVal = indexFields["cat"] as Map<String, Any>
+                personVal.size shouldBe 3
+                (personVal["name"] as Map<String, String>)["first"] shouldBe "Person"
+                (personVal["name"] as Map<String, String>)["last"] shouldBe "Jones"
+                catVal.size shouldBe 3
+                catVal["food"] shouldBe mutableListOf("Treats")
+            }
 
-    @Test
-    fun multiRecordSomeIndexableSomeNot(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val personProto = TestProtos.SomeIndexableSomeNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .setShape("Circle")
-            .setMaterial("Metal")
-            .build()
-        val catProto = TestProtos.SomeIndexableSomeNot.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .setFood("Treats")
-            .setShape("Loaf")
-            .setMaterial("Wood")
-            .build()
+            "Index indexable records when multiple records with some indexable are given" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val personProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .setShape("Circle")
+                    .setMaterial("Metal")
+                    .build()
+                val catProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("098-765-4321")
+                    .addFood("Treats")
+                    .setShape("Loaf")
+                    .setMaterial("Wood")
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        //throw Exception("indexFields is: $indexFields")
-        indexFields.size shouldBe 2
-        val personVal = indexFields.get("person") as Map<String, Any>
-        val catVal = indexFields.get("cat") as Map<String, Any>
-        personVal.size shouldBe 3
-        personVal.get("name") shouldBe "cool name"
-        catVal.size shouldBe 3
-        catVal.get("food") shouldBe "Treats"
-    }
-//
-    //TODO: Create nested message tests
-    @Test
-    fun nestedOneIndexable(){
-        // set up fake data
-        val testScope = createSingleRecordScope(keyPair)
-        val insideProto = TestProtos.OneIndexableOneNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .build()
-        val personProto = TestProtos.ParentOneIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Windows")
-            .setNestedProto(insideProto)
-            .build()
+                //throw Exception("indexFields is: $indexFields")
+                indexFields.size shouldBe 2
+                val personVal = indexFields["person"] as Map<String, Any>
+                val catVal = indexFields["cat"] as Map<String, Any>
+                personVal.size shouldBe 3
+                (personVal["name"] as Map<String, String>)["first"] shouldBe "Person"
+                (personVal["name"] as Map<String, String>)["last"] shouldBe "Jones"
+                catVal.size shouldBe 3
+                catVal["food"] shouldBe mutableListOf("Treats")
+            }
+
+            //
+            //TODO: Create nested message tests
+            "index a nested proto" {
+                // set up fake data
+                val testScope = createSingleRecordScope(keyPair)
+                val insideProto = TestProtos.OneIndexableOneNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .build()
+                val personProto = TestProtos.ParentOneIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Windows")
+                    .setNestedProto(insideProto)
+                    .build()
 
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            insideProto
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    insideProto
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
 //        throw Exception("indexFields is $indexFields")
-        indexFields.size shouldBe 1
-        val proto = indexFields.get("person") as Map<String, Any>
-        proto.size shouldBe 2
-        (proto.get("nestedProto") as Map<String, Any>).size shouldBe 1
-        (proto.get("nestedProto") as Map<String, Any>).get("name") shouldBe "cool name"
-    }
+                indexFields.size shouldBe 1
+                val proto = indexFields["person"] as Map<String, Any>
+                proto.size shouldBe 2
+                (proto["nestedProto"] as Map<String, Any>).size shouldBe 1
+                ((proto["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["first"] shouldBe "Person"
+                ((proto["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["last"] shouldBe "Jones"
+            }
 
-    @Test
-    fun nestedNoneIndexable(){
-        // set up fake data
-        val testScope = createSingleRecordScope(keyPair)
-        val insideProto = TestProtos.NoneIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .build()
-        val personProto = TestProtos.ParentNoneIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Windows")
-            .setNestedProto(insideProto)
-            .build()
+            "don't index when nested proto has no indexable fields" {
+                // set up fake data
+                val testScope = createSingleRecordScope(keyPair)
+                val insideProto = TestProtos.NoneIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .build()
+                val personProto = TestProtos.ParentNoneIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Windows")
+                    .setNestedProto(insideProto)
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            insideProto
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    insideProto
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        indexFields.size shouldBe 0
-    }
+                indexFields.size shouldBe 0
+            }
 
-    @Test
-    fun nestedAllIndexable(){
-        // set up fake data
-        val testScope = createSingleRecordScope(keyPair)
-        val insideProto = TestProtos.AllIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .build()
-        val personProto = TestProtos.ParentAllIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Windows")
-            .setNestedProto(insideProto)
-            .build()
+            "index all fields of nested proto" {
+                // set up fake data
+                val testScope = createSingleRecordScope(keyPair)
+                val insideProto = TestProtos.AllIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .build()
+                val personProto = TestProtos.ParentAllIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Windows")
+                    .setNestedProto(insideProto)
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            insideProto
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    insideProto
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        indexFields.size shouldBe 1
-        val proto = indexFields.get("person") as Map<String, Any>
-        proto.size shouldBe 2
-        (proto.get("nestedProto") as Map<String, Any>).size shouldBe 3
-        (proto.get("nestedProto") as Map<String, Any>).get("food") shouldBe "Bagel"
-    }
+                indexFields.size shouldBe 1
+                val proto = indexFields["person"] as Map<String, Any>
+                proto.size shouldBe 2
+                (proto["nestedProto"] as Map<String, Any>).size shouldBe 3
+                ((proto["nestedProto"] as Map<String, Any>)["food"] as List<String>)[0] shouldBe "Bagel"
+            }
 
-    @Test
-    fun nestedSomeIndexableSomeNot(){
-        // set up fake data
-        val testScope = createSingleRecordScope(keyPair)
-        val insideProto = TestProtos.SomeIndexableSomeNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("Bagel")
-            .setShape("Circle")
-            .setMaterial("Metal")
-            .build()
-        val personProto = TestProtos.ParentSomeIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Windows")
-            .setNestedProto(insideProto)
-            .build()
+            "index only fields of nested proto that are valid" {
+                // set up fake data
+                val testScope = createSingleRecordScope(keyPair)
+                val insideProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("Bagel")
+                    .setShape("Circle")
+                    .setMaterial("Metal")
+                    .build()
+                val personProto = TestProtos.ParentSomeIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Windows")
+                    .setNestedProto(insideProto)
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            insideProto
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    insideProto
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
-        indexFields.size shouldBe 1
-        val proto = indexFields.get("person") as Map<String, Any>
-        proto.size shouldBe 2
-        (proto.get("nestedProto") as Map<String, Any>).size shouldBe 3
-        (proto.get("nestedProto") as Map<String, Any>).get("food") shouldBe "Bagel"
-    }
+                indexFields.size shouldBe 1
+                val proto = indexFields["person"] as Map<String, Any>
+                proto.size shouldBe 2
+                (proto["nestedProto"] as Map<String, Any>).size shouldBe 3
+                ((proto["nestedProto"] as Map<String, Any>)["food"] as List<String>)[0] shouldBe "Bagel"
+            }
 
-    //TODO: Create multi record Scope with nested messages tests
-    @Test
-    fun multiRecordNestedOneIndexable(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val innerPersonProto = TestProtos.OneIndexableOneNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .build()
-        val innerCatProto = TestProtos.OneIndexableOneNot.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .build()
-        val personProto = TestProtos.ParentOneIndexable.newBuilder()
-            .setDrink("soda")
-            .setOs("Windows")
-            .setNestedProto(innerPersonProto)
-            .build()
-        val catProto = TestProtos.ParentOneIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Linux")
-            .setNestedProto(innerCatProto)
-            .build()
+            //TODO: Create multi record Scope with nested messages tests
+            "index only field that is indexable when multiple records given with nested proto" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val innerPersonProto = TestProtos.OneIndexableOneNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .build()
+                val innerCatProto = TestProtos.OneIndexableOneNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Luna"), Pair("last", "L")))
+                    .setSsn("098-765-4321")
+                    .build()
+                val personProto = TestProtos.ParentOneIndexable.newBuilder()
+                    .setDrink("soda")
+                    .setOs("Windows")
+                    .setNestedProto(innerPersonProto)
+                    .build()
+                val catProto = TestProtos.ParentOneIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Linux")
+                    .setNestedProto(innerCatProto)
+                    .build()
 
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto,
-            createContractSpec(),
-            innerPersonProto,
-            createContractSpec(),
-            innerCatProto
-        )
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto,
+                    createContractSpec(),
+                    innerPersonProto,
+                    createContractSpec(),
+                    innerCatProto
+                )
 
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
 
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
 
 //        throw Exception("indexFields is $indexFields")
-        indexFields.size shouldBe 2
-        val personInfo = indexFields.get("person") as Map<String, Any>
-        val catInfo = indexFields.get("cat") as Map<String, Any>
-        personInfo.size shouldBe 2
-        (personInfo.get("nestedProto") as Map<String, Any>).size shouldBe 1
-        (personInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "cool name"
-        catInfo.size shouldBe 2
-        (catInfo.get("nestedProto") as Map<String, Any>).size shouldBe 1
-        (catInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "Luna"
+                indexFields.size shouldBe 2
+                val personInfo = indexFields["person"] as Map<String, Any>
+                val catInfo = indexFields["cat"] as Map<String, Any>
+                personInfo.size shouldBe 2
+                ((personInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["first"] shouldBe "Person"
+                ((personInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["last"] shouldBe "Jones"
+                catInfo.size shouldBe 2
+                (catInfo["nestedProto"] as Map<String, Any>).size shouldBe 1
+                ((catInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["first"] shouldBe "Luna"
+                ((catInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["last"] shouldBe "L"
+            }
+
+            "index no fields when multiple records given with nested proto and none are indexable" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val innerPersonProto = TestProtos.NoneIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("sandwich")
+                    .build()
+                val innerCatProto = TestProtos.NoneIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("098-765-4321")
+                    .addFood("treats")
+                    .build()
+                val personProto = TestProtos.ParentNoneIndexable.newBuilder()
+                    .setDrink("soda")
+                    .setOs("Windows")
+                    .setNestedProto(innerPersonProto)
+                    .build()
+                val catProto = TestProtos.ParentNoneIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Linux")
+                    .setNestedProto(innerCatProto)
+                    .build()
+
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto,
+                    createContractSpec(),
+                    innerPersonProto,
+                    createContractSpec(),
+                    innerCatProto
+                )
+
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
+
+                indexFields.size shouldBe 0
+            }
+
+            "index all fields when multiple records given with nested proto and all valid" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val innerPersonProto = TestProtos.AllIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("sandwich")
+                    .build()
+                val innerCatProto = TestProtos.AllIndexable.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Luna"), Pair("last", "L")))
+                    .setSsn("098-765-4321")
+                    .addFood("treats")
+                    .build()
+                val personProto = TestProtos.ParentAllIndexable.newBuilder()
+                    .setDrink("soda")
+                    .setOs("Windows")
+                    .setNestedProto(innerPersonProto)
+                    .build()
+                val catProto = TestProtos.ParentAllIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Linux")
+                    .setNestedProto(innerCatProto)
+                    .build()
+
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto,
+                    createContractSpec(),
+                    innerPersonProto,
+                    createContractSpec(),
+                    innerCatProto
+                )
+
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
+
+                indexFields.size shouldBe 2
+                val personInfo = indexFields["person"] as Map<String, Any>
+                val catInfo = indexFields["cat"] as Map<String, Any>
+                personInfo.size shouldBe 2
+                ((personInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["first"] shouldBe "Person"
+                ((personInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["last"] shouldBe "Jones"
+                catInfo.size shouldBe 2
+                (catInfo["nestedProto"] as Map<String, Any>).size shouldBe 3
+                ((catInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["first"] shouldBe "Luna"
+                ((catInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["last"] shouldBe "L"
+            }
+
+            "index all fields that are indexable when multiple records given with nested protos" {
+                // set up fake data
+                val testScope = createMultiRecordScope(keyPair)
+                val innerPersonProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Person"), Pair("last", "Jones")))
+                    .setSsn("123-456-7890")
+                    .addFood("sandwich")
+                    .setShape("circle")
+                    .setMaterial("metal")
+                    .build()
+                val innerCatProto = TestProtos.SomeIndexableSomeNot.newBuilder()
+                    .putAllName(mutableMapOf(Pair("first", "Luna"), Pair("last", "L")))
+                    .setSsn("098-765-4321")
+                    .addFood("treats")
+                    .setShape("dodecahedron")
+                    .setMaterial("wood")
+                    .build()
+                val personProto = TestProtos.ParentSomeIndexable.newBuilder()
+                    .setDrink("soda")
+                    .setOs("Windows")
+                    .setNestedProto(innerPersonProto)
+                    .build()
+                val catProto = TestProtos.ParentSomeIndexable.newBuilder()
+                    .setDrink("water")
+                    .setOs("Linux")
+                    .setNestedProto(innerCatProto)
+                    .build()
+
+                queueOsResponses(
+                    createContractSpec(),
+                    personProto,
+                    createContractSpec(),
+                    catProto,
+                    createContractSpec(),
+                    innerPersonProto,
+                    createContractSpec(),
+                    innerCatProto
+                )
+
+                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
+
+                // perform indexing
+                val indexFields = protoIndexer.indexFields(testScope)
+
+                indexFields.size shouldBe 2
+                val personInfo = indexFields["person"] as Map<String, Any>
+                val catInfo = indexFields["cat"] as Map<String, Any>
+                personInfo.size shouldBe 2
+                (personInfo["nestedProto"] as Map<String, Any>).size shouldBe 3
+                ((personInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["first"] shouldBe "Person"
+                ((personInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["last"] shouldBe "Jones"
+                catInfo.size shouldBe 2
+                (catInfo["nestedProto"] as Map<String, Any>).size shouldBe 3
+                ((catInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["first"] shouldBe "Luna"
+                ((catInfo["nestedProto"] as Map<String, Any>)["name"] as Map<String, String>)["last"] shouldBe "L"
+            }
+        }
     }
-
-    @Test
-    fun multiRecordNestedestedNoneIndexable(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val innerPersonProto = TestProtos.NoneIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("sandwich")
-            .build()
-        val innerCatProto = TestProtos.NoneIndexable.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .setFood("treats")
-            .build()
-        val personProto = TestProtos.ParentNoneIndexable.newBuilder()
-            .setDrink("soda")
-            .setOs("Windows")
-            .setNestedProto(innerPersonProto)
-            .build()
-        val catProto = TestProtos.ParentNoneIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Linux")
-            .setNestedProto(innerCatProto)
-            .build()
-
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto,
-            createContractSpec(),
-            innerPersonProto,
-            createContractSpec(),
-            innerCatProto
-        )
-
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
-
-        indexFields.size shouldBe 0
-    }
-
-    @Test
-    fun multiRecordNestedestedAllIndexable(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val innerPersonProto = TestProtos.AllIndexable.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("sandwich")
-            .build()
-        val innerCatProto = TestProtos.AllIndexable.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .setFood("treats")
-            .build()
-        val personProto = TestProtos.ParentAllIndexable.newBuilder()
-            .setDrink("soda")
-            .setOs("Windows")
-            .setNestedProto(innerPersonProto)
-            .build()
-        val catProto = TestProtos.ParentAllIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Linux")
-            .setNestedProto(innerCatProto)
-            .build()
-
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto,
-            createContractSpec(),
-            innerPersonProto,
-            createContractSpec(),
-            innerCatProto
-        )
-
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
-
-        indexFields.size shouldBe 2
-        val personInfo = indexFields.get("person") as Map<String, Any>
-        val catInfo = indexFields.get("cat") as Map<String, Any>
-        personInfo.size shouldBe 2
-        (personInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
-        (personInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "cool name"
-        catInfo.size shouldBe 2
-        (catInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
-        (catInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "Luna"
-    }
-
-    @Test
-    fun multiRecordNestedestedSomeIndexableSomeNot(){
-        // set up fake data
-        val testScope = createMultiRecordScope(keyPair)
-        val innerPersonProto = TestProtos.SomeIndexableSomeNot.newBuilder()
-            .setName("cool name")
-            .setSsn("123-456-7890")
-            .setFood("sandwich")
-            .setShape("circle")
-            .setMaterial("metal")
-            .build()
-        val innerCatProto = TestProtos.SomeIndexableSomeNot.newBuilder()
-            .setName("Luna")
-            .setSsn("098-765-4321")
-            .setFood("treats")
-            .setShape("dodecahedron")
-            .setMaterial("wood")
-            .build()
-        val personProto = TestProtos.ParentSomeIndexable.newBuilder()
-            .setDrink("soda")
-            .setOs("Windows")
-            .setNestedProto(innerPersonProto)
-            .build()
-        val catProto = TestProtos.ParentSomeIndexable.newBuilder()
-            .setDrink("water")
-            .setOs("Linux")
-            .setNestedProto(innerCatProto)
-            .build()
-
-        queueOsResponses(
-            createContractSpec(),
-            personProto,
-            createContractSpec(),
-            catProto,
-            createContractSpec(),
-            innerPersonProto,
-            createContractSpec(),
-            innerCatProto
-        )
-
-        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
-        // perform indexing
-        val indexFields = protoIndexer.indexFields(testScope)
-
-        indexFields.size shouldBe 2
-        val personInfo = indexFields.get("person") as Map<String, Any>
-        val catInfo = indexFields.get("cat") as Map<String, Any>
-        personInfo.size shouldBe 2
-        (personInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
-        (personInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "cool name"
-        catInfo.size shouldBe 2
-        (catInfo.get("nestedProto") as Map<String, Any>).size shouldBe 3
-        (catInfo.get("nestedProto") as Map<String, Any>).get("name") shouldBe "Luna"
-    }
-
-
 }

@@ -211,7 +211,7 @@ class Session(
                 .orThrowNotFound("Can't find the proposed fact for $name")
 
             require(proposedSpec.resourceLocation.classname == record.defaultInstanceForType.javaClass.name)
-            { "Invalid proto message supplied for $name. Expected: ${proposedSpec.resourceLocation.classname} Received: ${name}" }
+            { "Invalid proto message supplied for $name. Expected: ${proposedSpec.resourceLocation.classname} Received: ${record.defaultInstanceForType.javaClass.name}" }
 
             proposedRecords[name] = record
         }

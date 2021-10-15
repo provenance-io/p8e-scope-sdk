@@ -3,6 +3,7 @@ package io.provenance.scope.sdk
 import com.google.protobuf.ByteString
 import com.google.protobuf.Descriptors.*
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType.*
+import com.google.protobuf.MapEntry
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.RecordWrapper
 import io.provenance.metadata.v1.ScopeResponse
@@ -139,8 +140,21 @@ class ProtoIndexer(
                     fieldDescriptor.getIndex(indexDescriptor)?.index,
                     messageBehavior?.index
                 )
-
                 when {
+                    fieldDescriptor.isMapField -> {// Protobuf only allows Strings in the key field
+                        val resultMap = mutableMapOf<String, Any>()
+                        fieldDescriptor.jsonName to (message.getField(fieldDescriptor) as Collection<MapEntry<String, *>>).map { value ->//THIS CANNOT BE A MAP. NEED TO PASS THE WHOLE MOBOB.
+                            getValue(
+                                definitionService,
+                                encryptionKeyRef,
+                                fieldDescriptor,
+                                doIndex,
+                                value,
+                                signer
+                            )?.let { resultMap.put(value.key, value.value) }
+                        }
+                        fieldDescriptor.jsonName to resultMap.takeIf { it.isNotEmpty() }
+                    }
                     fieldDescriptor.isRepeated -> {
                         val list = (message.getField(fieldDescriptor) as List<Any>)
                         val resultList = mutableListOf<Any>()
@@ -156,17 +170,6 @@ class ProtoIndexer(
                         }
                         fieldDescriptor.jsonName to resultList.takeIf { it.isNotEmpty() }
                     }
-                    fieldDescriptor.isMapField -> // Protobuf only allows Strings in the key field
-                        fieldDescriptor.jsonName to (message.getField(fieldDescriptor) as Map<String, *>).mapValues { value ->
-                            getValue(
-                                definitionService,
-                                encryptionKeyRef,
-                                fieldDescriptor,
-                                doIndex,
-                                message.getField(fieldDescriptor),
-                                signer
-                            )
-                        }.takeIf { it.entries.any { it.value != null } }
                     else -> fieldDescriptor.jsonName to getValue(
                         definitionService,
                         encryptionKeyRef,

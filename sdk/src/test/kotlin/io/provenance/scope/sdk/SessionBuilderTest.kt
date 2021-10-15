@@ -6,11 +6,14 @@ import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.*
+import io.provenance.metadata.v1.InputSpecification
+import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.proto.PK
 import io.provenance.scope.sdk.*
+import io.provenance.scope.util.toUuid
 import java.util.*
 
 class SessionBuilderTest : WordSpec({
@@ -164,7 +167,6 @@ class SessionBuilderTest : WordSpec({
 
         }
         "throw IllegalStateException when scope is already set" {
-            //Setting up single record test
             val osClient = createClientDummy(0)
 
             val scopeResponse = createExistingScope()
@@ -173,6 +175,78 @@ class SessionBuilderTest : WordSpec({
 
             shouldThrow<java.lang.IllegalStateException> {
                 builder.setScopeUuid(UUID.randomUUID())
+            }
+        }
+        "throw not found error when no record with type == proposed is submitted or when name doesn't match" {
+            val osClient = createClientDummy(0)
+
+            val scopeResponse = createExistingScope()
+
+            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
+
+            shouldThrow<ContractSpecMapper.NotFoundException> {
+                builder.addProposedRecord("record45", exampleName)
+            }
+
+            builder.setContractSpec(
+                Specifications.ContractSpec.newBuilder()
+                    .addConditionSpecs(
+                        Specifications.ConditionSpec.newBuilder().addInputSpecs(
+                            Commons.DefinitionSpec.newBuilder().setType(
+                                Commons.DefinitionSpec.Type.FACT
+                            )
+                                .setName("record2")
+                                .build()
+                        )
+                    )
+                    .addFunctionSpecs(
+                        Specifications.FunctionSpec.newBuilder().addInputSpecs(
+                            Commons.DefinitionSpec.newBuilder().setType(Commons.DefinitionSpec.Type.FACT)
+                                .setName("record2")
+                        )
+                    )
+                    .build()
+            )
+
+            shouldThrow<ContractSpecMapper.NotFoundException> {
+                builder.addProposedRecord("record2", exampleName)
+            }
+        }
+
+        "throw illegal argument exception when resource location classname doesn't match classname for record" {
+            val osClient = createClientDummy(0)
+
+            val scopeResponse = createExistingScope()
+
+            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+
+            builder.setContractSpec(
+                Specifications.ContractSpec.newBuilder()
+                    .addConditionSpecs(
+                        Specifications.ConditionSpec.newBuilder().addInputSpecs(
+                            Commons.DefinitionSpec.newBuilder().setType(
+                                Commons.DefinitionSpec.Type.PROPOSED
+                            )
+                                .setName("record2")
+                                .setResourceLocation(Commons.Location.newBuilder().setClassname("testfail"))
+                                .build()
+                        )
+                    )
+                    .addFunctionSpecs(
+                        Specifications.FunctionSpec.newBuilder().addInputSpecs(
+                            Commons.DefinitionSpec.newBuilder().setType(Commons.DefinitionSpec.Type.PROPOSED)
+                                .setName("record2")
+                        )
+                    )
+                    .build()
+            )
+
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
+
+            shouldThrow<IllegalArgumentException> {
+                builder.addProposedRecord("record2", exampleName)
             }
         }
 
@@ -246,6 +320,60 @@ class SessionBuilderTest : WordSpec({
                 session.packageContract(false)
             }
             exception.message shouldContain localKeys[2].public.getAddress(false)
+        }
+
+        "Create Session Builder with all given values" {
+            val osClient = createClientDummy(0)
+
+            val scopeResponse = createExistingScope().also { builder ->
+                builder.scopeBuilder.scopeBuilder
+                    .clearDataAccess()
+                    .addDataAccess(localKeys[2].public.getAddress(false))
+            }
+            val defSpec = Commons.DefinitionSpec.newBuilder()
+                .setType(Commons.DefinitionSpec.Type.PROPOSED)
+                .setResourceLocation(
+                    Commons.Location.newBuilder()
+                        .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
+                )
+                .setName("record2")
+            val conditionSpec = Specifications.ConditionSpec.newBuilder()
+                .addInputSpecs(defSpec)
+                .setFuncName("record2")
+                .build()
+            val participants = HashMap<Specifications.PartyType, PK.PublicKey>()
+            participants[Specifications.PartyType.OWNER] = PK.PublicKey.newBuilder().build()
+            val spec = Specifications.ContractSpec.newBuilder()
+                .setDefinition(defSpec)
+                .addConditionSpecs(conditionSpec)
+                .addFunctionSpecs(
+                    Specifications.FunctionSpec.newBuilder()
+                        .setFuncName("record2")
+                        .addInputSpecs(defSpec)
+                        .setOutputSpec(Commons.OutputSpec.newBuilder().setSpec(defSpec))
+                        .setInvokerParty(Specifications.PartyType.OWNER)
+                )
+            if (scopeResponse.build() != ScopeResponse.getDefaultInstance()) {
+                spec.addInputSpecs(defSpec)
+            }
+            val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
+            var scopeSpecUuid: UUID
+            if (!scopeResponse?.scope?.scopeSpecIdInfo?.scopeSpecUuid.isNullOrEmpty()) {
+                scopeSpecUuid = scopeResponse?.scope?.scopeSpecIdInfo?.scopeSpecUuid!!.toUuid()
+            } else {
+                scopeSpecUuid = UUID.randomUUID()
+            }
+            Session.Builder(scopeSpecUuid)
+                .setContractSpec(spec.build())
+                .setProvenanceReference(provenanceReference)
+                .setClient(osClient)
+                .setSessionUuid(UUID.randomUUID())
+                .apply {
+                    if (scopeResponse.build() != null) {
+                        setScope(scopeResponse.build())
+                        addDataAccessKey(localKeys[3].public)
+                    }
+                }
         }
     }
 })

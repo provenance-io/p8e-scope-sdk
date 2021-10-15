@@ -34,7 +34,7 @@ message ParentSomeIndexable{
 }
 
 message OneIndexableOneNot {
-  string name = 1 [(index) = {index: ALWAYS}];
+  map<string, string> name = 1 [(index) = {index: ALWAYS}];
   string ssn = 2 [(index) = {index: NEVER}];
 //  Address address = 3 [(index) = { index: ALWAYS }];
 }
@@ -49,21 +49,21 @@ message OneIndexableOneNot {
 //}
 
 message NoneIndexable {
-  string name = 1 [(index) = {index: NEVER}];
+  map<string, string> name = 1 [(index) = {index: NEVER}];
   string ssn = 2 [(index) = {index: NEVER}];
-  string food = 3 [(index) = {index: NEVER}];
+  repeated string food = 3 [(index) = {index: NEVER}];
 }
 
 message AllIndexable{
-  string name = 1 [(index) = {index: ALWAYS}];
+  map<string, string> name = 1 [(index) = {index: ALWAYS}];
   string ssn = 2 [(index) = {index: ALWAYS}];
-  string food = 3 [(index) = {index: ALWAYS}];
+  repeated string food = 3 [(index) = {index: ALWAYS}];
 }
 
 message SomeIndexableSomeNot{
-  string name = 1 [(index) = {index: ALWAYS}];
+  map<string, string> name = 1 [(index) = {index: ALWAYS}];
   string ssn = 2 [(index) = {index: ALWAYS}];
-  string food = 3 [(index) = {index: ALWAYS}];
+  repeated string food = 3 [(index) = {index: ALWAYS}];
   string shape = 4 [(index) = {index: NEVER}];
   string material = 5 [(index) = {index: NEVER}];
 }
