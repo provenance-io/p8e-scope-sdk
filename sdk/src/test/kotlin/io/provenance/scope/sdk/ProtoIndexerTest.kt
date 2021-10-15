@@ -13,7 +13,6 @@ import io.provenance.scope.contract.proto.TestProtos
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.util.toByteString
 import io.kotest.core.spec.style.WordSpec
-import io.kotest.core.spec.style.AnnotationSpec
 import io.kotest.core.test.TestCase
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -144,6 +143,10 @@ class ProtoIndexerTest : WordSpec() {
         mockDefinitionService = mockk<DefinitionService>()
         mockOsClient = mockk<CachedOsClient>()
         protoIndexer = ProtoIndexer(mockOsClient, false, affiliate) { _, _ -> mockDefinitionService }
+
+        every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
+
+        every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
     }
 
     init {
@@ -160,10 +163,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     testProto,
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -207,10 +206,6 @@ class ProtoIndexerTest : WordSpec() {
                     testProto,
                 )
 
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
 
@@ -229,10 +224,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     testProto,
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -258,10 +249,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     testProto,
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -292,10 +279,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     catProto,
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -332,10 +315,6 @@ class ProtoIndexerTest : WordSpec() {
                     catProto,
                 )
 
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
 
@@ -362,10 +341,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     catProto
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -406,10 +381,6 @@ class ProtoIndexerTest : WordSpec() {
                     catProto
                 )
 
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
 
@@ -447,10 +418,6 @@ class ProtoIndexerTest : WordSpec() {
                     insideProto
                 )
 
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
 
@@ -484,10 +451,6 @@ class ProtoIndexerTest : WordSpec() {
                     insideProto
                 )
 
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
 
@@ -514,10 +477,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     insideProto
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -551,10 +510,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     insideProto
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -599,10 +554,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     innerCatProto
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -655,10 +606,6 @@ class ProtoIndexerTest : WordSpec() {
                     innerCatProto
                 )
 
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
-
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
 
@@ -699,10 +646,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     innerCatProto
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
@@ -757,10 +700,6 @@ class ProtoIndexerTest : WordSpec() {
                     createContractSpec(),
                     innerCatProto
                 )
-
-                every { mockDefinitionService.addJar(any(), any(), any()) } returns Unit
-
-                every { mockDefinitionService.forThread(any<() -> Any>()) } answers { firstArg<() -> Any>()() }
 
                 // perform indexing
                 val indexFields = protoIndexer.indexFields(testScope)
