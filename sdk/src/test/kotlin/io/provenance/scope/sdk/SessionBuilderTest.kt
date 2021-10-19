@@ -328,7 +328,7 @@ class SessionBuilderTest : WordSpec({
             val scopeResponse = createExistingScope().also { builder ->
                 builder.scopeBuilder.scopeBuilder
                     .clearDataAccess()
-                    .addDataAccess(localKeys[2].public.getAddress(false))
+                    .addDataAccess(localKeys[3].public.getAddress(false))
             }
             val defSpec = Commons.DefinitionSpec.newBuilder()
                 .setType(Commons.DefinitionSpec.Type.PROPOSED)
@@ -357,13 +357,8 @@ class SessionBuilderTest : WordSpec({
                 spec.addInputSpecs(defSpec)
             }
             val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
-            var scopeSpecUuid: UUID
-            if (!scopeResponse?.scope?.scopeSpecIdInfo?.scopeSpecUuid.isNullOrEmpty()) {
-                scopeSpecUuid = scopeResponse?.scope?.scopeSpecIdInfo?.scopeSpecUuid!!.toUuid()
-            } else {
-                scopeSpecUuid = UUID.randomUUID()
-            }
-            Session.Builder(scopeSpecUuid)
+            var scopeSpecUuid = UUID.randomUUID()
+            var session = Session.Builder(scopeSpecUuid)
                 .setContractSpec(spec.build())
                 .setProvenanceReference(provenanceReference)
                 .setClient(osClient)
@@ -373,7 +368,20 @@ class SessionBuilderTest : WordSpec({
                         setScope(scopeResponse.build())
                         addDataAccessKey(localKeys[3].public)
                     }
-                }
+                }.build()
+
+            val envelopePopulatedRecord = session.packageContract(false)
+
+            envelopePopulatedRecord.contract.considerationsCount shouldBe 1
+            envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
+            envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 0
+
+            envelopePopulatedRecord.contract.inputsCount shouldBe 1
+            envelopePopulatedRecord.contract.inputsList[0].name shouldBe "record2"
+            envelopePopulatedRecord.contract.inputsList[0].dataLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+
+            envelopePopulatedRecord.scopeSpecUuid.value shouldBe scopeSpecUuid.toString()
+
         }
     }
 })
