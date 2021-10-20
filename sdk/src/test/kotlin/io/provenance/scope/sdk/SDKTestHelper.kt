@@ -92,7 +92,7 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
         .apply {
             if (existingScope != null) {
                 setScope(existingScope)
-                addDataAccessKey(localKeys[3].public)
+                addDataAccessKey(localKeys[2].public)
             }
         }
 }
@@ -116,7 +116,7 @@ fun createExistingScope(): ScopeResponse.Builder {
         .setName("record2")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
     val scope = Scope.newBuilder()
-        .addDataAccess(localKeys[3].public.getAddress(false))
+        .addDataAccess(localKeys[2].public.getAddress(false))
         .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER))
         .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
