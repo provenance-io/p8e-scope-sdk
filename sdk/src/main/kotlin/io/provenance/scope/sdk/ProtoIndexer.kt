@@ -3,6 +3,7 @@ package io.provenance.scope.sdk
 import com.google.protobuf.ByteString
 import com.google.protobuf.Descriptors.*
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType.*
+import com.google.protobuf.MapEntry
 import com.google.protobuf.Message
 import io.provenance.metadata.v1.RecordWrapper
 import io.provenance.metadata.v1.ScopeResponse
@@ -42,7 +43,8 @@ class ProtoIndexer(
         { osClient, memoryClassLoader -> DefinitionService(osClient, memoryClassLoader) },
 ) {
     private val indexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("index")
-    private val messageIndexDescriptor = Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
+    private val messageIndexDescriptor =
+        Index.getDefaultInstance().descriptorForType.file.findExtensionByName("message_index")
     private val affiliateAddress = affiliate.encryptionKeyRef.publicKey.getAddress(mainNet)
 
     /**
@@ -74,7 +76,10 @@ class ProtoIndexer(
     }
 
     //Helper function that makes a Pair of a record's name to a map
-    private fun recordNameToIndexFields(recordWrapper: RecordWrapper, sessionMap: Map<ByteString, SessionWrapper>): Pair<String, Map<String, Any>?>{
+    private fun recordNameToIndexFields(
+        recordWrapper: RecordWrapper,
+        sessionMap: Map<ByteString, SessionWrapper>
+    ): Pair<String, Map<String, Any>?> {
         val sessionWrapper = sessionMap.getValue(recordWrapper.record.sessionId)
 
         // Need a reference of the signer that is used to verify signatures.
@@ -106,7 +111,7 @@ class ProtoIndexer(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T: Message> indexFields(
+    private fun <T : Message> indexFields(
         definitionService: DefinitionService,
         encryptionKeyRef: KeyRef,
         t: T,
@@ -114,7 +119,7 @@ class ProtoIndexer(
         indexParent: Boolean? = null,
         spec: ContractSpec? = null
     ): Map<String, Any>? {
-        val message = when(t) {
+        val message = when (t) {
             is RecordWrapper ->
                 if (t.record.outputsList.first().hash.isEmpty()) {
                     return mapOf()
@@ -139,8 +144,23 @@ class ProtoIndexer(
                     fieldDescriptor.getIndex(indexDescriptor)?.index,
                     messageBehavior?.index
                 )
-
                 when {
+                    fieldDescriptor.isMapField -> {// Protobuf only allows Strings in the key field
+                        fieldDescriptor.jsonName to
+                                (message.getField(fieldDescriptor) as Collection<MapEntry<String, *>>).map { value ->
+                                    val valueDescriptor = value.descriptorForType.fields.find { it.name == "value" }!!
+                                    value.key to getValue(
+                                        definitionService,
+                                        encryptionKeyRef,
+                                        valueDescriptor,
+                                        doIndex,
+                                        value.value,
+                                        signer
+                                    )
+                                }.filter { it.second != null }.toMap().takeIf {
+                                    it.isNotEmpty()
+                                }
+                    }
                     fieldDescriptor.isRepeated -> {
                         val list = (message.getField(fieldDescriptor) as List<Any>)
                         val resultList = mutableListOf<Any>()
@@ -156,17 +176,6 @@ class ProtoIndexer(
                         }
                         fieldDescriptor.jsonName to resultList.takeIf { it.isNotEmpty() }
                     }
-                    fieldDescriptor.isMapField -> // Protobuf only allows Strings in the key field
-                        fieldDescriptor.jsonName to (message.getField(fieldDescriptor) as Map<String, *>).mapValues { value ->
-                            getValue(
-                                definitionService,
-                                encryptionKeyRef,
-                                fieldDescriptor,
-                                doIndex,
-                                message.getField(fieldDescriptor),
-                                signer
-                            )
-                        }.takeIf { it.entries.any { it.value != null } }
                     else -> fieldDescriptor.jsonName to getValue(
                         definitionService,
                         encryptionKeyRef,
@@ -177,7 +186,7 @@ class ProtoIndexer(
                     )
                 }
             }.filter { it.second != null }
-            .takeIf { it.any { it.second != null }}
+            .takeIf { it.any { it.second != null } }
             ?.map { it.first to it.second!! }
             ?.toMap()
     }
@@ -198,8 +207,16 @@ class ProtoIndexer(
             DOUBLE,
             BOOLEAN,
             STRING,
-            BYTE_STRING -> if (doIndex) { value } else { null }
-            ENUM -> if (doIndex) { (value as EnumValueDescriptor).name } else { null }
+            BYTE_STRING -> if (doIndex) {
+                value
+            } else {
+                null
+            }
+            ENUM -> if (doIndex) {
+                (value as EnumValueDescriptor).name
+            } else {
+                null
+            }
             MESSAGE -> {
                 indexFields(
                     definitionService,
@@ -291,7 +308,8 @@ private fun FieldDescriptor.getIndex(
         try {
             Index.parseFrom((it as Message).toByteArray())
         } catch (t: Throwable) {
-            LoggerFactory.getLogger(this::class.java).error("FieldDescriptor.getIndex failed to parse index extension with error", t)
+            LoggerFactory.getLogger(this::class.java)
+                .error("FieldDescriptor.getIndex failed to parse index extension with error", t)
             null
         }
     }
@@ -310,7 +328,8 @@ private fun Descriptor.getIndex(
         try {
             Index.parseFrom((it as Message).toByteArray())
         } catch (t: Throwable) {
-            LoggerFactory.getLogger(this::class.java).error("Descriptor.getIndex failed to parse index extension with error", t)
+            LoggerFactory.getLogger(this::class.java)
+                .error("Descriptor.getIndex failed to parse index extension with error", t)
             null
         }
     }

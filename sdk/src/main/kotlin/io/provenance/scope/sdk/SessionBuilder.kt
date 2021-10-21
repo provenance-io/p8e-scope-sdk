@@ -211,7 +211,7 @@ class Session(
                 .orThrowNotFound("Can't find the proposed fact for $name")
 
             require(proposedSpec.resourceLocation.classname == record.defaultInstanceForType.javaClass.name)
-            { "Invalid proto message supplied for $name. Expected: ${proposedSpec.resourceLocation.classname} Received: ${name}" }
+            { "Invalid proto message supplied for $name. Expected: ${proposedSpec.resourceLocation.classname} Received: ${record.defaultInstanceForType.javaClass.name}" }
 
             proposedRecords[name] = record
         }
@@ -243,7 +243,7 @@ class Session(
     }
 
     private fun populateContract(): Contract {
-        val envelope = Envelope.getDefaultInstance()
+//        val envelope = Envelope.getDefaultInstance()
         val builder = contractSpec.newContract()
             .setDefinition(contractSpec.definition)
 
@@ -296,44 +296,44 @@ class Session(
 //                .build()
 //        )
 
-        contractSpec.functionSpecsList
-            .filter { it.hasOutputSpec() }
-            .map { it.outputSpec }
-            .map { defSpec ->
-                envelope.contract.considerationsList
-                    .filter { it.hasResult() }
-                    .filter { it.result.output.name == defSpec.spec.name }
-                    .map { it.result.output }
-                    .singleOrNull()
-                    // TODO warn if more than one output with same name.
-                    ?.let {
-                        // Only add the output to the input list if it hasn't been previously defined.
-                        if (builder.inputsList.find { fact -> fact.name == it.name } == null) {
-                            builder.addInputs(
-                                Contracts.Record.newBuilder()
-                                    .setName(it.name)
-                                    .setDataLocation(
-                                        Commons.Location.newBuilder()
-                                            .setClassname(it.classname)
-                                            .setRef(
-                                                Commons.ProvenanceReference.newBuilder()
-                                                    .setHash(it.hash)
-                                                    // TODO where can these be retrieved
-                                                    .setSessionUuid(
-                                                        Util.UUID.newBuilder()
-                                                            .setValueBytes(envelope.ref.sessionUuid.valueBytes).build()
-                                                    )
-                                                    .setScopeUuid(
-                                                        Util.UUID.newBuilder()
-                                                            .setValueBytes(envelope.ref.scopeUuid.valueBytes).build()
-                                                    )
-                                                    .build()
-                                            )
-                                    )
-                            )
-                        }
-                    }
-            }
+//        contractSpec.functionSpecsList
+//            .filter { it.hasOutputSpec() }
+//            .map { it.outputSpec }
+//            .map { defSpec ->
+//                envelope.contract.considerationsList
+//                    .filter { it.hasResult() }
+//                    .filter { it.result.output.name == defSpec.spec.name }
+//                    .map { it.result.output }
+//                    .singleOrNull()
+//                    // TODO warn if more than one output with same name.
+//                    ?.let {
+//                        // Only add the output to the input list if it hasn't been previously defined.
+//                        if (builder.inputsList.find { fact -> fact.name == it.name } == null) {
+//                            builder.addInputs(
+//                                Contracts.Record.newBuilder()
+//                                    .setName(it.name)
+//                                    .setDataLocation(
+//                                        Commons.Location.newBuilder()
+//                                            .setClassname(it.classname)
+//                                            .setRef(
+//                                                Commons.ProvenanceReference.newBuilder()
+//                                                    .setHash(it.hash)
+//                                                    // TODO where can these be retrieved
+//                                                    .setSessionUuid(
+//                                                        Util.UUID.newBuilder()
+//                                                            .setValueBytes(envelope.ref.sessionUuid.valueBytes).build()
+//                                                    )
+//                                                    .setScopeUuid(
+//                                                        Util.UUID.newBuilder()
+//                                                            .setValueBytes(envelope.ref.scopeUuid.valueBytes).build()
+//                                                    )
+//                                                    .build()
+//                                            )
+//                                    )
+//                            )
+//                        }
+//                    }
+//            }
 
 //             stagedCrossScopeFacts.forEach { (factName, refMessage) ->
 //                 val (ref, message) = refMessage
