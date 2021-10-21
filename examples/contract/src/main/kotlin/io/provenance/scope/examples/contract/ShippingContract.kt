@@ -9,13 +9,9 @@ import io.provenance.scope.contract.annotations.ScopeSpecificationDefinition
 import io.provenance.scope.contract.proto.Specifications.PartyType.ORIGINATOR
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
-import io.provenance.scope.examples.LoanExample.CreditReport
-import io.provenance.scope.examples.LoanExample.DocumentList
-import io.provenance.scope.examples.LoanExample.Income
-import io.provenance.scope.examples.LoanExample.Lien
-import io.provenance.scope.examples.LoanExample.Loan
-import io.provenance.scope.examples.LoanExample.Servicing
-import io.provenance.scope.examples.LoanExample.UnderwritingPacket
+import io.provenance.scope.examples.ShippingExample.ShippingPackage
+import io.provenance.scope.examples.ShippingExample.Checkpoint
+import io.provenance.scope.examples.ShippingExample.CheckpointList
 
 const val shippingScopeNamespace = "io.provenance.examples.Shipping"
 
@@ -41,10 +37,9 @@ open class AddCheckin(
     @Record(name = "package") val existingPackage: ShippingPackage,
 ) : P8eContract() {
     @Function(invokedBy = ORIGINATOR)
-    @Record(name = "documents")
-    open fun addCheckin(@Input(name = "checkIn") checkpoint: Checkpoint): CheckpointList {
-        return existingPackage.toBuilder()
-            .addAllCheckpoints(existingPackage.checkins)
-            .build()
+    @Record(name = "package")
+    open fun addCheckpoint(@Input(name = "checkpoint") checkpoint: Checkpoint): ShippingPackage {
+        var existingCheckpoints: CheckpointList = existingPackage.checkins;
+        return existingPackage.toBuilder().setCheckins(existingCheckpoints.toBuilder().addCheckpoints(checkpoint).build()).build();
     }
 }

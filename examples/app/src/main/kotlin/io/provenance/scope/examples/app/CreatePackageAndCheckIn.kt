@@ -16,6 +16,7 @@ import io.provenance.scope.examples.app.utils.getScope
 import io.provenance.scope.examples.app.utils.persistBatchToProvenance
 import io.provenance.scope.examples.contract.ShipPackage
 import io.provenance.scope.examples.contract.AddCheckin
+import io.provenance.scope.examples.contract.ShippingScopeSpecification
 import io.provenance.scope.sdk.Affiliate
 import io.provenance.scope.sdk.Client
 import io.provenance.scope.sdk.ClientConfig
@@ -32,13 +33,11 @@ import java.util.concurrent.TimeUnit
 // field maps to one gRPC call.
 
 data class ShippingScopeData(
-    @Record("package") val shippingPackage: ShippingPackage,
-    @Record("checkpoints") val checkPoints: CheckpointList,
-    @Record("destination") val destination: Destination
+    @Record("package") val shippingPackage: ShippingPackage
 )
 
 fun main(args: Array<String>) {
-    println("Executing and updating a loan scope!")
+    println("Executing and updating a shipping scope!")
 
     // Creates Provenance grpc client. This is used for fetching Provenance account information, as well as
     // simulating and broadcasting TXs.
@@ -83,27 +82,27 @@ fun main(args: Array<String>) {
         val session = sdk.newSession(ShipPackage::class.java, ShippingScopeSpecification::class.java)
             .setScopeUuid(scopeUuid)
             .also {
-                it.addDestination(
-                    "destination",
-                    Destination.newBuilder()
-                        .setUuid(UUID.randomUUID().toString())
-                        .setName("123 fake")
-                        .setZipCode("12345-3123")
-                        .build()
-                )
-                it.addCheckins(
-                    "checkpoints",
-                    DocumentList.newBuilder()
-                        .addCheckpoints(Document.newBuilder()
+                it.addProposedRecord(
+                    "package",
+                    ShippingPackage.newBuilder()
+                        .setUuid(scopeUuid.toString())
+                        .setDestination(Destination.newBuilder()
                             .setUuid(UUID.randomUUID().toString())
-                            .setPackageUuid(UUID.randomUUID().toString())
-                            .setFacility("Shipping Origination - IL")
-                            .setCity("Chicago")
-                            .setCounttry("USA")
+                            .setName("123 fake")
+                            .setZipcode("12345-3123")
                             .build()
                         )
-                        .build()
-                )
+                        .setCheckins(
+                            CheckpointList.newBuilder()
+                                .addCheckpoints(Checkpoint.newBuilder()
+                                    .setUuid(UUID.randomUUID().toString())
+                                    .setPackageUuid(UUID.randomUUID().toString())
+                                    .setFacility("Shipping Origination - IL")
+                                    .setCity("Chicago")
+                                    .setCountry("USA")
+                                    .build())
+                                .build())
+                        .build())
             }.build()
 
         // A single party contract will always return a batch of messages that can be persisted to Provenance.
@@ -118,18 +117,15 @@ fun main(args: Array<String>) {
         println("Shipping scope after initiation = $scope")
 
         val sessionTwo = sdk.newSession(AddCheckin::class.java, scopeResponse)
-            .addCheckin(
-                "checkpoints",
-                CheckpointList.newBuilder()
-                    .addCheckpoints(Document.newBuilder()
+            .addProposedRecord(
+                "package",
+                Checkpoint.newBuilder()
                         .setUuid(UUID.randomUUID().toString())
-                        .setPackageUuid(UUID.randomUUID().toString())
+                        .setPackageUuid(scopeUuid.toString())
                         .setFacility("Shipping Receiving 2 - CA")
                         .setCity("Fremont")
-                        .setCounttry("USA")
+                        .setCountry("USA")
                         .build()
-                    )
-                    .build()
             ).build()
 
         // A single party contract will always return a batch of messages that can be persisted to Provenance.
@@ -141,8 +137,8 @@ fun main(args: Array<String>) {
         // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
         val scopeResponseTwo = getScope(channel, scopeUuid)
         val scopeTwo = sdk.hydrate(ShippingScopeData::class.java, scopeResponseTwo)
-        println("Checkpoint list after adding a new checkpoint = ${scopeTwo.checkins}")
-        
+        println("Checkpoint list after adding a new checkpoint = ${scopeTwo}")
+
     } catch (e: Exception) {
         println(e.printStackTrace())
     } finally {

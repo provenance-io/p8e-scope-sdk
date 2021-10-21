@@ -8,9 +8,6 @@ option java_outer_classname = "ShippingExample";
 import "google/protobuf/timestamp.proto";
 import "io/provenance/scope/contract/index.proto";
 
-message Origination {
-
-}
 message ShippingPackage {
   string uuid = 1;
   Destination destination = 2;
