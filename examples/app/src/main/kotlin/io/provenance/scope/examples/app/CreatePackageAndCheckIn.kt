@@ -77,7 +77,6 @@ fun main(args: Array<String>) {
     // A UUID used to create and update this scope. This can be thought of as the unique primary key
     // referencing the scope we will be creating below.
     val scopeUuid = UUID.randomUUID()
-
     try {
         val session = sdk.newSession(ShipPackage::class.java, ShippingScopeSpecification::class.java)
             .setScopeUuid(scopeUuid)
@@ -114,11 +113,12 @@ fun main(args: Array<String>) {
         // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
         val scopeResponse = getScope(channel, scopeUuid)
         val scope = sdk.hydrate(ShippingScopeData::class.java, scopeResponse)
+
         println("Shipping scope after initiation = $scope")
 
         val sessionTwo = sdk.newSession(AddCheckin::class.java, scopeResponse)
             .addProposedRecord(
-                "package",
+                "checkpoint",
                 Checkpoint.newBuilder()
                         .setUuid(UUID.randomUUID().toString())
                         .setPackageUuid(scopeUuid.toString())

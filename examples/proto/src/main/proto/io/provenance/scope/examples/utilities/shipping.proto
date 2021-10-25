@@ -33,7 +33,7 @@ message Checkpoint {
 }
 
 message CheckpointList {
-  repeated Checkpoint checkpoints = 1 [(io.provenance.scope.contract.index) = {index: NEVER}];
+  repeated Checkpoint checkpoints = 1;
 
 }
 
