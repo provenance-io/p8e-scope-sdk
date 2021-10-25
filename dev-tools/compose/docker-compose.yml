@@ -23,6 +23,49 @@ services:
       retries: 5
     command: postgres
 
+  postgres-mp:
+    profiles:
+      - multi-party
+    build:
+      context: .
+      dockerfile: Dockerfile-postgres-mp
+    container_name: postgres-mp
+    networks:
+      - p8e
+    volumes:
+      - postgres-mp:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password1
+    ports:
+      - 5431:5432
+    healthcheck:
+      test: [ CMD-SHELL, pg_isready -U postgres ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    command: postgres
+  #    profiles:
+  #      - multi-party
+  #    image: postgres:13-alpine
+  #    container_name: postgres-mp
+  #    networks:
+  #      - p8e
+  #    volumes:
+  #      - postgres-mp:/var/lib/postgresql/data
+  #      - ./init-mp.sql:/docker-entrypoint-initdb.d/init.sql
+  #    environment:
+  #      - POSTGRES_USER=postgres
+  #      - POSTGRES_PASSWORD=password1
+  #    ports:
+  #      - 5431:5432
+  #    healthcheck:
+  #      test: [ CMD-SHELL, pg_isready -U postgres ]
+  #      interval: 5s
+  #      timeout: 10s
+  #      retries: 5
+  #    command: postgres
+
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: jaeger
@@ -62,6 +105,37 @@ services:
     volumes:
       - object_store:/mnt/data
 
+  object-store-mp:
+    profiles:
+      - multi-party
+    image: ghcr.io/provenance-io/object-store:0.6.4
+    container_name: object-store-mp
+    depends_on:
+      - postgres-mp
+    networks:
+      - p8e
+    environment:
+      - OS_URL=0.0.0.0
+      - OS_PORT=8080
+      - DB_CONNECTION_POOL_SIZE=3
+      - DB_HOST=postgres-mp
+      - DB_USER=postgres
+      - DB_PASS=password1
+      - DB_PASSWORD=password1
+      - DB_PORT=5431
+      - DB_NAME=object-store-mp
+      - DB_SCHEMA=public
+      - URI_HOST=localhost:8080
+      - STORAGE_TYPE=file_system
+      - STORAGE_BASE_PATH=/mnt/data
+      - RUST_LOG=warn,object_store=debug
+      - TRACE_HEADER=x-trace-header
+      - LOGGING_THRESHOLD_SECONDS=1
+    ports:
+      - 5001:8080
+    volumes:
+      - mp_object_store:/mnt/data
+
   provenance:
     image: provenanceio/provenance:v1.7.2
     container_name: provenance
@@ -78,8 +152,10 @@ services:
 
 volumes:
   postgres:
+  postgres-mp:
   provenance:
   object_store:
+  mp_object_store:
 
 networks:
   p8e:
