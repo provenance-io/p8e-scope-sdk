@@ -1,5 +1,0 @@
-FROM postgres:13-alpine
-
-COPY init-mp.sql /docker-entrypoint-initdb.d/init.sql
-
-EXPOSE 5431
