@@ -8,7 +8,7 @@ services:
     volumes:
       - ./init-mp.sql:/docker-entrypoint-initdb.d/init-mp.sql
 
-  object-store-prod: {}
+  object-store-main: {}
 
   object-store-mp:
     image: ghcr.io/provenance-io/object-store:0.6.4

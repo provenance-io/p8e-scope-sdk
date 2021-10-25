@@ -7,7 +7,7 @@ services:
     container_name: postgres
     extends:
       file: docker-compose.base.yml
-      service: "postgres-${BUILD_ENV-prod}"
+      service: "postgres-${BUILD_ENV-main}"
     networks:
       - p8e
     volumes:
@@ -67,7 +67,7 @@ services:
   object-store-mp:
     extends:
       file: docker-compose.base.yml
-      service: "object-store-${BUILD_ENV-prod}"
+      service: "object-store-${BUILD_ENV-main}"
     depends_on:
       - postgres
 
