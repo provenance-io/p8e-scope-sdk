@@ -33,6 +33,11 @@ Typical [docker-compose](https://docs.docker.com/compose/) commands can be used 
 ```
 docker-compose up -d
 docker-compose stop
+
+or for testing multiparty contracts (WIP)
+
+BUILD_ENV=mp docker-compose up -d
+BUILD_ENV=mp docker-compose down -v
 ```
 
 ## Using the provenanced CLI
