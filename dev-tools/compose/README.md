@@ -36,8 +36,8 @@ docker-compose stop
 
 or for testing multiparty contracts (WIP)
 
-BUILD_ENV=mp docker-compose up -d
-BUILD_ENV=mp docker-compose down -v
+docker compose --profile multi-party up -d
+docker compose --profile multi-party down -v
 ```
 
 ## Using the provenanced CLI
