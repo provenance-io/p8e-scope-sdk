@@ -22,10 +22,7 @@ import io.provenance.scope.sdk.Client
 import io.provenance.scope.sdk.ClientConfig
 import io.provenance.scope.sdk.SharedClient
 import io.provenance.scope.sdk.SignedResult
-import io.provenance.scope.util.toByteString
-import io.provenance.scope.util.toProtoTimestamp
 import java.net.URI
-import java.time.OffsetDateTime
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -120,12 +117,12 @@ fun main(args: Array<String>) {
             .addProposedRecord(
                 "checkpoint",
                 Checkpoint.newBuilder()
-                        .setUuid(UUID.randomUUID().toString())
-                        .setPackageUuid(scopeUuid.toString())
-                        .setFacility("Shipping Receiving 2 - CA")
-                        .setCity("Fremont")
-                        .setCountry("USA")
-                        .build()
+                    .setUuid(UUID.randomUUID().toString())
+                    .setPackageUuid(scopeUuid.toString())
+                    .setFacility("Shipping Receiving 2 - CA")
+                    .setCity("Fremont")
+                    .setCountry("USA")
+                    .build()
             ).build()
 
         // A single party contract will always return a batch of messages that can be persisted to Provenance.
@@ -137,7 +134,7 @@ fun main(args: Array<String>) {
         // Fetches the latest scope from Provenance and hydrates hashes from Object Store.
         val scopeResponseTwo = getScope(channel, scopeUuid)
         val scopeTwo = sdk.hydrate(ShippingScopeData::class.java, scopeResponseTwo)
-        println("Checkpoint list after adding a new checkpoint = ${scopeTwo}")
+        println("Checkpoint list after adding a new checkpoint = ${scopeTwo.shippingPackage.checkins}")
 
     } catch (e: Exception) {
         println(e.printStackTrace())

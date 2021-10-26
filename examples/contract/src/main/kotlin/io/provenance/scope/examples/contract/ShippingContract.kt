@@ -11,7 +11,6 @@ import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.contract.spec.P8eScopeSpecification
 import io.provenance.scope.examples.ShippingExample.ShippingPackage
 import io.provenance.scope.examples.ShippingExample.Checkpoint
-import io.provenance.scope.examples.ShippingExample.CheckpointList
 
 const val shippingScopeNamespace = "io.provenance.examples.Shipping"
 
@@ -38,8 +37,12 @@ open class AddCheckin(
 ) : P8eContract() {
     @Function(invokedBy = ORIGINATOR)
     @Record(name = "package")
-    open fun addCheckpoint(@Input(name = "checkpoint") checkpoint: Checkpoint): ShippingPackage {
-        var existingCheckpoints: CheckpointList = existingPackage.checkins;
-        return existingPackage.toBuilder().setCheckins(existingCheckpoints.toBuilder().addCheckpoints(checkpoint).build()).build();
+    open fun addCheckpoints(@Input(name = "checkpoint") checkpoint: Checkpoint): ShippingPackage {
+        return existingPackage.toBuilder()
+            .setCheckins(
+                existingPackage.checkins.toBuilder()
+                    .addCheckpoints(checkpoint)
+                    .build())
+            .build()
     }
 }
