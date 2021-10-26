@@ -1,7 +1,6 @@
 package io.provenance.scope
 
 import arrow.core.Either
-import arrow.core.right
 import com.google.protobuf.Message
 import io.provenance.scope.contract.proto.Contracts.ExecutionResult
 import io.provenance.scope.contract.proto.Contracts.Record
@@ -11,8 +10,6 @@ import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
-import io.provenance.scope.objectstore.util.orGet
-import io.provenance.scope.objectstore.util.orThrow
 import io.provenance.scope.util.orThrowContractDefinition
 import io.provenance.scope.util.toOffsetDateTime
 import java.lang.reflect.Constructor
@@ -41,7 +38,6 @@ class ContractWrapper(
 
     private val constructorParameters = getConstructorParameters(constructor, records).map { (it as Either.Left<Any>).value }
 
-   // val constructorParam = if (constructorParameters.size > 0) arrayOf((constructorParameters.get(0).orGet { null } as Either.Left<Any>).value) else emptyArray()
     private val contract = (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
         .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
 
