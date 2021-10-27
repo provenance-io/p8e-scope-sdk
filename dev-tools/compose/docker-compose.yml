@@ -3,21 +3,21 @@ version: '3.5'
 services:
 
   postgres:
-    build:
-      context: .
-      dockerfile: Dockerfile-postgres
+    image: postgres:13-alpine
     container_name: postgres
     networks:
       - p8e
     volumes:
       - postgres:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init-mp.sql:/docker-entrypoint-initdb.d/init-mp.sql
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password1
     ports:
       - 5432:5432
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U postgres]
+      test: [ CMD-SHELL, pg_isready -U postgres ]
       interval: 5s
       timeout: 10s
       retries: 5
@@ -62,6 +62,37 @@ services:
     volumes:
       - object_store:/mnt/data
 
+  object-store-mp:
+    profiles:
+      - multi-party
+    image: ghcr.io/provenance-io/object-store:0.6.4
+    container_name: object-store-mp
+    depends_on:
+      - postgres
+    networks:
+      - p8e
+    environment:
+      - OS_URL=0.0.0.0
+      - OS_PORT=8080
+      - DB_CONNECTION_POOL_SIZE=3
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASS=password1
+      - DB_PASSWORD=password1
+      - DB_PORT=5432
+      - DB_NAME=object-store-mp
+      - DB_SCHEMA=public
+      - URI_HOST=localhost:8080
+      - STORAGE_TYPE=file_system
+      - STORAGE_BASE_PATH=/mnt/data
+      - RUST_LOG=warn,object_store=debug
+      - TRACE_HEADER=x-trace-header
+      - LOGGING_THRESHOLD_SECONDS=1
+    ports:
+      - 5001:8080
+    volumes:
+      - mp_object_store:/mnt/data
+
   provenance:
     image: provenanceio/provenance:v1.7.2
     container_name: provenance
@@ -80,6 +111,7 @@ volumes:
   postgres:
   provenance:
   object_store:
+  mp_object_store:
 
 networks:
   p8e:
