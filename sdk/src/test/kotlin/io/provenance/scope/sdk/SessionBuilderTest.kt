@@ -92,7 +92,7 @@ class SessionBuilderTest : WordSpec({
             builder.setContractSpec(
                 builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
             )
-                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
+                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
             builder.addProposedRecord("record2", exampleName)
@@ -124,7 +124,7 @@ class SessionBuilderTest : WordSpec({
             builder.setContractSpec(
                 builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
             )
-                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
+                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
             builder.addProposedRecord("record2", exampleName)
@@ -161,8 +161,8 @@ class SessionBuilderTest : WordSpec({
                 builder.setContractSpec(
                     builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
                 )
-                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
-                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
+                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
+                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
             }
 
         }
