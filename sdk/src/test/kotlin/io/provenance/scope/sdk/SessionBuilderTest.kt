@@ -92,7 +92,7 @@ class SessionBuilderTest : WordSpec({
             builder.setContractSpec(
                 builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
             )
-                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
+                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
             builder.addProposedRecord("record2", exampleName)
@@ -124,7 +124,7 @@ class SessionBuilderTest : WordSpec({
             builder.setContractSpec(
                 builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
             )
-                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
+                .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
             builder.addProposedRecord("record2", exampleName)
@@ -161,8 +161,8 @@ class SessionBuilderTest : WordSpec({
                 builder.setContractSpec(
                     builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
                 )
-                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
-                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[3].public.toPublicKeyProto())
+                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
+                    .addParticipant(Specifications.PartyType.AFFILIATE, localKeys[2].public.toPublicKeyProto())
             }
 
         }
@@ -328,7 +328,7 @@ class SessionBuilderTest : WordSpec({
             val scopeResponse = createExistingScope().also { builder ->
                 builder.scopeBuilder.scopeBuilder
                     .clearDataAccess()
-                    .addDataAccess(localKeys[3].public.getAddress(false))
+                    .addDataAccess(localKeys[2].public.getAddress(false))
             }
             val defSpec = Commons.DefinitionSpec.newBuilder()
                 .setType(Commons.DefinitionSpec.Type.PROPOSED)
@@ -366,7 +366,7 @@ class SessionBuilderTest : WordSpec({
                 .apply {
                     if (scopeResponse.build() != null) {
                         setScope(scopeResponse.build())
-                        addDataAccessKey(localKeys[3].public)
+                        addDataAccessKey(localKeys[2].public)
                     }
                 }.build()
 

@@ -8,6 +8,7 @@ import io.provenance.scope.util.crypto.Hash
 import io.provenance.scope.util.crypto.toBech32Data
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.bouncycastle.util.encoders.Hex
+import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
 
@@ -60,6 +61,8 @@ fun String.toPrivateKeyProto(): PK.PrivateKey = PK.PrivateKey.parseFrom(Hex.deco
 
 fun String.toJavaPublicKey() = toPublicKeyProto().toPublicKey()
 fun String.toJavaPrivateKey() = toPrivateKeyProto().toPrivateKey()
+
+fun PrivateKey.toKeyPair(): KeyPair = KeyPair(ECUtils.toPublicKey(this), this)
 
 fun PublicKey.getAddress(mainNet: Boolean): String =
     (this as BCECPublicKey).q.getEncoded(true)
