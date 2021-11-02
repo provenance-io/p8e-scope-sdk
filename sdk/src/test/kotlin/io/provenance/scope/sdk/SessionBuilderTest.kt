@@ -328,7 +328,7 @@ class SessionBuilderTest : WordSpec({
             val scopeResponse = createExistingScope().also { builder ->
                 builder.scopeBuilder.scopeBuilder
                     .clearDataAccess()
-                    .addDataAccess(localKeys[3].public.getAddress(false))
+                    .addDataAccess(localKeys[2].public.getAddress(false))
             }
             val defSpec = Commons.DefinitionSpec.newBuilder()
                 .setType(Commons.DefinitionSpec.Type.PROPOSED)
@@ -366,7 +366,7 @@ class SessionBuilderTest : WordSpec({
                 .apply {
                     if (scopeResponse.build() != null) {
                         setScope(scopeResponse.build())
-                        addDataAccessKey(localKeys[3].public)
+                        addDataAccessKey(localKeys[2].public)
                     }
                 }.build()
 
