@@ -36,7 +36,13 @@ class ContractWrapper(
 
     private val constructor = getConstructor(contractClass)
 
-    private val constructorParameters = getConstructorParameters(constructor, records).map { (it as Either.Left<Any>).value }
+    private val constructorParameters = getConstructorParameters(constructor, records).map {
+        x -> when(x) {
+            is Either.Left<*> -> x.value
+            is Either.Right<*> -> x.value
+            else -> x
+        }
+    }
 
     private val contract = (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
         .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
