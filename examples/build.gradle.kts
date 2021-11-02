@@ -4,13 +4,12 @@ import io.provenance.p8e.plugin.P8ePartyExtension
 buildscript {
     repositories {
         mavenCentral()
-        jcenter()
         maven { url = uri("https://javadoc.jitpack.io") }
     }
 }
 
 plugins {
-    id("io.provenance.p8e.p8e-publish") version "0.6.0"
+    id("io.provenance.p8e.p8e-publish") version "0.6.2"
 }
 
 p8e {
