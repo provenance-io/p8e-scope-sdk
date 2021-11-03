@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package shipping;
+
+option java_package = "io.provenance.scope.examples";
+option java_outer_classname = "ShippingExample";
+
+import "google/protobuf/timestamp.proto";
+import "io/provenance/scope/contract/index.proto";
+
+message ShippingPackage {
+  string uuid = 1;
+  Destination destination = 2;
+  CheckpointList checkins = 3;
+}
+
+message Destination {
+  string uuid = 1 [(io.provenance.scope.contract.index) = {index: INDEX_DEFER_PARENT}];
+
+  string name = 2 [(io.provenance.scope.contract.index) = {index: INDEX_DEFER_PARENT}];
+  string zipcode = 3;
+}
+
+
+
+message Checkpoint {
+  string uuid = 1;
+  string package_uuid = 2;
+
+  string facility = 3;
+  string city = 4;
+  string country = 5;
+}
+
+message CheckpointList {
+  repeated Checkpoint checkpoints = 1;
+
+}
+

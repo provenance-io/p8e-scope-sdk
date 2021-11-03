@@ -58,6 +58,8 @@ UpdateAndIndexContract.kt
  - Demonstrates updating records on a Provenance scope and the concept of the P8e index protobuf descriptor.
 BatchSendContracts.kt
  - Demonstrates higher throughput Provenance writes by batching and sending transactions in a background process.
+CreatePackageAndCheckin.kt
+ - Demonstrates creating a shipping package object and another contract adding "checkpoints" to the package as a simple example of a supply chain checkin. 
 
 ### TODO (steve docs) add examples of the following
 - [x] smart key example

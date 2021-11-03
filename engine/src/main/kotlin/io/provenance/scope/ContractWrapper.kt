@@ -1,14 +1,12 @@
 package io.provenance.scope
 
 import arrow.core.Either
-import arrow.core.identity
 import com.google.protobuf.Message
 import io.provenance.scope.contract.proto.Contracts.ExecutionResult
 import io.provenance.scope.contract.proto.Contracts.Record
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.definition.DefinitionService
-import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
@@ -38,7 +36,13 @@ class ContractWrapper(
 
     private val constructor = getConstructor(contractClass)
 
-    private val constructorParameters = getConstructorParameters(constructor, records)
+    private val constructorParameters = getConstructorParameters(constructor, records).map {
+        x -> when(x) {
+            is Either.Left<*> -> x.value
+            is Either.Right<*> -> x.value
+            else -> x
+        }
+    }
 
     private val contract = (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
         .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
