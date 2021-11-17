@@ -71,7 +71,8 @@ class MemoryClassLoader(
         } catch (t: Throwable) {
             when (t) {
                 is ClassNotFoundException,
-                is NoClassDefFoundError -> {
+                is NoClassDefFoundError,
+                is LinkageError -> {
                     try {
                         when {
                             parentFirst -> findClass(name).also { loadedFromParent = false }
