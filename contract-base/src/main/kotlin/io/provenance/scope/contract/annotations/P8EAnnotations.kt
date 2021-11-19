@@ -42,7 +42,7 @@ annotation class Participants(val roles: Array<PartyType>)
 annotation class ScopeSpecification(val names: Array<String>)
 
 /**
- * Declaritively specifies a scope specification definition. This must be associated with a subclass of
+ * Declaratively specifies a scope specification definition. This must be associated with a subclass of
  * P8eScopeSpecification.
  */
 @Target(AnnotationTarget.CLASS)

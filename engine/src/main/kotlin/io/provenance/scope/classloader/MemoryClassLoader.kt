@@ -1,7 +1,6 @@
 package io.provenance.scope.classloader
 
-import io.provenance.scope.contract.contracts.ContractHash
-import io.provenance.scope.contract.proto.ProtoHash
+import io.provenance.scope.contract.spec.P8eContract
 import org.apache.commons.io.FileUtils
 import java.io.*
 import java.net.URI
@@ -18,17 +17,6 @@ class MemoryClassLoader(
 ): URLClassLoader(
     arrayOf()
 ) {
-    companion object {
-        private val systemLoadedContracts = ServiceLoader.load(ContractHash::class.java).toList()
-            .flatMap {
-                it.getClasses().keys.map { it.split('$').first() }
-            }.toHashSet()
-        private val systemLoadedProtos = ServiceLoader.load(ProtoHash::class.java).toList()
-            .flatMap {
-                it.getClasses().keys.map { it.split('$').first() }
-            }.toHashSet()
-    }
-
     private val parentClassLoader = MemoryClassLoader::class.java.classLoader
     private val system = ClassLoader.getSystemClassLoader()
     private val classCache = ConcurrentHashMap<String, Class<*>>()
@@ -59,8 +47,11 @@ class MemoryClassLoader(
             return classCache[name]!!
         }
 
-        val rootClassName = name.split('$').first()
-        val parentFirst = name.startsWith("com.google.protobuf") || (!systemLoadedProtos.contains(rootClassName) && !systemLoadedContracts.contains(rootClassName))
+        val parentFirst = name == P8eContract::class.java.name
+                || name.startsWith("io.provenance.scope.contract.annotations")
+                || name.startsWith("com.google.protobuf")
+                || name.startsWith("kotlin.")
+                || name.startsWith("java.")
 
         var loadedFromParent: Boolean? = false
         val clazz = try {
