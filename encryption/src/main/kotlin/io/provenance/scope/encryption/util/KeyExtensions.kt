@@ -6,6 +6,8 @@ import io.provenance.scope.proto.PK
 import io.provenance.scope.util.crypto.Bech32
 import io.provenance.scope.util.crypto.Hash
 import io.provenance.scope.util.crypto.toBech32Data
+import io.provenance.scope.util.toByteString
+import io.provenance.scope.util.toHexString
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.bouncycastle.util.encoders.Hex
 import java.security.KeyPair
@@ -42,6 +44,17 @@ import java.security.PublicKey
 //fun PublicKeys.PublicKey.toHex() = this.toByteArray().toHexString()
 //
 //fun PK.PublicKey.toHex() = toPublicKeyProto().toHex()
+
+fun PrivateKey.toPrivateKeyProto(): PK.PrivateKey =
+    PK.PrivateKey.newBuilder()
+        .setCurve(PK.KeyCurve.SECP256K1)
+        .setType(PK.KeyType.ELLIPTIC)
+        .setKeyBytes(ECUtils.convertPrivateKeyToBytes(this).toByteString())
+        .build()
+
+fun PK.PrivateKey.toHex() = this.toByteArray().toHexString()
+
+fun PrivateKey.toHex() = toPrivateKeyProto().toHex()
 
 fun PK.PrivateKey.toPrivateKey(): PrivateKey =
     this.let {
