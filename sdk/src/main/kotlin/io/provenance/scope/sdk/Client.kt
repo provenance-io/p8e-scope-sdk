@@ -143,7 +143,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
             .setScope(scope)
-            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
+            .addParticipant(affiliate.partyType, affiliate.signingKeyRef.publicKey, affiliate.encryptionKeyRef.publicKey)
             .addDataAccessKeys(scope.scope.scope.dataAccessList.map { inner.affiliateRepository.getAffiliateKeysByAddress(it).encryptionPublicKey })
     }
 
@@ -183,7 +183,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
-            .addParticipant(affiliate.partyType, affiliate.encryptionKeyRef.publicKey.toPublicKeyProto())
+            .addParticipant(affiliate.partyType, affiliate.signingKeyRef.publicKey, affiliate.encryptionKeyRef.publicKey)
     }
 
     /**

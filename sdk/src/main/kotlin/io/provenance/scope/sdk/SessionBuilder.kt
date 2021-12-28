@@ -8,6 +8,7 @@ import io.provenance.scope.contract.proto.Commons.DefinitionSpec.Type.PROPOSED
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.model.SigningAndEncryptionPublicKeys
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
@@ -46,7 +47,7 @@ import java.util.UUID.randomUUID
  * @property [dataAccessKeys] a list of public keys for non-participants with which to share data
  */
 class Session(
-    val participants: HashMap<Specifications.PartyType, PK.PublicKey>,
+    val participants: HashMap<Specifications.PartyType, SigningAndEncryptionPublicKeys>,
     val proposedRecords: HashMap<String, Message>,
     val client: Client, // TODO (wyatt) should probably move this class into the client so we have access to the
     val contractSpec: Specifications.ContractSpec,
@@ -70,7 +71,7 @@ class Session(
         builder.contractSpec!!,
         builder.provenanceReference!!,
         builder.scope,
-        builder.executionUuid!!,
+        builder.executionUuid,
         builder.scopeUuid,
         builder.sessionUuid,
         builder.scopeSpecUuid,
@@ -87,7 +88,7 @@ class Session(
         var proposedRecords: HashMap<String, Message> = HashMap()
             private set
         /** The roles/public keys of affiliates participating in this session */
-        var participants: HashMap<Specifications.PartyType, PK.PublicKey> = HashMap()
+        var participants: HashMap<Specifications.PartyType, SigningAndEncryptionPublicKeys> = HashMap()
             private set
         /** A [Client] object to be used for invoking affiliate details and saving objects to Object Store */
         var client: Client? = null
@@ -219,6 +220,7 @@ class Session(
         /**
          * Add a participant to this session
          * @param [party] the [PartyType][Specifications.PartyType] role of this participant in this session
+         * @param [signingPublicKey] the signing public key of this party
          * @param [encryptionPublicKey] the encryption public key of this party
          *
          * @return this
@@ -228,14 +230,14 @@ class Session(
          * @throws [ContractDefinitionException][ContractSpecMapper.ContractDefinitionException] if a party of the
          * provided [party] type already exists in the [participants] list
          */
-        fun addParticipant(party: Specifications.PartyType, encryptionPublicKey: PK.PublicKey) = apply {
-            val recitalSpec = contractSpec!!.partiesInvolvedList
+        fun addParticipant(party: Specifications.PartyType, signingPublicKey: PublicKey, encryptionPublicKey: PublicKey) = apply {
+            contractSpec!!.partiesInvolvedList
                 .filter { it == party }
                 .firstOrNull()
                 .orThrowNotFound("Can't find participant for party type ${party}")
 
             if (participants.get(party) == null) {
-                participants[party] = encryptionPublicKey
+                participants[party] = SigningAndEncryptionPublicKeys(signingPublicKey, encryptionPublicKey)
             } else {
                 throw ContractSpecMapper.ContractDefinitionException("Participant for party type $party already exists in the participant list.")
             }
@@ -421,7 +423,7 @@ class Session(
                 }
         }
 
-        val formattedStagedRecitals = participants.map { (partyType, publicKey) ->
+        val formattedStagedRecitals = participants.map { (partyType, keys) ->
             Contracts.Recital.newBuilder()
                 .setSignerRole(partyType)
                 .also { recitalBuilder ->
@@ -429,8 +431,8 @@ class Session(
                         .setSigner(
                             // Setting single key for both Signing and Encryption key fields, service will handle updating key fields.
                             PK.SigningAndEncryptionPublicKeys.newBuilder()
-                                .setSigningPublicKey(publicKey)
-                                .setEncryptionPublicKey(publicKey)
+                                .setSigningPublicKey(keys.signingPublicKey.toPublicKeyProto())
+                                .setEncryptionPublicKey(keys.encryptionPublicKey.toPublicKeyProto())
                                 .build()
                         )
                 }
