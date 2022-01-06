@@ -34,7 +34,7 @@ services:
       - 16686:16686
 
   object-store:
-    image: ghcr.io/provenance-io/object-store:0.6.4
+    image: ghcr.io/provenance-io/object-store:0.7.0
     container_name: object-store
     networks:
       - p8e
@@ -65,7 +65,7 @@ services:
   object-store-mp:
     profiles:
       - multi-party
-    image: ghcr.io/provenance-io/object-store:0.6.4
+    image: ghcr.io/provenance-io/object-store:0.7.0
     container_name: object-store-mp
     depends_on:
       - postgres
