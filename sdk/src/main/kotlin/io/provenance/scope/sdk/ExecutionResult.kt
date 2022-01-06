@@ -29,10 +29,10 @@ sealed class ExecutionResult
  */
 class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
     private val mainNet = envelopeState.result.mainNet
-    private val signers = envelopeState.result.signaturesList.map { ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet) }  // todo: correct address/pk?
+    private val signers = listOf(envelopeState.result.contract.invoker.signingPublicKey.publicKeyBytes.toByteArray().let { ECUtils.convertBytesToPublicKey(it).getAddress(mainNet) })
     private val parties = envelopeState.result.contract.recitalsList.map { Party.newBuilder()
         .setRoleValue(it.signerRoleValue)
-        .setAddress(ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet)) // todo: correct address/pk?
+        .setAddress(ECUtils.convertBytesToPublicKey(it.signer.signingPublicKey.publicKeyBytes.toByteArray()).getAddress(mainNet))
         .build()
     }
 

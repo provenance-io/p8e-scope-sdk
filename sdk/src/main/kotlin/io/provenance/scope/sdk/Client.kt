@@ -3,6 +3,9 @@ package io.provenance.scope.sdk
 import com.google.common.util.concurrent.Futures
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
+import com.google.protobuf.Timestamp
+import cosmos.authz.v1beta1.Authz
+import cosmos.authz.v1beta1.Tx
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.annotations.Record
@@ -33,7 +36,14 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
 import io.opentracing.util.GlobalTracer;
+import com.google.protobuf.Any as ProtoAny;
 import io.provenance.scope.contract.proto.Commons
+import io.provenance.scope.contract.proto.Envelopes
+import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.encryption.util.toPublicKey
+import io.provenance.scope.util.TypeUrls
+import io.provenance.scope.util.setValue
+import java.time.OffsetDateTime
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -283,9 +293,55 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      * Return an envelope to the invoking party with the result of execution
      *
      * @param [envelopeState] the result of executing an incoming envelope
+     * @param [approvalTxHash] the transaction hash granting approval for the scope/session/record writes  the invoking party
      */
-    fun respondWithSignedResult(envelopeState: EnvelopeState) {
+    fun respondWithApproval(envelopeState: EnvelopeState, approvalTxHash: String) {
         inner.mailboxService.result(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.result)
+    }
+
+    /**
+     * Return an error to the invoking party
+     *
+     * @param [error] the error to respond with
+     */
+    fun respondWithError(error: Envelopes.EnvelopeError) {
+        inner.mailboxService.error(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), error)
+    }
+
+    /**
+     * Approve another party's update to the scope
+     *
+     * @param [envelopeState] the details on the scope update
+     * @param [expirationTime] the time at which the granted authorization expires
+     *
+     * @return a list of Provenance messages granting authorization to the invoking party to submit this scope update.
+     * These need to be submitted in a successful transaction to the blockchain in order to grant access
+     */
+    fun approveScopeUpdate(envelopeState: EnvelopeState, expirationTime: OffsetDateTime = OffsetDateTime.now().plusHours(1)): List<Tx.MsgGrant> {
+        val granter = affiliate.signingKeyRef.publicKey.getAddress(inner.config.mainNet)
+        val grantee = envelopeState.input.contract.invoker.signingPublicKey.toPublicKey().getAddress(inner.config.mainNet)
+
+        val typeUrls = listOf(
+            if (envelopeState.input.newScope) TypeUrls.TypeURLMsgWriteScopeRequest else null,
+            if (envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteSessionRequest else null,
+            if (!envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteRecordRequest else null,
+        ).filterNotNull()
+
+        return typeUrls.map { typeUrl ->
+            Tx.MsgGrant.newBuilder()
+                .setGranter(granter)
+                .setGrantee(grantee)
+                .setGrant(
+                    Authz.Grant.newBuilder()
+                        .setAuthorization(ProtoAny.pack(
+                            Authz.GenericAuthorization.newBuilder()
+                                .setMsg(typeUrl)
+                                .build(), "")
+                        )
+                        .setExpiration(Timestamp.newBuilder().setValue(expirationTime).build())
+                        .build()
+                ).build()
+        }
     }
 
     /**

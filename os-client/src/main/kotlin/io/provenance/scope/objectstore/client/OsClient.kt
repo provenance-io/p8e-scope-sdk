@@ -319,16 +319,18 @@ open class OsClient(
 
     /**
      * Register a local or remote affiliate key with Object Store
-     * @param [publicKey] the [PublicKey] of the affiliate to register
+     * @param [signingPublicKey] the signing [PublicKey] of the affiliate to register
+     * @param [encryptionPublicKey] the encryption [PublicKey] of the affiliate to register
      * @param [objectStoreUrl] the url of the affiliate's Object Store instance (leave null for an affiliate sharing the same Object Store)
      *
      * @return the response from Object Store
      */
-    fun createPublicKey(publicKey: PublicKey, objectStoreUrl: String? = null): PublicKeys.PublicKeyResponse? =
+    fun createPublicKey(signingPublicKey: PublicKey, encryptionPublicKey: PublicKey, objectStoreUrl: String? = null): PublicKeys.PublicKeyResponse? =
         publicKeyBlockingClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS)
             .add(
                 PublicKeys.PublicKeyRequest.newBuilder()
-                    .setPublicKey(publicKey.toPublicKeyProtoOS())
+                    .setSigningPublicKey(signingPublicKey.toPublicKeyProtoOS())
+                    .setPublicKey(encryptionPublicKey.toPublicKeyProtoOS())
                     .apply {
                         if (objectStoreUrl != null) {
                             url = objectStoreUrl
