@@ -19,6 +19,7 @@ import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.ObjectHash
+import io.provenance.scope.proto.PK
 import io.provenance.scope.util.toProtoUuid
 import java.net.URI
 import java.security.KeyPair
@@ -186,6 +187,10 @@ class ClientTest : WordSpec() {
                                                 .setResult(Contracts.ExecutionResult.Result.PASS)
                                                 .setOutput(proposedRecord)
                                         ).addInputs(proposedRecord)
+                                )
+                                .setInvoker(PK.SigningAndEncryptionPublicKeys.newBuilder()
+                                    .setSigningPublicKey(signingKeyPair.public.toPublicKeyProto())
+                                    .setEncryptionPublicKey(encryptionKeyPair.public.toPublicKeyProto())
                                 )
                                 .build()
                             ).build()
