@@ -568,13 +568,25 @@ class Session(
         fun saveProposedFacts(stagedProposedProtos: Collection<Message>) {
             log.debug("Persisting ${stagedProposedProtos.size} record(s) to object store")
             stagedProposedProtos.map {
+                val uuid = UUID.randomUUID()
+                log.debug("TEMP_TRACE | before putRecord call (uuid = $uuid)")
                 client.inner.osClient.putRecord(
                     it,
                     client.affiliate.signingKeyRef,
                     client.affiliate.encryptionKeyRef,
-                    audience
-                )
-            }.map { it.get() } // TODO is this the best way to await N items?
+                    audience,
+                    uuid = uuid
+                ).let {
+                    log.debug("TEMP_TRACE | after putRecord call (uuid = $uuid)")
+                    it to uuid
+                }
+            }.map {
+                val uuid = it.second
+                log.debug("TEMP_TRACE | Before awaiting putRecord (uuid = $uuid)")
+                it.first.get().also {
+                    log.debug("TEMP_TRACE | After awaiting putRecord (uuid = $uuid)")
+                }
+            } // TODO is this the best way to await N items?
         }
     }
 }

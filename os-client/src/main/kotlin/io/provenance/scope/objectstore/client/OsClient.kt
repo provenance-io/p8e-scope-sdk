@@ -215,6 +215,7 @@ open class OsClient(
     ): ListenableFuture<Objects.ObjectResponse> {
         val bytes = message.toByteArray()
 
+        log.debug("TEMP_TRACE | Before inner osClient put call (uuid = $uuid)")
         return put(
             ByteArrayInputStream(bytes),
             encryptionPublicKey,
@@ -224,7 +225,9 @@ open class OsClient(
             metadata,
             uuid,
             loHash,
-        )
+        ).also {
+            log.debug("TEMP_TRACE | After inner osClient put call (uuid = $uuid)")
+        }
     }
 
     /**
@@ -251,9 +254,13 @@ open class OsClient(
         uuid: UUID = UUID.randomUUID(),
         loHash: Boolean = false,
     ): ListenableFuture<Objects.ObjectResponse> {
+        log.debug("TEMP_TRACE | OsClient put step 1 (uuid = $uuid)")
         val signerPublicKey = signer.getPublicKey()
+        log.debug("TEMP_TRACE | OsClient put step 2 (uuid = $uuid)")
         val signatureInputStream = inputStream.sign(signer)
+        log.debug("TEMP_TRACE | OsClient put step 3 (uuid = $uuid)")
         val signingPublicKey = CertificateUtil.publicKeyToPem(signerPublicKey)
+        log.debug("TEMP_TRACE | OsClient put step 4 (uuid = $uuid)")
 
         // TODO should this be performed in the thread pool in the background?
         val dime = ProvenanceDIME.createDIME(
@@ -263,6 +270,7 @@ open class OsClient(
             processingAudienceKeys = listOf(),
             sha256 = true
         )
+        log.debug("TEMP_TRACE | OsClient put step 5 (uuid = $uuid)")
         val dimeInputStream = DIMEInputStream(
             dime.dime,
             dime.encryptedPayload,
@@ -271,37 +279,53 @@ open class OsClient(
             internalHash = true,
             externalHash = false
         )
+        log.debug("TEMP_TRACE | OsClient put step 6 (uuid = $uuid)")
         val responseObserver = SingleResponseFutureObserver<Objects.ObjectResponse>()
+        log.debug("TEMP_TRACE | OsClient put step 7 (uuid = $uuid)")
         // TODO test that deadline works on async requests like this
         val requestObserver = objectAsyncClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).put(responseObserver)
+        log.debug("TEMP_TRACE | OsClient put step 8 (uuid = $uuid)")
         val header = Objects.MultiStreamHeader.newBuilder()
             .setStreamCount(1)
             .putMetadata(CREATED_BY_HEADER, UUID(0, 0).toString())
         .build()
+        log.debug("TEMP_TRACE | OsClient put step 9 (uuid = $uuid)")
         log.trace("Persisting Hash to Object Store:")
         dimeInputStream.use {
             try {
+                log.debug("TEMP_TRACE | Before requestObserver.onNext (uuid = $uuid)")
                 requestObserver.onNext(ChunkBidi.newBuilder().setMultiStreamHeader(header).build())
+                log.debug("TEMP_TRACE | After requestObserver.onNext (uuid = $uuid)")
 
+                log.debug("TEMP_TRACE | Before iterator build (uuid = $uuid)")
                 val iterator = InputStreamChunkedIterator(it, DIME_FIELD_NAME, contentLength)
+                log.debug("TEMP_TRACE | After iterator build (uuid = $uuid)")
                 while (iterator.hasNext()) {
                     requestObserver.onNext(iterator.next())
                 }
+                log.debug("TEMP_TRACE | After all iterator.onNext calls (uuid = $uuid)")
 
+                log.debug("TEMP_TRACE | Before hash calculation (loHash = $loHash) (uuid = $uuid)")
                 val hash = if (loHash) {
                     dimeInputStream.internalHash().loBytes().toByteArray()
-
                 } else {
                     dimeInputStream.internalHash()
                 }
+                log.debug("TEMP_TRACE | After hash calculation (uuid = $uuid)")
+
                 log.trace("Hash: ${hash.base64EncodeString()}\nAudience Public Keys: ${additionalAudiences.map { it.toPublicKeyProtoOS().toByteArray().toHexString().toString() }}")
+                log.debug("TEMP_TRACE | Before metadata onNext calls (uuid = $uuid)")
                 requestObserver.onNext(propertyChunkRequest(HASH_FIELD_NAME to hash))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_FIELD_NAME to signatureInputStream.sign()))
                 requestObserver.onNext(propertyChunkRequest(SIGNATURE_PUBLIC_KEY_FIELD_NAME to signingPublicKey.toByteArray(Charsets.UTF_8)))
+                log.debug("TEMP_TRACE | After metadata onNext calls (uuid = $uuid)")
 
                 requestObserver.onCompleted()
+                log.debug("TEMP_TRACE | After requestObserver.onCompleted (uuid = $uuid)")
             } catch (t: Throwable) {
+                log.debug("TEMP_TRACE | ERROR PUTTING OBJECT (uuid = $uuid)")
                 requestObserver.onError(t)
+                log.debug("TEMP_TRACE | After requestObserver.onError (uuid = $uuid)")
                 throw t
             }
         }

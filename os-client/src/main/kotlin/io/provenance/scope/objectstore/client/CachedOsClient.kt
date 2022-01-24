@@ -21,6 +21,7 @@ import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.base64String
 import io.provenance.scope.util.forThread
 import io.provenance.scope.util.sha256String
+import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.lang.reflect.Method
@@ -50,6 +51,7 @@ fun<T> withFutureSemaphore(semaphore: Semaphore, futureFn: () -> ListenableFutur
  */
 class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, osConcurrencySize: Short, cacheRecordSizeInBytes: Long) {
 
+    private val log = LoggerFactory.getLogger(this::class.java);
     private val tracer: Tracer = GlobalTracer.get()
 
     val decryptionWorkerThreadPool = ThreadPoolFactory.newFixedDaemonThreadPool(
@@ -149,34 +151,52 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         uuid: UUID = UUID.randomUUID(),
         loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
+        log.debug("TEMP_TRACE | Before buildSpan call (uuid = $uuid)")
         val span = tracer.buildSpan("PutRecord OS").start()
+        log.debug("TEMP_TRACE | After buildSpan call (uuid = $uuid)")
 
+        log.debug("TEMP_TRACE | Before cacheKey (uuid = $uuid)")
         val cacheKey = if (loHash) {
             RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256LoBytes().base64String())
         } else {
             RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256String())
         }
+        log.debug("TEMP_TRACE | After cacheKey (uuid = $uuid)")
 
         return if (recordCache.asMap().containsKey(cacheKey)) {
+            log.debug("TEMP_TRACE | Received cache hit hit (uuid = $uuid)")
             Futures.immediateFuture(ObjectHash(cacheKey.hash)).also {
+                log.debug("TEMP_TRACE | Before cache span setTag (uuid = $uuid)")
                 span.setTag("Cached-Response", true)
+                log.debug("TEMP_TRACE | After cache span setTag (uuid = $uuid)")
+                log.debug("TEMP_TRACE | Before cache span finish (uuid = $uuid)")
                 span.finish()
+                log.debug("TEMP_TRACE | After cache span finish (uuid = $uuid)")
             }
-
         } else {
+            log.debug("TEMP_TRACE | Object not in cache, before put (uuid = $uuid)")
             val future = withFutureSemaphore(semaphore) {
-                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, loHash = loHash)
+                log.debug("TEMP_TRACE | Before inner osClient put call (uuid = $uuid)")
+                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, loHash = loHash).also {
+                    log.debug("TEMP_TRACE | After inner osClient put call (uuid = $uuid)")
+                }
             }
 
             Futures.transform(
                 future,
                 {
+                    log.debug("TEMP_TRACE | Entering CachedOsClient put future transform step (uuid = $uuid)")
                     span.setTag("Cached-Response", false)
+                    log.debug("TEMP_TRACE | futureTransform | after span.setTag (uuid = $uuid)")
                     span.finish()
+                    log.debug("TEMP_TRACE | futureTransform | after span.finish (uuid = $uuid)")
                     if (it != null) {
+                        log.debug("TEMP_TRACE | received non-null result, storing in cache (uuid = $uuid)")
                         recordCache.put(cacheKey, message.toByteArray())
+                        log.debug("TEMP_TRACE | Stored non-null result in cache (uuid = $uuid)")
                         ObjectHash(it.hash.toByteArray().base64EncodeString())
                     } else {
+                        log.debug("TEMP_TRACE | RECEIVED NULL OBJECT RESPONSE!!! (uuid = $uuid)")
                         // TODO fix
                         throw Exception("placeholder")
                     }
