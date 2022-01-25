@@ -61,7 +61,7 @@ class SharedClient(val config: ClientConfig) : Closeable {
     /**
      * A client for communcation with the Object Store
      */
-    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
+    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs, config.osChannelCustomizeFn), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
 
     /** @suppress */
     val contractEngine: ContractEngine = ContractEngine(osClient)
