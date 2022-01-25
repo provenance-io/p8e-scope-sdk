@@ -2,6 +2,7 @@ package io.provenance.scope.objectstore.client
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
+import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -34,11 +35,21 @@ data class RecordCacheKey(val publicKey: PublicKey, val hash: String)
 fun<T> withFutureSemaphore(semaphore: Semaphore, futureFn: () -> ListenableFuture<T>): ListenableFuture<T> {
     semaphore.acquire()
 
-    return Futures.transform(
-        futureFn(),
-        { semaphore.release(); it },
-        MoreExecutors.directExecutor(),
-    )
+    return futureFn().also { future ->
+        Futures.addCallback(
+            future,
+            object : FutureCallback<T> {
+                override fun onSuccess(result: T?) {
+                    semaphore.release()
+                }
+
+                override fun onFailure(t: Throwable) {
+                    semaphore.release()
+                }
+            },
+            MoreExecutors.directExecutor()
+        )
+    }
 }
 
 /**
