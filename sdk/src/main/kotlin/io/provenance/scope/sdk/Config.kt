@@ -18,5 +18,8 @@ data class ClientConfig(
     val osDecryptionWorkerThreads: Short = 2,
 
     // provenance
-    val mainNet: Boolean
+    val mainNet: Boolean,
+
+    // extra headers to bind to grpc stubs
+    val extraHeaders: Map<String, String> = emptyMap()
 )

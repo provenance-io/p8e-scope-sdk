@@ -44,8 +44,15 @@ class ClientTest : WordSpec() {
         cleanupHandlers.forEach { it.invoke() }
     }
 
-    private fun getClient(): Client = Client(
-        SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
+    private fun getClient(extraHeaders: Map<String, String> = emptyMap()): Client = Client(
+        SharedClient(ClientConfig(
+            cacheJarSizeInBytes = 0,
+            cacheSpecSizeInBytes = 0,
+            cacheRecordSizeInBytes = 0,
+            osGrpcUrl = URI.create("http://localhost:5000"),
+            mainNet = false,
+            extraHeaders = extraHeaders)
+        ),
         Affiliate(
             DirectKeyRef(signingKeyPair),
             DirectKeyRef(encryptionKeyPair),

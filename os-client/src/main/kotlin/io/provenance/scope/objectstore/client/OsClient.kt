@@ -8,6 +8,8 @@ import com.google.protobuf.Message
 import io.grpc.ManagedChannel
 import org.slf4j.LoggerFactory
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Metadata
+import io.grpc.stub.MetadataUtils
 import io.provenance.scope.encryption.dime.ProvenanceDIME
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.crypto.CertificateUtil
@@ -35,6 +37,7 @@ import java.net.URI
 import java.security.PublicKey
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 const val CREATED_BY_HEADER = "x-created-by"
 const val DIME_FIELD_NAME = "DIME"
@@ -49,7 +52,8 @@ const val SIGNATURE_FIELD_NAME = "SIGNATURE"
  */
 open class OsClient(
     uri: URI,
-    private val deadlineMs: Long
+    private val deadlineMs: Long,
+    private val extraHeaders: Map<String, String> = emptyMap()
 ) : Closeable {
     private val log = LoggerFactory.getLogger(this::class.java)
     private val objectAsyncClient: ObjectServiceGrpc.ObjectServiceStub
@@ -72,10 +76,20 @@ open class OsClient(
             .keepAliveTimeout(10, TimeUnit.SECONDS)
             .build()
 
-        objectAsyncClient = ObjectServiceGrpc.newStub(channel)
-        objectFutureClient = ObjectServiceGrpc.newFutureStub(channel)
-        publicKeyBlockingClient = PublicKeyServiceGrpc.newBlockingStub(channel)
-        mailboxBlockingClient = MailboxServiceGrpc.newBlockingStub(channel)
+        val headers = Metadata()
+            .also { metdata ->
+                extraHeaders.forEach { name, value ->
+                    metdata.put(
+                        Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER),
+                        value
+                    )
+                }
+            }
+
+        objectAsyncClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newStub(channel), headers)
+        objectFutureClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newFutureStub(channel), headers)
+        publicKeyBlockingClient = MetadataUtils.attachHeaders(PublicKeyServiceGrpc.newBlockingStub(channel), headers)
+        mailboxBlockingClient = MetadataUtils.attachHeaders(MailboxServiceGrpc.newBlockingStub(channel), headers)
     }
 
     /**
@@ -175,6 +189,10 @@ open class OsClient(
         val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
         val responseObserver = BufferedResponseFutureObserver<ChunkBidi>()
         // TODO wrap this call in try and return previous error on 404
+        val headers = AtomicReference<Metadata>()
+        val trailers = AtomicReference<Metadata>()
+        MetadataUtils.captureMetadata(objectAsyncClient, headers, trailers)
+        println("headers: ${headers.get().toString()}; trailers: ${trailers.get().toString()}")
         objectAsyncClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).get(
             Objects.HashRequest.newBuilder()
                 .setHash(ByteString.copyFrom(hash))
