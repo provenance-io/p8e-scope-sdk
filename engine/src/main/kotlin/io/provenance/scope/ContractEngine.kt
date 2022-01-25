@@ -75,10 +75,13 @@ class ContractEngine(
         shares: Collection<PublicKey>,
         spec: ContractSpec
     ): Envelope {
+        log.trace("TEMP_TRACE | ContractEngine.internalRun")
         val definitionService = DefinitionService(osClient, memoryClassLoader)
 
         val signer = signingKeyRef.signer()
         val scope = envelope.scopeOrNull()
+
+        log.trace("TEMP_TRACE | ContractEngine.internalRun 2")
 
         // Load contract spec class
         val contractSpecClass = try {
@@ -97,6 +100,8 @@ class ContractEngine(
             throw e
         }
 
+        log.trace("TEMP_TRACE | ContractEngine.internalRun 3")
+
         // Ensure all the classes listed in the spec are loaded into the MemoryClassLoader
         loadAllClasses(
             encryptionKeyRef,
@@ -104,8 +109,12 @@ class ContractEngine(
             spec
         )
 
+        log.trace("TEMP_TRACE | ContractEngine.internalRun 4")
+
         // validate contract
         contract.validateAgainst(spec)
+
+        log.trace("TEMP_TRACE | ContractEngine.internalRun 5")
 
         // todo: validate that all shares passed in are already on the scope in the case of an existing scope??? Or will the contract always have all parties in recitals anyways for data share purposes?
 
@@ -117,6 +126,8 @@ class ContractEngine(
             osClient,
             contractBuilder,
         )
+
+        log.trace("TEMP_TRACE | ContractEngine.internalRun 6")
 
         val (execList, skipList) = contractWrapper.functions.partition { it.canExecute() }
 

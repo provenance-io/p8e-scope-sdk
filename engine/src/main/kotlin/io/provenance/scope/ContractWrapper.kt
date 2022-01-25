@@ -12,6 +12,8 @@ import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
 import io.provenance.scope.util.toOffsetDateTime
+import jdk.nashorn.internal.runtime.regexp.joni.Config.log
+import org.slf4j.LoggerFactory
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
@@ -24,6 +26,11 @@ class ContractWrapper(
     private val contractBuilder: Contract.Builder,
 ) {
     private val records = buildRecords()
+    private val log = LoggerFactory.getLogger(this::class.java);
+
+    init {
+        log.trace("TEMP_TRACE | ContractWrapper construct 1")
+    }
 
     val contractClass = definitionService.loadClass(
         contractBuilder.definition
@@ -34,7 +41,15 @@ class ContractWrapper(
         P8eContract::class.java.isAssignableFrom(it)
     }.orThrowContractDefinition("Contract class ${contractBuilder.definition.resourceLocation.classname} must extend ${P8eContract::class.java.name}")
 
+    init {
+        log.trace("TEMP_TRACE | ContractWrapper construct 2")
+    }
+
     private val constructor = getConstructor(contractClass)
+
+    init {
+        log.trace("TEMP_TRACE | ContractWrapper construct 3")
+    }
 
     private val constructorParameters = getConstructorParameters(constructor, records).map {
         x -> when(x) {
@@ -44,13 +59,25 @@ class ContractWrapper(
         }
     }
 
+    init {
+        log.trace("TEMP_TRACE | ContractWrapper construct 4")
+    }
+
     private val contract = (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
         .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
+
+    init {
+        log.trace("TEMP_TRACE | ContractWrapper construct 5")
+    }
 
     val functions = contractBuilder.considerationsBuilderList
         .filter { it.result == ExecutionResult.getDefaultInstance() }
         .map { consideration -> consideration to getConsiderationMethod(contract.javaClass, consideration.considerationName) }
         .map { (consideration, method) -> Function(encryptionKeyRef, osClient, contract, consideration, method, records) }
+
+    init {
+        log.trace("TEMP_TRACE | ContractWrapper construct 6")
+    }
 
     private fun getConstructor(
         clazz: Class<*>
