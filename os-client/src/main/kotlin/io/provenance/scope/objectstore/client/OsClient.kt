@@ -81,9 +81,9 @@ open class OsClient(
 
         //Mutate map of headers into appropriate Metadata construct
         val headers = Metadata()
-            .also { metdata ->
+            .also { metadata ->
                 extraHeaders.forEach { name, value ->
-                    metdata.put(
+                    metadata.put(
                         Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER),
                         value
                     )
