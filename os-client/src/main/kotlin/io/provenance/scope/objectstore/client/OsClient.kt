@@ -45,6 +45,8 @@ const val HASH_FIELD_NAME = "HASH"
 const val SIGNATURE_PUBLIC_KEY_FIELD_NAME = "SIGNATURE_PUBLIC_KEY"
 const val SIGNATURE_FIELD_NAME = "SIGNATURE"
 
+typealias ChannelCustomizeFn = (ManagedChannelBuilder<*>) -> ManagedChannelBuilder<*>
+
 /**
  * A client for communication with an Object Store instance
  * @param [uri] the [URI] of the Object Store instance
@@ -53,6 +55,7 @@ const val SIGNATURE_FIELD_NAME = "SIGNATURE"
 open class OsClient(
     uri: URI,
     private val deadlineMs: Long,
+    customizeChannel: ChannelCustomizeFn = { it },
     private val extraHeaders: Map<String, String> = emptyMap()
 ) : Closeable {
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -74,6 +77,7 @@ open class OsClient(
             .idleTimeout(60, TimeUnit.SECONDS)
             .keepAliveTime(10, TimeUnit.SECONDS)
             .keepAliveTimeout(10, TimeUnit.SECONDS)
+            .let(customizeChannel)
             .build()
 
         val headers = Metadata()
