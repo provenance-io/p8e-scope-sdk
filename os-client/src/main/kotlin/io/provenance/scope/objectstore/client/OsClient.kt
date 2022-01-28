@@ -37,7 +37,6 @@ import java.net.URI
 import java.security.PublicKey
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 
 const val CREATED_BY_HEADER = "x-created-by"
 const val DIME_FIELD_NAME = "DIME"
@@ -80,6 +79,7 @@ open class OsClient(
             .let(customizeChannel)
             .build()
 
+        //Mutate map of headers into appropriate Metadata construct
         val headers = Metadata()
             .also { metdata ->
                 extraHeaders.forEach { name, value ->
@@ -90,6 +90,7 @@ open class OsClient(
                 }
             }
 
+        //Bind headers to stubs
         objectAsyncClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newStub(channel), headers)
         objectFutureClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newFutureStub(channel), headers)
         publicKeyBlockingClient = MetadataUtils.attachHeaders(PublicKeyServiceGrpc.newBlockingStub(channel), headers)
@@ -189,14 +190,9 @@ open class OsClient(
         if (hash.size < 16) {
             throw IllegalArgumentException("Provided hash must be byte array of at least size 16, found size: ${hash.size}")
         }
-
         val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
         val responseObserver = BufferedResponseFutureObserver<ChunkBidi>()
         // TODO wrap this call in try and return previous error on 404
-        val headers = AtomicReference<Metadata>()
-        val trailers = AtomicReference<Metadata>()
-        MetadataUtils.captureMetadata(objectAsyncClient, headers, trailers)
-        println("headers: ${headers.get().toString()}; trailers: ${trailers.get().toString()}")
         objectAsyncClient.withDeadlineAfter(deadlineMs, TimeUnit.MILLISECONDS).get(
             Objects.HashRequest.newBuilder()
                 .setHash(ByteString.copyFrom(hash))

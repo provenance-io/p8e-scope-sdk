@@ -22,6 +22,6 @@ data class ClientConfig(
     // provenance
     val mainNet: Boolean,
 
-    // extra headers to bind to grpc stubs
+    // extra headers to attach to grpc stubs
     val extraHeaders: Map<String, String> = emptyMap()
 )

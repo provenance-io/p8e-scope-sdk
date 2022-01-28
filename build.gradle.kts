@@ -135,9 +135,9 @@ subprojects {
             }
         }
 
-//        signing {
-//            sign(publishing.publications["maven"])
-//        }
+        signing {
+            sign(publishing.publications["maven"])
+        }
 
         tasks.javadoc {
             if(JavaVersion.current().isJava9Compatible) {
