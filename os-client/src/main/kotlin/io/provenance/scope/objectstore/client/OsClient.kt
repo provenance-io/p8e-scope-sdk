@@ -8,6 +8,8 @@ import com.google.protobuf.Message
 import io.grpc.ManagedChannel
 import org.slf4j.LoggerFactory
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Metadata
+import io.grpc.stub.MetadataUtils
 import io.provenance.scope.encryption.dime.ProvenanceDIME
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.crypto.CertificateUtil
@@ -52,7 +54,8 @@ typealias ChannelCustomizeFn = (ManagedChannelBuilder<*>) -> ManagedChannelBuild
 open class OsClient(
     uri: URI,
     private val deadlineMs: Long,
-    customizeChannel: ChannelCustomizeFn = { it }
+    customizeChannel: ChannelCustomizeFn = { it },
+    private val extraHeaders: Map<String, String> = emptyMap()
 ) : Closeable {
     private val log = LoggerFactory.getLogger(this::class.java)
     private val objectAsyncClient: ObjectServiceGrpc.ObjectServiceStub
@@ -76,10 +79,22 @@ open class OsClient(
             .let(customizeChannel)
             .build()
 
-        objectAsyncClient = ObjectServiceGrpc.newStub(channel)
-        objectFutureClient = ObjectServiceGrpc.newFutureStub(channel)
-        publicKeyBlockingClient = PublicKeyServiceGrpc.newBlockingStub(channel)
-        mailboxBlockingClient = MailboxServiceGrpc.newBlockingStub(channel)
+        //Mutate map of headers into appropriate Metadata construct
+        val headers = Metadata()
+            .also { metadata ->
+                extraHeaders.forEach { name, value ->
+                    metadata.put(
+                        Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER),
+                        value
+                    )
+                }
+            }
+
+        //Bind headers to stubs
+        objectAsyncClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newStub(channel), headers)
+        objectFutureClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newFutureStub(channel), headers)
+        publicKeyBlockingClient = MetadataUtils.attachHeaders(PublicKeyServiceGrpc.newBlockingStub(channel), headers)
+        mailboxBlockingClient = MetadataUtils.attachHeaders(MailboxServiceGrpc.newBlockingStub(channel), headers)
     }
 
     /**
@@ -175,7 +190,6 @@ open class OsClient(
         if (hash.size < 16) {
             throw IllegalArgumentException("Provided hash must be byte array of at least size 16, found size: ${hash.size}")
         }
-
         val ecPublicKey = ECUtils.convertPublicKeyToBytes(publicKey)
         val responseObserver = BufferedResponseFutureObserver<ChunkBidi>()
         // TODO wrap this call in try and return previous error on 404
