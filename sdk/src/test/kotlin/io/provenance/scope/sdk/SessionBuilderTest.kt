@@ -3,6 +3,7 @@ package io.provenance.p8e.testframework
 import com.google.protobuf.ByteString
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.WordSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.*
@@ -10,6 +11,7 @@ import io.provenance.metadata.v1.InputSpecification
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.proto.PK
 import io.provenance.scope.sdk.*
@@ -320,6 +322,36 @@ class SessionBuilderTest : WordSpec({
                 session.packageContract(false)
             }
             exception.message shouldContain localKeys[2].public.getAddress(false)
+        }
+
+        "allow setting data access keys that are the corresponding signing/encryption key to what is listed on the existing scope" {
+            val osClient = createClientDummy(0)
+
+            val correspondingEncryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
+
+            val scopeResponse = createExistingScope().also { builder ->
+                builder.scopeBuilder.scopeBuilder
+                    .clearDataAccess()
+                    .addDataAccess(localKeys[2].public.getAddress(false))
+            }
+
+            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
+
+            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+
+            val affiliateRepository = AffiliateRepository(false).apply {
+                addAffiliate(localKeys[2].public, correspondingEncryptionKeyPair.public)
+            }
+
+            builder.addProposedRecord("record2", exampleName)
+            builder.dataAccessKeys.clear()
+            builder.addDataAccessKey(correspondingEncryptionKeyPair.public)
+
+            val session = builder.build()
+
+            val result = session.packageContract(false, affiliateRepository)
+            result.dataAccessList.size shouldBe 1
+            result.dataAccessList shouldContain correspondingEncryptionKeyPair.public.toPublicKeyProto()
         }
 
         "Create Session Builder with all given values" {

@@ -41,5 +41,28 @@ class AffiliateRepository(private val mainNet: Boolean) {
      *
      * @return the [signing and encryption public keys][SigningAndEncryptionPublicKeys] of the affiliate
      */
-    fun getAffiliateKeysByAddress(affiliateAddress: String) = affiliateAddressToPublicKeys.get(affiliateAddress).orThrow { AffiliateNotFoundException("Affiliate with address $affiliateAddress not found") }
+    fun tryGetAffiliateKeysByAddress(affiliateAddress: String): SigningAndEncryptionPublicKeys? = affiliateAddressToPublicKeys.get(affiliateAddress)
+
+    /**
+     * Look up an affiliate's keys by address
+     *
+     * @param [affiliateAddress] the address of the affiliate. Note: this may be the address of either their signing or encryption public key
+     *
+     * @return the [signing and encryption public keys][SigningAndEncryptionPublicKeys] of the affiliate
+     */
+    fun getAffiliateKeysByAddress(affiliateAddress: String): SigningAndEncryptionPublicKeys = tryGetAffiliateKeysByAddress(affiliateAddress).orThrow { AffiliateNotFoundException("Affiliate with address $affiliateAddress not found") }
+
+    /**
+     * Look up the corresponding signing/encryption key address for an affiliate given a supplied signing/encryption address
+     *
+     * @param [affiliateAddress] the address of the affiliate. Note: this may be the address of either their signing or encryption public key
+     *
+     * @return the other address for this affiliate, if it exists
+     */
+    fun tryGetCorrespondingAffiliateAddress(affiliateAddress: String): String? = tryGetAffiliateKeysByAddress(affiliateAddress)?.let {
+        listOf(
+            it.signingPublicKey.getAddress(mainNet),
+            it.encryptionPublicKey.getAddress(mainNet)
+        )
+    }?.find { it != affiliateAddress }
 }
