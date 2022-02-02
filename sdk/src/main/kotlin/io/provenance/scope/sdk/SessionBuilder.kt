@@ -454,19 +454,33 @@ class Session(
         return builder.build()
     }
 
-     fun packageContract(mainNet: Boolean): Envelope {
+     fun packageContract(mainNet: Boolean, affiliateRepository: AffiliateRepository = AffiliateRepository(mainNet)): Envelope {
          if (scope != null) {
-             val sessionDataAccessAddresses = dataAccessKeys.map { it.getAddress(mainNet) }.toSet()
+             val sessionDataAccessAddresses = dataAccessKeys
+                 .map { it.getAddress(mainNet) }
+                 .toSet()
 
-             sessionDataAccessAddresses.forEach { key ->
-                 if (!scope.scope.scope.dataAccessList.contains(key)) {
-                     throw IllegalStateException("$key was added with data access in this session but does not have access in the existing scope.")
+             val correspondingAddressLookup = sessionDataAccessAddresses.map {
+                 it to affiliateRepository.tryGetCorrespondingAffiliateAddress(it)
+             }.filter { it.second != null }.flatMap {
+                 listOf(it.first to it.second, it.second to it.first)
+             }.toMap()
+
+             sessionDataAccessAddresses.forEach { address ->
+                 if (!scope.scope.scope.dataAccessList.contains(address)) {
+                     val correspondingAddress = correspondingAddressLookup[address]
+                     if (correspondingAddress == null || !scope.scope.scope.dataAccessList.contains(correspondingAddress)) {
+                         throw IllegalStateException("$address was added with data access in this session but does not have access in the existing scope.")
+                     }
                  }
              }
 
-             scope.scope.scope.dataAccessList.forEach { key ->
-                 if (!sessionDataAccessAddresses.contains(key)) {
-                     throw IllegalStateException("$key has data access in the existing scope but was not added to the data access list in this session.")
+             scope.scope.scope.dataAccessList.forEach { address ->
+                 if (!sessionDataAccessAddresses.contains(address)) {
+                     val correspondingAddress = correspondingAddressLookup[address]
+                     if (correspondingAddress == null || !sessionDataAccessAddresses.contains(correspondingAddress)) {
+                         throw IllegalStateException("$address has data access in the existing scope but was not added to the data access list in this session.")
+                     }
                  }
              }
          }

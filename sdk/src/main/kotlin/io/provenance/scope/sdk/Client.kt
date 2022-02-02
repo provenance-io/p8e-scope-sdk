@@ -200,7 +200,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      */
     fun execute(session: Session): ExecutionResult {
         val span = tracer.buildSpan("Execution").start().also { tracer.activateSpan(it) }
-        val input = session.packageContract(inner.config.mainNet)
+        val input = session.packageContract(inner.config.mainNet, inner.affiliateRepository)
         log.debug("Contract name: ${input.contract.definition.name}")
         log.debug("Session Id: ${session.sessionUuid}")
         log.debug("Execution UUID: ${input.executionUuid}")
