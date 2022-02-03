@@ -15,6 +15,7 @@ import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.objectstore.util.toPublicKey
 import io.provenance.scope.objectstore.util.toUuid
+import io.provenance.scope.sdk.extensions.getDefaultValueOwner
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuid
@@ -49,6 +50,7 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
                         .setSpecificationId(MetadataAddress.forScopeSpecification(envelopeState.result.scopeSpecUuid.toUuid()).bytes.toByteString())
                         .addAllOwners(parties)
                         .addAllDataAccess(envelopeState.result.dataAccessList.map { it.toPublicKey().getAddress(mainNet) })
+                        .setValueOwnerAddress(envelopeState.result.getDefaultValueOwner(mainNet))
                 }.addAllSigners(signers)
                 .build()
             executionInfo.add(
