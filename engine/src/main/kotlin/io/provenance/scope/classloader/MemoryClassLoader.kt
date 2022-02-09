@@ -52,6 +52,7 @@ class MemoryClassLoader(
                 || name.startsWith("com.google.protobuf")
                 || name.startsWith("kotlin.")
                 || name.startsWith("java.")
+                || name.startsWith("org.bouncycastle")
 
         var loadedFromParent: Boolean? = false
         val clazz = try {
