@@ -64,7 +64,7 @@ class SharedClient(val config: ClientConfig) : Closeable {
     val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs, config.osChannelCustomizeFn, config.extraHeaders), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
 
     /** @suppress */
-    val contractEngine: ContractEngine = ContractEngine(osClient)
+    val contractEngine: ContractEngine = ContractEngine(osClient, config.disableContractLogs)
 
     /**
      * A registry of all other affiliates (identified by signing and encryption public keys) that you interact with in contract execution.

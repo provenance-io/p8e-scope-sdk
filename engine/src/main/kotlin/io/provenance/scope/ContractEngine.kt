@@ -26,14 +26,22 @@ import io.provenance.scope.util.forThread
 import io.provenance.scope.util.scopeOrNull
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuid
+import io.provenance.scope.util.withoutLogging
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.PublicKey
 
 class ContractEngine(
     private val osClient: CachedOsClient,
+    private val disableContractLogs: Boolean = true,
 ) {
     private val log = LoggerFactory.getLogger(this::class.java);
+
+    private fun <T> withConfigurableLogging(block: () -> T): T = if (disableContractLogs) {
+        withoutLogging(block)
+    } else {
+        block()
+    }
 
     fun handle(
         encryptionKeyRef: KeyRef,
@@ -116,6 +124,7 @@ class ContractEngine(
             definitionService,
             osClient,
             contractBuilder,
+            disableContractLogs,
         )
 
         val (execList, skipList) = contractWrapper.functions.partition { it.canExecute() }
@@ -126,7 +135,7 @@ class ContractEngine(
             execList
                 .map { function ->
                     val (considerationBuilder, result) = try {
-                        function.invoke()
+                        withConfigurableLogging { function.invoke() }
                     } catch (t: Throwable) {
                         // Abort execution on a failed condition
                         log.error("Error executing condition ${contractWrapper.contractClass}.${function.method.name} [Exception classname: ${t.javaClass.name}]", t)

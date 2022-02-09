@@ -12,6 +12,7 @@ import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
 import io.provenance.scope.util.toOffsetDateTime
+import io.provenance.scope.util.withoutLogging
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
@@ -22,8 +23,15 @@ class ContractWrapper(
     private val definitionService: DefinitionService,
     private val osClient: CachedOsClient,
     private val contractBuilder: Contract.Builder,
+    private val disableContractLogs: Boolean = true,
 ) {
     private val records = buildRecords()
+
+    private fun <T> withConfigurableLogging(block: () -> T): T = if (disableContractLogs) {
+        withoutLogging(block)
+    } else {
+        block()
+    }
 
     val contractClass = definitionService.loadClass(
         contractBuilder.definition
@@ -44,8 +52,10 @@ class ContractWrapper(
         }
     }
 
-    private val contract = (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
-        .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
+    private val contract = withConfigurableLogging {
+        (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
+            .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
+    }
 
     val functions = contractBuilder.considerationsBuilderList
         .filter { it.result == ExecutionResult.getDefaultInstance() }

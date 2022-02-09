@@ -23,5 +23,8 @@ data class ClientConfig(
     val mainNet: Boolean,
 
     // extra headers to attach to grpc stubs
-    val extraHeaders: Map<String, String> = emptyMap()
+    val extraHeaders: Map<String, String> = emptyMap(),
+
+    // contract execution configuration
+    val disableContractLogs: Boolean = true,
 )
