@@ -71,10 +71,10 @@ class SharedClient(val config: ClientConfig) : Closeable {
     /**
      * A client for communcation with the Object Store
      */
-    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
+    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs, config.osChannelCustomizeFn, config.extraHeaders), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
 
     /** @suppress */
-    val contractEngine: ContractEngine = ContractEngine(osClient)
+    val contractEngine: ContractEngine = ContractEngine(osClient, config.disableContractLogs)
 
     /**
      * A registry of all other affiliates (identified by signing and encryption public keys) that you interact with in contract execution.
@@ -210,7 +210,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      */
     fun execute(session: Session): ExecutionResult {
         val span = tracer.buildSpan("Execution").start().also { tracer.activateSpan(it) }
-        val input = session.packageContract(inner.config.mainNet)
+        val input = session.packageContract(inner.config.mainNet, inner.affiliateRepository)
         log.debug("Contract name: ${input.contract.definition.name}")
         log.debug("Session Id: ${session.sessionUuid}")
         log.debug("Execution UUID: ${input.executionUuid}")

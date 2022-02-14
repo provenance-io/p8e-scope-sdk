@@ -9,7 +9,7 @@ buildscript {
 }
 
 plugins {
-    id("io.provenance.p8e.p8e-publish") version "0.6.2"
+    id("io.provenance.p8e.p8e-publish") version "0.6.3"
 }
 
 p8e {
@@ -26,6 +26,7 @@ p8e {
             location.signingPrivateKey = System.getenv("SIGNING_PRIVATE_KEY")
             location.chainId = System.getenv("CHAIN_ID")
             location.txBatchSize = "5"
+            location.txFeeAdjustment = "2.0"
 
             location.audience = mapOf(
                 "local1" to P8ePartyExtension().also {

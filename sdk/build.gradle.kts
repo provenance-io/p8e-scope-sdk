@@ -17,7 +17,7 @@ dependencies {
     implementation("com.fortanix", "sdkms-client", "3.23.1408")
     implementation("io.opentracing", "opentracing-api", Version.openTracing)
     implementation("io.opentracing", "opentracing-util", Version.openTracing)
-
+    implementation("io.grpc", "grpc-stub", Version.grpc_version)
 
     testImplementation(project(":contract-base", "testArtifacts"))
     testImplementation(project(":contract-proto", "testArtifacts"))

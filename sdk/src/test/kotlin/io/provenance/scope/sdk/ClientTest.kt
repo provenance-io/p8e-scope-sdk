@@ -10,6 +10,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockkConstructor
+import io.provenance.metadata.v1.MsgWriteScopeRequest
 import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.TestContract
 import io.provenance.scope.contract.TestContractScopeSpecificationDefinition
@@ -19,6 +20,7 @@ import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.ObjectHash
+import io.provenance.scope.proto.Common
 import io.provenance.scope.proto.PK
 import io.provenance.scope.util.toProtoUuid
 import java.net.URI
@@ -164,6 +166,11 @@ class ClientTest : WordSpec() {
                     .setHash("1234567890")
 
                 mockkConstructor(ContractEngine::class)
+
+                val signer = PK.SigningAndEncryptionPublicKeys.newBuilder()
+                    .setSigningPublicKey(signingKeyPair.public.toPublicKeyProto())
+                    .setEncryptionPublicKey(encryptionKeyPair.public.toPublicKeyProto())
+
                 every { anyConstructed<ContractEngine>().handle(any(), any(), any(), any()) } returns
                         Envelopes.Envelope.newBuilder()
                             .setNewScope(true)
@@ -188,12 +195,20 @@ class ClientTest : WordSpec() {
                                                 .setOutput(proposedRecord)
                                         ).addInputs(proposedRecord)
                                 )
-                                .setInvoker(PK.SigningAndEncryptionPublicKeys.newBuilder()
-                                    .setSigningPublicKey(signingKeyPair.public.toPublicKeyProto())
-                                    .setEncryptionPublicKey(encryptionKeyPair.public.toPublicKeyProto())
-                                )
+                                .setInvoker(signer)
+                                .addAllRecitals(listOf(
+                                    Contracts.Recital.newBuilder()
+                                        .setSignerRole(Specifications.PartyType.ORIGINATOR)
+                                        .setSigner(signer)
+                                        .build()
+                                ))
                                 .build()
-                            ).build()
+                            ).addAllSignatures(listOf(
+                                Common.Signature.newBuilder()
+                                    .setSigner(signer)
+                                    .build()
+                            ))
+                            .build()
 
                 mockkConstructor(CachedOsClient::class)
                 every { anyConstructed<CachedOsClient>().putRecord(any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
@@ -215,6 +230,8 @@ class ClientTest : WordSpec() {
 
                 (executionResult as SignedResult).envelopeState.input.contract.definition.name shouldBe "record2"
                 executionResult.envelopeState.input.contract.definition.resourceLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+                executionResult.messages.first().javaClass shouldBe MsgWriteScopeRequest::class.java
+                (executionResult.messages.first() as MsgWriteScopeRequest).scope.valueOwnerAddress shouldBe signingKeyPair.public.getAddress(false)
 
                 val executionResult2 = client.execute(envelopePopulatedRecord)
 
