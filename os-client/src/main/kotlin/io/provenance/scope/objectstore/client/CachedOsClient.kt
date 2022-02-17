@@ -8,6 +8,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.common.util.concurrent.SettableFuture
 import com.google.protobuf.Message
+import io.grpc.StatusRuntimeException
 import io.opentracing.Tracer
 import io.opentracing.util.GlobalTracer
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
@@ -236,7 +237,18 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                 }
             },
             decryptionWorkerThreadPool,
-        )
+        ).let {
+            Futures.catching(it, StatusRuntimeException::class.java, { e ->
+                val instanceToReturn = parseFromLookup(classname).invoke(null, byteArrayOf())
+                val clazz = Message::class.java
+
+                if (!clazz.isAssignableFrom(instanceToReturn.javaClass)) {
+                    throw ProtoParseException("Unable to assign instance ${instanceToReturn::class.java.name} to type ${clazz.name}")
+                }
+
+                clazz.cast(instanceToReturn)
+            }, decryptionWorkerThreadPool)
+        }
     }
 
     // TODO cache these as well
