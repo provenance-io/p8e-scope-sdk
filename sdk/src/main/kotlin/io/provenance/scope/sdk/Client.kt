@@ -41,7 +41,10 @@ import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toPublicKey
+import io.provenance.scope.util.AffiliateNotFoundException
+import io.provenance.scope.util.EnvelopeAlreadySignedException
 import io.provenance.scope.util.TypeUrls
+import io.provenance.scope.util.or
 import io.provenance.scope.util.setValue
 import java.time.OffsetDateTime
 import java.util.concurrent.ScheduledExecutorService
@@ -280,10 +283,12 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      * @param [envelopeState] the [EnvelopeState] object from an execution [FragmentResult] for mailing
      */
     fun requestAffiliateExecution(envelopeState: EnvelopeState) {
-        // todo: verify this Client instance's affiliate is on the envelope?
+        envelopeState.input.contract.recitalsList
+            .find { it.signerRole == affiliate.partyType && it.signer.signingPublicKey == affiliate.signingKeyRef.publicKey.toPublicKeyProto() }
+            .orThrow { AffiliateNotFoundException("Affiliate not found on contract recital list") }
 
         if (envelopeState.result.isSigned()) {
-            TODO("should we throw an exception or something in the event that an affiliate is requesting signatures on an already fully-signed envelope?")
+            throw EnvelopeAlreadySignedException("Envelope already fully signed, cannot request affiliate execution")
         }
 
         inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.input)
