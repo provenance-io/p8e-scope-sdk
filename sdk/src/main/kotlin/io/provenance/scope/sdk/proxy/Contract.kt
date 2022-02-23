@@ -3,6 +3,7 @@ package io.provenance.scope.sdk.proxy
 import com.google.protobuf.Message
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Contracts.ExecutionResult.Result.*
+import io.provenance.scope.contract.proto.Envelopes.EnvelopeError
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
@@ -13,6 +14,13 @@ class Contract(
     private val osClient: CachedOsClient,
     private val encryptionKeyRef: KeyRef,
 ) {
+    var error: EnvelopeError? = null
+        private set
+
+    constructor(envelopeError: EnvelopeError, osClient: CachedOsClient, encryptionKeyRef: KeyRef) : this(envelopeError.envelope, osClient, encryptionKeyRef) {
+        error = envelopeError
+    }
+
     @Suppress("UNCHECKED_CAST")
     fun <T: Message> getProposedRecord(
         clazz: Class<T>,

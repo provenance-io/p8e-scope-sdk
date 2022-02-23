@@ -9,25 +9,28 @@ import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.encryption.proto.Encryption.Audience
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.orThrow
+import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.objectstore.util.toPublicKey
+import io.provenance.scope.sdk.proxy.Contract
 import io.provenance.scope.util.error
 import io.provenance.scope.util.randomProtoUuid
 import io.provenance.scope.util.scopeOrNull
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuidOrNull
 import org.slf4j.LoggerFactory
+import java.nio.file.Files.readAllBytes
 import java.util.UUID
 import java.util.function.Function
 
 typealias MailHandlerFn = Function<MailboxEvent, Boolean>
 
-class PollAffiliateMailbox(val osClient: OsClient, val mailboxService: MailboxService, val signingKeyRef: KeyRef, val encryptionKeyRef: KeyRef, val maxResults: Int, val mainNet: Boolean, val handler: MailHandlerFn): Runnable {
+class PollAffiliateMailbox(val osClient: CachedOsClient, val mailboxService: MailboxService, val signingKeyRef: KeyRef, val encryptionKeyRef: KeyRef, val maxResults: Int, val mainNet: Boolean, val handler: MailHandlerFn): Runnable {
     private val log = LoggerFactory.getLogger(this::class.java)
 
     override fun run() {
-        osClient.mailboxGet(encryptionKeyRef.publicKey, maxResults).forEach { (mailUuid, dimeInputStream) ->
+        osClient.osClient.mailboxGet(encryptionKeyRef.publicKey, maxResults).forEach { (mailUuid, dimeInputStream) ->
             try {
                 dimeInputStream.getDecryptedPayload(encryptionKeyRef).use {
                     val bytes = it.readAllBytes()
@@ -40,7 +43,7 @@ class PollAffiliateMailbox(val osClient: OsClient, val mailboxService: MailboxSe
                     log.trace("Received mail from poll $mailUuid")
 
                     if (!dimeInputStream.metadata.containsKey(MailboxMeta.KEY)) {
-                        osClient.mailboxAck(mailUuid).also { log.warn("Unhandled mailbox meta: {}", dimeInputStream.metadata) }
+                        osClient.osClient.mailboxAck(mailUuid).also { log.warn("Unhandled mailbox meta: {}", dimeInputStream.metadata) }
                         return
                     }
 
@@ -76,8 +79,8 @@ class PollAffiliateMailbox(val osClient: OsClient, val mailboxService: MailboxSe
             .orThrow { IllegalStateException("Can't find party on contract execution ${envelope.executionUuid.value} with key ${signingKeyRef.publicKey.toHex()}") }
 
         when (mailboxKey) {
-            MailboxMeta.FRAGMENT_REQUEST -> handler.handleSynchronousAck(mailUuid, ExecutionRequestEvent(envelope))
-            MailboxMeta.FRAGMENT_RESPONSE -> handler.handleSynchronousAck(mailUuid, ExecutionResponseEvent(envelope))
+            MailboxMeta.FRAGMENT_REQUEST -> handler.handleSynchronousAck(mailUuid, ExecutionRequestEvent(Contract(envelope, osClient, encryptionKeyRef)))
+            MailboxMeta.FRAGMENT_RESPONSE -> handler.handleSynchronousAck(mailUuid, ExecutionResponseEvent(Contract(envelope, osClient, encryptionKeyRef)))
             else -> throw IllegalStateException("Should not happen, unhandled mailbox key:$mailboxKey")
         }
     }
@@ -88,12 +91,12 @@ class PollAffiliateMailbox(val osClient: OsClient, val mailboxService: MailboxSe
         require(error.sessionUuid.toUuidOrNull() != null) { "Session uuid is required" }
         require(error.executionUuid.toUuidOrNull() != null) { "Execution uuid is required" }
 
-        handler.handleSynchronousAck(mailUuid, ExecutionErrorEvent(error))
+        handler.handleSynchronousAck(mailUuid, ExecutionErrorEvent(Contract(error, osClient, encryptionKeyRef)))
     }
 
     private fun MailHandlerFn.handleSynchronousAck(mailUuid: UUID, event: MailboxEvent) {
         if (apply(event)) {
-            osClient.mailboxAck(mailUuid)
+            osClient.osClient.mailboxAck(mailUuid)
         }
     }
 }

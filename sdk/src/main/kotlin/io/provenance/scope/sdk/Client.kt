@@ -265,7 +265,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      */
     fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
         executor.scheduleAtFixedRate(PollAffiliateMailbox(
-            inner.osClient.osClient,
+            inner.osClient,
             inner.mailboxService,
             signingKeyRef = affiliate.signingKeyRef,
             encryptionKeyRef = affiliate.encryptionKeyRef,
