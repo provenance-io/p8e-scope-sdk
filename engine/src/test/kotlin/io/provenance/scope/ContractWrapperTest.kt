@@ -136,6 +136,16 @@ class ContractWrapperTest: WordSpec() {
                 }
                 exception.message shouldContain "wrong number of arguments"
             }
+            "throw IllegalArgumentException if provided record type is a mismatch with constructor param type" {
+                definitionService.register(ContractWithOneRecord::class)
+                addRecord("someRecord", testProto2("someRecordValueWrongType"))
+
+                val exception = shouldThrow<IllegalArgumentException> {
+                    getContractWrapper(ContractWithOneRecord::class)
+                }
+
+                exception.message shouldContain "Error constructing contract class ${ContractWithOneRecord::class.java.name}\n\tparameter types were (io.provenance.scope.contract.proto.TestContractProtos\$TestProto2)\n\texpected (io.provenance.scope.contract.proto.TestContractProtos\$TestProto)"
+            }
             "produce a list of functions that need to be executed based on considerations" {
                 definitionService.register(SimpleTestContract::class)
 

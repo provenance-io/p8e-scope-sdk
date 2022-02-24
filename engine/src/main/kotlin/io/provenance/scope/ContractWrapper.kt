@@ -13,6 +13,7 @@ import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
 import io.provenance.scope.util.toOffsetDateTime
 import io.provenance.scope.util.withoutLogging
+import java.lang.IllegalArgumentException
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
@@ -52,10 +53,20 @@ class ContractWrapper(
         }
     }
 
-    private val contract = withConfigurableLogging {
-        (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
-            .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
+    private val contract = try {
+        withConfigurableLogging {
+            (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
+                .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
+        }
+    } catch (e: IllegalArgumentException) {
+        if (e.message?.contains("argument type mismatch") == true) {
+            val providedParameterTypes = constructorParameters.joinToString { if (it == null) "null" else it::class.java.name }
+            val expectedParameterTypes = constructor.parameterTypes.joinToString { it.typeName }
+            throw IllegalArgumentException("Error constructing contract class ${contractClass.name}\n\tparameter types were ($providedParameterTypes)\n\texpected ($expectedParameterTypes)", e)
+        }
+        throw e
     }
+
 
     val functions = contractBuilder.considerationsBuilderList
         .filter { it.result == ExecutionResult.getDefaultInstance() }
