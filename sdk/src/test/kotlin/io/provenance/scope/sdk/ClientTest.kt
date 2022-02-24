@@ -23,10 +23,12 @@ import io.provenance.scope.objectstore.client.ObjectHash
 import io.provenance.scope.proto.Common
 import io.provenance.scope.proto.PK
 import io.provenance.scope.util.toProtoUuid
+import java.io.ByteArrayInputStream
 import java.net.URI
 import java.security.KeyPair
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 class ClientTest : WordSpec() {
     lateinit var signingKeyPair: KeyPair
@@ -211,13 +213,19 @@ class ClientTest : WordSpec() {
                             .build()
 
                 mockkConstructor(CachedOsClient::class)
-                every { anyConstructed<CachedOsClient>().putRecord(any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
+                every { anyConstructed<CachedOsClient>().putRecord(any(), any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
+                    ObjectHash("1234567890")
+                )
+                every { anyConstructed<CachedOsClient>().getJar(any(), any()) } returns Futures.immediateFuture(
+                    ByteArrayInputStream(Random.nextBytes(10))
+                )
+                every { anyConstructed<CachedOsClient>().putJar(any(), any(), any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
                     ObjectHash("1234567890")
                 )
 
                 val client = getClient()
 
-                val builder = createSessionBuilderNoRecords(client)
+                val builder = createSessionBuilderNoRecords(client, createExistingScope().build())
 
                 val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
                 builder.addProposedRecord("record2", exampleName)

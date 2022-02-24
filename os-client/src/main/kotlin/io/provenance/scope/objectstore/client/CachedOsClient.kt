@@ -14,14 +14,18 @@ import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.util.base64Encode
 import io.provenance.scope.objectstore.util.base64EncodeString
+import io.provenance.scope.objectstore.util.loBytes
+import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.sha256LoBytes
 import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.util.NotFoundException
+import io.provenance.scope.util.OSException
 import io.provenance.scope.util.ProtoParseException
 import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.base64String
 import io.provenance.scope.util.forThread
 import io.provenance.scope.util.sha256String
+import io.provenance.scope.util.sha512
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.lang.reflect.Method
@@ -92,9 +96,11 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         contentLength: Long,
         audience: Set<PublicKey> = setOf(),
         uuid: UUID = UUID.randomUUID(),
+        sha256: Boolean = true,
+        loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
         val future = withFutureSemaphore(semaphore) {
-            osClient.put(inputStream, encryptionKeyRef.publicKey, signingKeyRef.signer(), contentLength, audience, uuid = uuid)
+            osClient.put(inputStream, encryptionKeyRef.publicKey, signingKeyRef.signer(), contentLength, audience, uuid = uuid, sha256 = sha256, loHash = loHash)
         }
 
         return Futures.transform(
@@ -139,7 +145,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         audience: Set<PublicKey>,
         uuid: UUID = UUID.randomUUID(),
     ): ListenableFuture<ObjectHash> {
-        return putRecord(contractSpec, signingKeyRef, encryptionKeyRef, audience, uuid, loHash = true)
+        return putRecord(contractSpec, signingKeyRef, encryptionKeyRef, audience, uuid, sha256 = true, loHash = true)
     }
 
     /**
@@ -158,25 +164,32 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         encryptionKeyRef: KeyRef,
         audience: Set<PublicKey> = setOf(),
         uuid: UUID = UUID.randomUUID(),
+        sha256: Boolean = true,
         loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
         val span = tracer.buildSpan("PutRecord OS").start()
 
-        val cacheKey = if (loHash) {
-            RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256LoBytes().base64String())
-        } else {
-            RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256String())
+        val hash = message.toByteArray().let {
+            when (sha256) {
+                true -> it.sha256()
+                false -> it.sha512()
+            }
+        }.let {
+            when (loHash) {
+                true -> it.loBytes().toByteArray()
+                false -> it
+            }
         }
+        val cacheKey = RecordCacheKey(encryptionKeyRef.publicKey, hash.base64String())
 
         return if (recordCache.asMap().containsKey(cacheKey)) {
             Futures.immediateFuture(ObjectHash(cacheKey.hash)).also {
                 span.setTag("Cached-Response", true)
                 span.finish()
             }
-
         } else {
             val future = withFutureSemaphore(semaphore) {
-                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, loHash = loHash)
+                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, sha256 = sha256, loHash = loHash)
             }
 
             Futures.transform(
@@ -188,8 +201,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                         recordCache.put(cacheKey, message.toByteArray())
                         ObjectHash(it.hash.toByteArray().base64EncodeString())
                     } else {
-                        // TODO fix
-                        throw Exception("placeholder")
+                        throw OSException("Received null response when storing object to Object Store")
                     }
                 },
                 MoreExecutors.directExecutor(),
@@ -279,9 +291,11 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                                         """.trimIndent()
                                     )
                                 }
+                            }.also {
+                                recordCache.put(cacheKey, it)
                             }
                         }
-                    } ?: throw Exception("placeholder") // TODO fix
+                    } ?: throw IllegalStateException("Future transform received null DIMEInputStream, this should not be possible")
                 },
                 decryptionWorkerThreadPool,
             )

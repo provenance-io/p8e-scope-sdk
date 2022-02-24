@@ -10,12 +10,14 @@ import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.SigningAndEncryptionPublicKeys
 import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
+import io.provenance.scope.objectstore.util.loBytes
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.toPublicKey
 import io.provenance.scope.proto.PK
@@ -25,6 +27,7 @@ import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
+import java.io.ByteArrayInputStream
 import java.security.PublicKey
 import java.util.*
 import java.util.UUID
@@ -561,21 +564,30 @@ class Session(
     class PermissionUpdater(
         private val client: Client,
         private val contract: Contract,
-        private val audience: Set<java.security.PublicKey>
+        private val audience: Set<PublicKey>
     ) {
         private val log = LoggerFactory.getLogger(this::class.java);
         fun saveConstructorArguments() {
-            // TODO (later) this can be optimized by checking the recitals and record groups and determining what subset, if any,
+            // TODO this can be optimized by checking the recitals and record groups and determining what subset, if any,
             // of input facts need to be fetched and stored in order only save the objects that are needed by some of
             // the recitals
-//            contract.inputsList.map { record ->
-//                with(client) {
-////                     val obj = this.loadObject(record.dataLocation.ref.hash)
-////                     val inputStream = ByteArrayInputStream(obj)
-////
-////                     this.storeObject(inputStream, audience)
-//                }
-//            }
+            contract.inputsList.map { record ->
+                with(client) {
+                    val hashBytes = record.dataLocation.ref.hash.base64Decode()
+                     val obj = inner.osClient.getJar(hashBytes, affiliate.encryptionKeyRef).get().readAllBytes()
+                    val inputStream = ByteArrayInputStream(obj)
+
+                    val loHash = hashBytes.size == 16
+                    val msgSha256 = obj.sha256()
+                    val useSha256 = if (loHash) {
+                        msgSha256.loBytes().toByteArray()
+                    } else {
+                        msgSha256
+                    }.contentEquals(hashBytes)
+
+                     inner.osClient.putJar(inputStream, affiliate.signingKeyRef, affiliate.encryptionKeyRef, obj.size.toLong(), audience, sha256 = useSha256, loHash = loHash)
+                }
+            }
         }
 
         // TODO (steve) for later convert to async with ListenableFutures

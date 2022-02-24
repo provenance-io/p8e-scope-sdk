@@ -229,6 +229,7 @@ open class OsClient(
         additionalAudiences: Set<PublicKey> = setOf(),
         metadata: Map<String, String> = mapOf(),
         uuid: UUID = UUID.randomUUID(),
+        sha256: Boolean = true,
         loHash: Boolean = false,
     ): ListenableFuture<Objects.ObjectResponse> {
         val bytes = message.toByteArray()
@@ -241,7 +242,8 @@ open class OsClient(
             additionalAudiences,
             metadata,
             uuid,
-            loHash,
+            sha256 = sha256,
+            loHash = loHash,
         )
     }
 
@@ -267,6 +269,7 @@ open class OsClient(
         additionalAudiences: Set<PublicKey> = setOf(),
         metadata: Map<String, String> = mapOf(),
         uuid: UUID = UUID.randomUUID(),
+        sha256: Boolean = true,
         loHash: Boolean = false,
     ): ListenableFuture<Objects.ObjectResponse> {
         val signerPublicKey = signer.getPublicKey()
@@ -279,7 +282,7 @@ open class OsClient(
             ownerEncryptionPublicKey = encryptionPublicKey,
             additionalAudience = mapOf(Pair(RETRIEVAL, additionalAudiences)),
             processingAudienceKeys = listOf(),
-            sha256 = true
+            sha256 = sha256
         )
         val dimeInputStream = DIMEInputStream(
             dime.dime,
@@ -287,7 +290,8 @@ open class OsClient(
             uuid = uuid,
             metadata = metadata + (SIGNATURE_PUBLIC_KEY_FIELD_NAME to CertificateUtil.publicKeyToPem(signerPublicKey)),
             internalHash = true,
-            externalHash = false
+            externalHash = false,
+            sha256Internal = sha256
         )
         val responseObserver = SingleResponseFutureObserver<Objects.ObjectResponse>()
         // TODO test that deadline works on async requests like this
@@ -308,7 +312,6 @@ open class OsClient(
 
                 val hash = if (loHash) {
                     dimeInputStream.internalHash().loBytes().toByteArray()
-
                 } else {
                     dimeInputStream.internalHash()
                 }
