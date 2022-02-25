@@ -239,14 +239,16 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
             decryptionWorkerThreadPool,
         ).let {
             Futures.catching(it, StatusRuntimeException::class.java, { e ->
-                val instanceToReturn = parseFromLookup(classname).invoke(null, byteArrayOf())
-                val clazz = Message::class.java
+                classLoader.forThread {
+                    val instanceToReturn = parseFromLookup(classname).invoke(null, byteArrayOf())
+                    val clazz = Message::class.java
 
-                if (!clazz.isAssignableFrom(instanceToReturn.javaClass)) {
-                    throw ProtoParseException("Unable to assign instance ${instanceToReturn::class.java.name} to type ${clazz.name}")
+                    if (!clazz.isAssignableFrom(instanceToReturn.javaClass)) {
+                        throw ProtoParseException("Unable to assign instance ${instanceToReturn::class.java.name} to type ${clazz.name}")
+                    }
+
+                    clazz.cast(instanceToReturn)
                 }
-
-                clazz.cast(instanceToReturn)
             }, decryptionWorkerThreadPool)
         }
     }
