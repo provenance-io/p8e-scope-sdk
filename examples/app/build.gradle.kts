@@ -20,7 +20,9 @@ dependencies {
     implementation(project(":contract"))
     implementation(project(":proto"))
 
-    implementation("io.provenance.protobuf:pb-proto-java:1.5.0")
+
+    // https://mvnrepository.com/artifact/io.provenance/proto-kotlin
+    implementation("io.provenance", "proto-kotlin", "1.8.0-rc10")
     implementation("io.provenance.scope:sdk:1.0-SNAPSHOT")
     implementation("io.provenance.scope:util:1.0-SNAPSHOT")
     implementation("io.grpc:grpc-protobuf:1.39.0")

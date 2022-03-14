@@ -6,7 +6,6 @@ import io.kotest.core.test.TestCase
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
-import io.provenance.metadata.v0.Consideration
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.contract.proto.HelloWorldExample
