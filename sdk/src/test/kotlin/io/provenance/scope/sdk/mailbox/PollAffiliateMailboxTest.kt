@@ -48,7 +48,7 @@ class PollAffiliateMailboxTest: WordSpec() {
         mailboxService = mockk<MailboxService>()
     }
 
-    private fun OsClient.toCachedClient(): CachedOsClient = CachedOsClient(this, 1, 1, 1)
+    private fun OsClient.toCachedClient(): CachedOsClient = CachedOsClient(this, 1, 1, 1, 1)
 
     fun buildEnvelope(recitals: List<SigningAndEncryptionPublicKeys>) = Envelopes.Envelope.newBuilder()
         .apply {

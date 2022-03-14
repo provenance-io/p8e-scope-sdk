@@ -36,6 +36,8 @@ import java.util.concurrent.Semaphore
 data class ObjectHash(val value: String)
 data class RecordCacheKey(val publicKey: PublicKey, val hash: String)
 
+typealias ByteCache = Cache<RecordCacheKey, ByteArray>
+
 fun<T> withFutureSemaphore(semaphore: Semaphore, futureFn: () -> ListenableFuture<T>): ListenableFuture<T> {
     semaphore.acquire()
 
@@ -63,7 +65,7 @@ fun<T> withFutureSemaphore(semaphore: Semaphore, futureFn: () -> ListenableFutur
  * @param [osConcurrencySize] the maximum allowed number of outstanding concurrent requests to Object Store
  * @param [cacheRecordSizeInBytes] the maximum size of the object cache in bytes
  */
-class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, osConcurrencySize: Short, cacheRecordSizeInBytes: Long) {
+class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, osConcurrencySize: Short, cacheRecordSizeInBytes: Long, cacheJarSizeInBytes: Long) {
 
     private val tracer: Tracer = GlobalTracer.get()
 
@@ -73,9 +75,13 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     )
 
     val semaphore = Semaphore(osConcurrencySize.toInt(), true)
-    val recordCache: Cache<RecordCacheKey, ByteArray> = CacheBuilder.newBuilder()
+    val recordCache: ByteCache = CacheBuilder.newBuilder()
         .maximumWeight(cacheRecordSizeInBytes)
         .weigher { _: RecordCacheKey, bytes: ByteArray ->  bytes.size }
+        .build()
+    val jarCache: ByteCache = CacheBuilder.newBuilder()
+        .maximumWeight(cacheJarSizeInBytes)
+        .weigher { _: RecordCacheKey, bytes: ByteArray -> bytes.size }
         .build()
 
     /**
@@ -122,7 +128,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         encryptionKeyRef: KeyRef,
     ): ListenableFuture<InputStream> {
         return Futures.transform(
-            getRawBytes(hash, encryptionKeyRef),
+            getRawBytes(hash, encryptionKeyRef, jarCache),
             { byteArray -> byteArray?.let { ByteArrayInputStream(it) } },
             MoreExecutors.directExecutor(),
         )
@@ -169,7 +175,8 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     ): ListenableFuture<ObjectHash> {
         val span = tracer.buildSpan("PutRecord OS").start()
 
-        val hash = message.toByteArray().let {
+        val messageBytes = message.toByteArray()
+        val hash = messageBytes.let {
             when (sha256) {
                 true -> it.sha256()
                 false -> it.sha512()
@@ -198,7 +205,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                     span.setTag("Cached-Response", false)
                     span.finish()
                     if (it != null) {
-                        recordCache.put(cacheKey, message.toByteArray())
+                        recordCache.put(cacheKey, messageBytes)
                         ObjectHash(it.hash.toByteArray().base64EncodeString())
                     } else {
                         throw OSException("Received null response when storing object to Object Store")
@@ -229,7 +236,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         val span = tracer.buildSpan("GetRecord OS").start()
 
         val classLoader = Thread.currentThread().contextClassLoader
-        val future = getRawBytes(hash, encryptionKeyRef)
+        val future = getRawBytes(hash, encryptionKeyRef, recordCache)
 
         return Futures.transform(
             future,
@@ -255,12 +262,13 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     private fun getRawBytes(
         hash: ByteArray,
         encryptionKeyRef: KeyRef,
+        cache: ByteCache
     ): ListenableFuture<ByteArray> {
         val span = tracer.buildSpan("GetRawBytes OS").start()
 
         // TODO add good error like we had previously
         val cacheKey = RecordCacheKey(encryptionKeyRef.publicKey, hash.base64String())
-        val record = recordCache.asMap()[cacheKey]
+        val record = cache.getIfPresent(cacheKey)
 
         return if (record != null) {
             Futures.immediateFuture(record).also {
@@ -292,7 +300,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                                     )
                                 }
                             }.also {
-                                recordCache.put(cacheKey, it)
+                                cache.put(cacheKey, it)
                             }
                         }
                     } ?: throw IllegalStateException("Future transform received null DIMEInputStream, this should not be possible")

@@ -94,7 +94,7 @@ services:
       - mp_object_store:/mnt/data
 
   provenance:
-    image: provenanceio/provenance:v1.7.2
+    image: provenanceio/provenance:v1.8.0-rc8
     container_name: provenance
     command: bash -c "cp -rn /home/provenance_seed/* /home/provenance && /usr/bin/provenanced -t --home /home/provenance start"
     networks:
