@@ -3,6 +3,9 @@ package io.provenance.scope.sdk
 import com.google.common.util.concurrent.Futures
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
+import com.google.protobuf.Timestamp
+import cosmos.authz.v1beta1.Authz
+import cosmos.authz.v1beta1.Tx
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.annotations.Record
@@ -33,7 +36,17 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
 import io.opentracing.util.GlobalTracer;
+import com.google.protobuf.Any as ProtoAny;
 import io.provenance.scope.contract.proto.Commons
+import io.provenance.scope.contract.proto.Envelopes
+import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.encryption.util.toPublicKey
+import io.provenance.scope.util.AffiliateNotFoundException
+import io.provenance.scope.util.EnvelopeAlreadySignedException
+import io.provenance.scope.util.TypeUrls
+import io.provenance.scope.util.or
+import io.provenance.scope.util.setValue
+import java.time.OffsetDateTime
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -61,7 +74,7 @@ class SharedClient(val config: ClientConfig) : Closeable {
     /**
      * A client for communcation with the Object Store
      */
-    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs, config.osChannelCustomizeFn, config.extraHeaders), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
+    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs, config.osChannelCustomizeFn, config.extraHeaders), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes, config.cacheJarSizeInBytes)
 
     /** @suppress */
     val contractEngine: ContractEngine = ContractEngine(osClient, config.disableContractLogs)
@@ -255,7 +268,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      */
     fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
         executor.scheduleAtFixedRate(PollAffiliateMailbox(
-            inner.osClient.osClient,
+            inner.osClient,
             inner.mailboxService,
             signingKeyRef = affiliate.signingKeyRef,
             encryptionKeyRef = affiliate.encryptionKeyRef,
@@ -270,10 +283,12 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      * @param [envelopeState] the [EnvelopeState] object from an execution [FragmentResult] for mailing
      */
     fun requestAffiliateExecution(envelopeState: EnvelopeState) {
-        // todo: verify this Client instance's affiliate is on the envelope?
+        envelopeState.input.contract.recitalsList
+            .find { it.signerRole == affiliate.partyType && it.signer.signingPublicKey == affiliate.signingKeyRef.publicKey.toPublicKeyProto() }
+            .orThrow { AffiliateNotFoundException("Affiliate not found on contract recital list") }
 
         if (envelopeState.result.isSigned()) {
-            TODO("should we throw an exception or something in the event that an affiliate is requesting signatures on an already fully-signed envelope?")
+            throw EnvelopeAlreadySignedException("Envelope already fully signed, cannot request affiliate execution")
         }
 
         inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.input)
@@ -283,9 +298,55 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      * Return an envelope to the invoking party with the result of execution
      *
      * @param [envelopeState] the result of executing an incoming envelope
+     * @param [approvalTxHash] the transaction hash granting approval for the scope/session/record writes  the invoking party
      */
-    fun respondWithSignedResult(envelopeState: EnvelopeState) {
+    fun respondWithApproval(envelopeState: EnvelopeState, approvalTxHash: String) {
         inner.mailboxService.result(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.result)
+    }
+
+    /**
+     * Return an error to the invoking party
+     *
+     * @param [error] the error to respond with
+     */
+    fun respondWithError(error: Envelopes.EnvelopeError) {
+        inner.mailboxService.error(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), error)
+    }
+
+    /**
+     * Approve another party's update to the scope
+     *
+     * @param [envelopeState] the details on the scope update
+     * @param [expirationTime] the time at which the granted authorization expires
+     *
+     * @return a list of Provenance messages granting authorization to the invoking party to submit this scope update.
+     * These need to be submitted in a successful transaction to the blockchain in order to grant access
+     */
+    fun approveScopeUpdate(envelopeState: EnvelopeState, expirationTime: OffsetDateTime = OffsetDateTime.now().plusHours(1)): List<Tx.MsgGrant> {
+        val granter = affiliate.signingKeyRef.publicKey.getAddress(inner.config.mainNet)
+        val grantee = envelopeState.input.contract.invoker.signingPublicKey.toPublicKey().getAddress(inner.config.mainNet)
+
+        val typeUrls = listOf(
+            if (envelopeState.input.newScope) TypeUrls.TypeURLMsgWriteScopeRequest else null,
+            if (envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteSessionRequest else null,
+            if (!envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteRecordRequest else null,
+        ).filterNotNull()
+
+        return typeUrls.map { typeUrl ->
+            Tx.MsgGrant.newBuilder()
+                .setGranter(granter)
+                .setGrantee(grantee)
+                .setGrant(
+                    Authz.Grant.newBuilder()
+                        .setAuthorization(ProtoAny.pack(
+                            Authz.GenericAuthorization.newBuilder()
+                                .setMsg(typeUrl)
+                                .build(), "")
+                        )
+                        .setExpiration(Timestamp.newBuilder().setValue(expirationTime).build())
+                        .build()
+                ).build()
+        }
     }
 
     /**

@@ -14,14 +14,18 @@ import io.provenance.scope.contract.proto.Specifications.ContractSpec
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.util.base64Encode
 import io.provenance.scope.objectstore.util.base64EncodeString
+import io.provenance.scope.objectstore.util.loBytes
+import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.sha256LoBytes
 import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.util.NotFoundException
+import io.provenance.scope.util.OSException
 import io.provenance.scope.util.ProtoParseException
 import io.provenance.scope.util.ThreadPoolFactory
 import io.provenance.scope.util.base64String
 import io.provenance.scope.util.forThread
 import io.provenance.scope.util.sha256String
+import io.provenance.scope.util.sha512
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.lang.reflect.Method
@@ -31,6 +35,8 @@ import java.util.concurrent.Semaphore
 
 data class ObjectHash(val value: String)
 data class RecordCacheKey(val publicKey: PublicKey, val hash: String)
+
+typealias ByteCache = Cache<RecordCacheKey, ByteArray>
 
 fun<T> withFutureSemaphore(semaphore: Semaphore, futureFn: () -> ListenableFuture<T>): ListenableFuture<T> {
     semaphore.acquire()
@@ -59,7 +65,7 @@ fun<T> withFutureSemaphore(semaphore: Semaphore, futureFn: () -> ListenableFutur
  * @param [osConcurrencySize] the maximum allowed number of outstanding concurrent requests to Object Store
  * @param [cacheRecordSizeInBytes] the maximum size of the object cache in bytes
  */
-class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, osConcurrencySize: Short, cacheRecordSizeInBytes: Long) {
+class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, osConcurrencySize: Short, cacheRecordSizeInBytes: Long, cacheJarSizeInBytes: Long) {
 
     private val tracer: Tracer = GlobalTracer.get()
 
@@ -69,9 +75,13 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     )
 
     val semaphore = Semaphore(osConcurrencySize.toInt(), true)
-    val recordCache: Cache<RecordCacheKey, ByteArray> = CacheBuilder.newBuilder()
+    val recordCache: ByteCache = CacheBuilder.newBuilder()
         .maximumWeight(cacheRecordSizeInBytes)
         .weigher { _: RecordCacheKey, bytes: ByteArray ->  bytes.size }
+        .build()
+    val jarCache: ByteCache = CacheBuilder.newBuilder()
+        .maximumWeight(cacheJarSizeInBytes)
+        .weigher { _: RecordCacheKey, bytes: ByteArray -> bytes.size }
         .build()
 
     /**
@@ -92,9 +102,11 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         contentLength: Long,
         audience: Set<PublicKey> = setOf(),
         uuid: UUID = UUID.randomUUID(),
+        sha256: Boolean = true,
+        loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
         val future = withFutureSemaphore(semaphore) {
-            osClient.put(inputStream, encryptionKeyRef.publicKey, signingKeyRef.signer(), contentLength, audience, uuid = uuid)
+            osClient.put(inputStream, encryptionKeyRef.publicKey, signingKeyRef.signer(), contentLength, audience, uuid = uuid, sha256 = sha256, loHash = loHash)
         }
 
         return Futures.transform(
@@ -116,7 +128,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         encryptionKeyRef: KeyRef,
     ): ListenableFuture<InputStream> {
         return Futures.transform(
-            getRawBytes(hash, encryptionKeyRef),
+            getRawBytes(hash, encryptionKeyRef, jarCache),
             { byteArray -> byteArray?.let { ByteArrayInputStream(it) } },
             MoreExecutors.directExecutor(),
         )
@@ -139,7 +151,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         audience: Set<PublicKey>,
         uuid: UUID = UUID.randomUUID(),
     ): ListenableFuture<ObjectHash> {
-        return putRecord(contractSpec, signingKeyRef, encryptionKeyRef, audience, uuid, loHash = true)
+        return putRecord(contractSpec, signingKeyRef, encryptionKeyRef, audience, uuid, sha256 = true, loHash = true)
     }
 
     /**
@@ -158,25 +170,33 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         encryptionKeyRef: KeyRef,
         audience: Set<PublicKey> = setOf(),
         uuid: UUID = UUID.randomUUID(),
+        sha256: Boolean = true,
         loHash: Boolean = false,
     ): ListenableFuture<ObjectHash> {
         val span = tracer.buildSpan("PutRecord OS").start()
 
-        val cacheKey = if (loHash) {
-            RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256LoBytes().base64String())
-        } else {
-            RecordCacheKey(encryptionKeyRef.publicKey, message.toByteArray().sha256String())
+        val messageBytes = message.toByteArray()
+        val hash = messageBytes.let {
+            when (sha256) {
+                true -> it.sha256()
+                false -> it.sha512()
+            }
+        }.let {
+            when (loHash) {
+                true -> it.loBytes().toByteArray()
+                false -> it
+            }
         }
+        val cacheKey = RecordCacheKey(encryptionKeyRef.publicKey, hash.base64String())
 
         return if (recordCache.asMap().containsKey(cacheKey)) {
             Futures.immediateFuture(ObjectHash(cacheKey.hash)).also {
                 span.setTag("Cached-Response", true)
                 span.finish()
             }
-
         } else {
             val future = withFutureSemaphore(semaphore) {
-                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, loHash = loHash)
+                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, sha256 = sha256, loHash = loHash)
             }
 
             Futures.transform(
@@ -185,11 +205,10 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                     span.setTag("Cached-Response", false)
                     span.finish()
                     if (it != null) {
-                        recordCache.put(cacheKey, message.toByteArray())
+                        recordCache.put(cacheKey, messageBytes)
                         ObjectHash(it.hash.toByteArray().base64EncodeString())
                     } else {
-                        // TODO fix
-                        throw Exception("placeholder")
+                        throw OSException("Received null response when storing object to Object Store")
                     }
                 },
                 MoreExecutors.directExecutor(),
@@ -217,7 +236,7 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         val span = tracer.buildSpan("GetRecord OS").start()
 
         val classLoader = Thread.currentThread().contextClassLoader
-        val future = getRawBytes(hash, encryptionKeyRef)
+        val future = getRawBytes(hash, encryptionKeyRef, recordCache)
 
         return Futures.transform(
             future,
@@ -243,12 +262,13 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
     private fun getRawBytes(
         hash: ByteArray,
         encryptionKeyRef: KeyRef,
+        cache: ByteCache
     ): ListenableFuture<ByteArray> {
         val span = tracer.buildSpan("GetRawBytes OS").start()
 
         // TODO add good error like we had previously
         val cacheKey = RecordCacheKey(encryptionKeyRef.publicKey, hash.base64String())
-        val record = recordCache.asMap()[cacheKey]
+        val record = cache.getIfPresent(cacheKey)
 
         return if (record != null) {
             Futures.immediateFuture(record).also {
@@ -279,9 +299,11 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
                                         """.trimIndent()
                                     )
                                 }
+                            }.also {
+                                cache.put(cacheKey, it)
                             }
                         }
-                    } ?: throw Exception("placeholder") // TODO fix
+                    } ?: throw IllegalStateException("Future transform received null DIMEInputStream, this should not be possible")
                 },
                 decryptionWorkerThreadPool,
             )

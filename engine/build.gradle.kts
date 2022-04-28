@@ -7,7 +7,8 @@ dependencies {
     implementation(project(":util"))
 
     // Provenance
-    api("io.provenance.protobuf", "pb-proto-java", Version.provenanceProtos)
+    // https://mvnrepository.com/artifact/io.provenance/proto-kotlin
+    api("io.provenance", "proto-kotlin", Version.provenanceProtos)
 
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
     implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
