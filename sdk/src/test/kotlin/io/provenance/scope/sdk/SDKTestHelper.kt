@@ -8,17 +8,14 @@ import io.provenance.scope.contract.proto.HelloWorldExample
 import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.contract.proto.TestContractProtos
-import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toJavaPrivateKey
-import io.provenance.scope.encryption.util.toJavaPublicKey
 import io.provenance.scope.encryption.util.toKeyPair
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuid
 import java.net.URI
-import java.security.KeyPair
 import java.util.*
 
 
@@ -50,7 +47,7 @@ fun createClientDummy(localKeyIndex: Int): Client {
     return Client(SharedClient(clientConfig), affiliate)
 }
 
-fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = null): Session.Builder {
+fun createSessionBuilderNoRecords(client: Client, existingScope: ScopeResponse? = null): Session.Builder {
     val defSpec = Commons.DefinitionSpec.newBuilder()
         .setType(Commons.DefinitionSpec.Type.PROPOSED)
         .setResourceLocation(
@@ -84,10 +81,10 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
     } else {
         scopeSpecUuid = UUID.randomUUID()
     }
-    return Session.Builder(scopeSpecUuid)
+    return Session.Builder(scopeSpecUuid, client.inner.affiliateRepository)
         .setContractSpec(spec.build())
         .setProvenanceReference(provenanceReference)
-        .setClient(osClient)
+        .setClient(client)
         .setSessionUuid(UUID.randomUUID())
         .apply {
             if (existingScope != null) {

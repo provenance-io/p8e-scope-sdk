@@ -116,6 +116,14 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     private val log = LoggerFactory.getLogger(this::class.java);
     private val tracer = GlobalTracer.get()
 
+    init {
+        // inject client's own keys into affiliate repository
+        inner.affiliateRepository.addAffiliate(
+            signingPublicKey = affiliate.signingKeyRef.publicKey,
+            encryptionPublicKey = affiliate.encryptionKeyRef.publicKey
+        )
+    }
+
     /**
      * The [ProtoIndexer] utility class to use for generating an indexable map of record values from a scope
      * according to the indexing behavior defined on the contract proto messages.
@@ -151,7 +159,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
 
-        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuid())
+        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuid(), inner.affiliateRepository)
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -192,7 +200,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             "The annotation for the scope specifications must not be null"
         }
 
-        return Session.Builder(scopeSpecAnnotation.uuid.toUuid())
+        return Session.Builder(scopeSpecAnnotation.uuid.toUuid(), inner.affiliateRepository)
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
