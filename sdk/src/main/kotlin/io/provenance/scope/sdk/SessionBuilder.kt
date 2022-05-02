@@ -86,7 +86,7 @@ class Session(
      *
      * @property [scopeSpecUuid] the uuid of the scope specification associated with the new/existing scope
      */
-    class Builder(val scopeSpecUuid: UUID) {
+    class Builder(val scopeSpecUuid: UUID, private val affiliateRepository: AffiliateRepository) {
         /** The records proposed by the invoking party of this session execution */
         var proposedRecords: HashMap<String, Message> = HashMap()
             private set
@@ -240,7 +240,9 @@ class Session(
                 .orThrowNotFound("Can't find participant for party type ${party}")
 
             if (participants.get(party) == null) {
-                participants[party] = SigningAndEncryptionPublicKeys(signingPublicKey, encryptionPublicKey)
+                participants[party] = SigningAndEncryptionPublicKeys(signingPublicKey, encryptionPublicKey).also {
+                    affiliateRepository.addAffiliate(it)
+                }
             } else {
                 throw ContractSpecMapper.ContractDefinitionException("Participant for party type $party already exists in the participant list.")
             }
