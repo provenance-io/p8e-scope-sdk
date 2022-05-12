@@ -19,7 +19,7 @@ annotation class Function(val invokedBy: PartyType)
 @Target(AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
-annotation class Record(val name: String)
+annotation class Record(val name: String, val optional: Boolean = false)
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.RUNTIME)

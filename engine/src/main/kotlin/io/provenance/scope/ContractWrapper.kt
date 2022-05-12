@@ -13,6 +13,7 @@ import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
 import io.provenance.scope.util.toOffsetDateTime
 import io.provenance.scope.util.withoutLogging
+import org.bouncycastle.asn1.x500.style.RFC4519Style.name
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
@@ -75,17 +76,19 @@ class ContractWrapper(
     private fun getConstructorParameters(
         constructor: Constructor<*>,
         records: List<RecordInstance>
-    ): List<Any> =
+    ): List<Any?> =
         constructor.parameters
-            .mapNotNull { getParameterRecord(it, records) }
-            .map { it.messageOrCollection }
+            .map { getParameterRecord(it, records) }
+            .filter { (annotation, record) -> record != null || annotation.optional }
+            .map { (_, record) -> record?.messageOrCollection }
 
     private fun getParameterRecord(
         parameter: Parameter,
         records: List<RecordInstance>
-    ): RecordInstance? {
-        return records.find {
-            parameter.getAnnotation(io.provenance.scope.contract.annotations.Record::class.java)?.name == it.name
+    ): Pair<io.provenance.scope.contract.annotations.Record, RecordInstance?> {
+        val recordAnnotation = parameter.getAnnotation(io.provenance.scope.contract.annotations.Record::class.java)
+        return recordAnnotation to records.find {
+            recordAnnotation?.name == it.name
         }
     }
 
