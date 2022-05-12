@@ -13,7 +13,6 @@ import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
 import io.provenance.scope.util.toOffsetDateTime
 import io.provenance.scope.util.withoutLogging
-import org.bouncycastle.asn1.x500.style.RFC4519Style.name
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 import java.lang.reflect.Parameter
