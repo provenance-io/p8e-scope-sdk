@@ -21,6 +21,15 @@ annotation class Function(val invokedBy: PartyType)
 @MustBeDocumented
 annotation class Record(val name: String, val optional: Boolean = false)
 
+/**
+ * Allows skipping function execution if existing record is present. Note, the specified record must be
+ * supplied as an optional constructor record to use this functionality.
+ */
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.RUNTIME)
+@MustBeDocumented
+annotation class SkipIfRecordExists(val name: String)
+
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
