@@ -31,10 +31,11 @@ object ProtoJsonUtil {
 }
 
 object ProtoUtil {
-    fun defSpecBuilderOf(name: String, location: Location.Builder, type: Type): DefinitionSpec.Builder =
+    fun defSpecBuilderOf(name: String, location: Location.Builder, type: Type, optional: Boolean = false): DefinitionSpec.Builder =
         DefinitionSpec.newBuilder()
             .setName(name)
             .setType(type)
+            .setOptional(optional)
             .setResourceLocation(
                 location
             )

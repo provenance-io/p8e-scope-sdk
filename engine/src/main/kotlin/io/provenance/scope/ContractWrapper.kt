@@ -75,17 +75,19 @@ class ContractWrapper(
     private fun getConstructorParameters(
         constructor: Constructor<*>,
         records: List<RecordInstance>
-    ): List<Any> =
+    ): List<Any?> =
         constructor.parameters
-            .mapNotNull { getParameterRecord(it, records) }
-            .map { it.messageOrCollection }
+            .map { getParameterRecord(it, records) }
+            .filter { (annotation, record) -> record != null || annotation.optional }
+            .map { (_, record) -> record?.messageOrCollection }
 
     private fun getParameterRecord(
         parameter: Parameter,
         records: List<RecordInstance>
-    ): RecordInstance? {
-        return records.find {
-            parameter.getAnnotation(io.provenance.scope.contract.annotations.Record::class.java)?.name == it.name
+    ): Pair<io.provenance.scope.contract.annotations.Record, RecordInstance?> {
+        val recordAnnotation = parameter.getAnnotation(io.provenance.scope.contract.annotations.Record::class.java)
+        return recordAnnotation to records.find {
+            recordAnnotation?.name == it.name
         }
     }
 

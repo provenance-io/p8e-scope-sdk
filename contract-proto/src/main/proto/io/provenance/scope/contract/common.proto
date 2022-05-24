@@ -13,6 +13,7 @@ message DefinitionSpec {
     Location resource_location = 2;
     Signature signature = 3;
     Type type = 4;
+    bool optional = 5; // default is false
 
     enum Type {
         NO_DEF_TYPE = 0;
