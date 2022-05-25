@@ -145,8 +145,8 @@ fun main(args: Array<String>) {
             println("Could not shutdown Provenance managed channel cleanly!")
         }
 
-        sdk.inner.close()
-        if (!sdk.inner.awaitTermination(10, TimeUnit.SECONDS)) {
+        sdk.close()
+        if (!sdk.awaitTermination(10, TimeUnit.SECONDS)) {
             println("Could not shutdown sdk managed channel cleanly!")
         }
     }
