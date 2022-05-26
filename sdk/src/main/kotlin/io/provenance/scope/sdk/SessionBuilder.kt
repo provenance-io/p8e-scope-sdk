@@ -564,23 +564,25 @@ class Session(
             // TODO this can be optimized by checking the recitals and record groups and determining what subset, if any,
             // of input facts need to be fetched and stored in order only save the objects that are needed by some of
             // the recitals
-            contract.inputsList.map { record ->
-                with(client) {
-                    val hashBytes = record.dataLocation.ref.hash.base64Decode()
-                     val obj = inner.osClient.getJar(hashBytes, affiliate.encryptionKeyRef).get().readAllBytes()
-                    val inputStream = ByteArrayInputStream(obj)
+            contract.inputsList
+                .filter { record -> record.dataLocation.ref.hash.isNotBlank() }
+                .map { record ->
+                    with(client) {
+                        val hashBytes = record.dataLocation.ref.hash.base64Decode()
+                         val obj = inner.osClient.getJar(hashBytes, affiliate.encryptionKeyRef).get().readAllBytes()
+                        val inputStream = ByteArrayInputStream(obj)
 
-                    val loHash = hashBytes.size == 16
-                    val msgSha256 = obj.sha256()
-                    val useSha256 = if (loHash) {
-                        msgSha256.loBytes().toByteArray()
-                    } else {
-                        msgSha256
-                    }.contentEquals(hashBytes)
+                        val loHash = hashBytes.size == 16
+                        val msgSha256 = obj.sha256()
+                        val useSha256 = if (loHash) {
+                            msgSha256.loBytes().toByteArray()
+                        } else {
+                            msgSha256
+                        }.contentEquals(hashBytes)
 
-                     inner.osClient.putJar(inputStream, affiliate.signingKeyRef, affiliate.encryptionKeyRef, obj.size.toLong(), audience, sha256 = useSha256, loHash = loHash)
+                         inner.osClient.putJar(inputStream, affiliate.signingKeyRef, affiliate.encryptionKeyRef, obj.size.toLong(), audience, sha256 = useSha256, loHash = loHash)
+                    }
                 }
-            }
         }
 
         // TODO (steve) for later convert to async with ListenableFutures

@@ -133,7 +133,8 @@ object ContractSpecMapper {
                                     erasedType.name,
                                     protoRef
                                 ),
-                                FACT_LIST
+                                FACT_LIST,
+                                optional = factAnnotation.optional
                             )
                         )
                     } else {
@@ -144,7 +145,8 @@ object ContractSpecMapper {
                                     param.type.javaType.typeName,
                                     protoRef
                                 ),
-                                FACT
+                                FACT,
+                                optional = factAnnotation.optional
                             )
                         )
                     }
