@@ -225,14 +225,14 @@ class ClientTest : WordSpec() {
 
                 val client = getClient()
 
-                val builder = createSessionBuilderNoRecords(client, createExistingScope().build())
+                val builder = createSessionBuilderNoRecords(client, createExistingScope(client.inner.affiliateRepository).build())
 
                 val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
                 builder.addProposedRecord("record2", exampleName)
 
                 // Create Session and run package contract for tests
                 val session = builder.build()
-                val envelopePopulatedRecord = session.packageContract(false)
+                val envelopePopulatedRecord = session.packageContract(false, client.inner.affiliateRepository)
 
                 val executionResult = client.execute(session)
 
