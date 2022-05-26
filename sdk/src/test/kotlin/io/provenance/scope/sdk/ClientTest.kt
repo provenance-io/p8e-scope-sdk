@@ -58,8 +58,8 @@ class ClientTest : WordSpec() {
         )
     ).also {
         cleanupHandlers.add {
-            it.inner.close()
-            it.inner.awaitTermination(1, TimeUnit.SECONDS)
+            it.close()
+            it.awaitTermination(1, TimeUnit.SECONDS)
         }
     }
 
