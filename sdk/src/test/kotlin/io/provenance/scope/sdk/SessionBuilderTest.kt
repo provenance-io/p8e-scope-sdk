@@ -279,30 +279,6 @@ class SessionBuilderTest : WordSpec({
             exception.message shouldBe "Provided scope must include records"
         }
 
-        "disallow setting data access keys that aren't on the existing scope" {
-            val sdkClient = createClientDummy(0)
-
-            val scopeResponse = createExistingScope().also { builder ->
-                builder.scopeBuilder.scopeBuilder
-                    .clearDataAccess()
-            }
-
-            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("hello").build()
-
-            val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
-
-            builder.addProposedRecord("record2", exampleName)
-            builder.dataAccessKeys.clear()
-            builder.addDataAccessKey(localKeys[2].public)
-
-            val session = builder.build()
-
-            val exception = shouldThrow<IllegalStateException> {
-                session.packageContract(false)
-            }
-            exception.message shouldContain localKeys[2].public.getAddress(false)
-        }
-
         "disallow data access keys on the existing scope that are omitted in the proposed session" {
             val sdkClient = createClientDummy(0)
 

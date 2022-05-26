@@ -232,8 +232,8 @@ class ClientTest : WordSpec() {
                     .setScopeSpecUuid(UUID.randomUUID().toProtoUuid())
                     .setNewSession(true)
                     .addDataAccess(localKeys[2].public.toPublicKeyProto())
-                    .also {
-                        it.addAllDataAccess(dataAccessKeys)
+                    .also { builder ->
+                        dataAccessKeys?.let { builder.addAllDataAccess(it) }
                     }
                     .setRef(
                         Commons.ProvenanceReference.newBuilder()
