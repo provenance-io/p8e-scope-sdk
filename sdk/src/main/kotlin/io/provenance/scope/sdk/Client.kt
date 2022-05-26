@@ -44,7 +44,6 @@ import io.provenance.scope.encryption.util.toPublicKey
 import io.provenance.scope.util.AffiliateNotFoundException
 import io.provenance.scope.util.EnvelopeAlreadySignedException
 import io.provenance.scope.util.TypeUrls
-import io.provenance.scope.util.or
 import io.provenance.scope.util.setValue
 import java.time.OffsetDateTime
 import java.util.concurrent.ScheduledExecutorService
@@ -271,10 +270,11 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      *
      * @param [executor] a [ScheduledExecutorService] on which to poll for mail
      * @param [handler] a [MailHandlerFn] to receive incoming mail for this client's affiliate
+     * @param [rate] a [Long] rate (in seconds) at which the mailbox is polled mail. Default is 1 second.
      *
      * @return a [ScheduledFuture] that can be used to cancel the scheduled polling for this handler
      */
-    fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
+    fun registerMailHandler(executor: ScheduledExecutorService, rate: Long = 1, handler: MailHandlerFn): ScheduledFuture<*> =
         executor.scheduleAtFixedRate(PollAffiliateMailbox(
             inner.osClient,
             inner.mailboxService,
@@ -283,7 +283,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             maxResults = 100,
             inner.config.mainNet,
             handler
-        ), 1, 1, TimeUnit.SECONDS)
+        ), 1, rate, TimeUnit.SECONDS)
 
     /**
      * Submit an envelope to other contract parties for execution
