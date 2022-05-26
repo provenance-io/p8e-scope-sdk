@@ -1,6 +1,7 @@
 package io.provenance.scope.sdk
 
 import com.google.protobuf.Message
+import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgWriteRecordRequest
 import io.provenance.metadata.v1.MsgWriteScopeRequest
 import io.provenance.metadata.v1.MsgWriteSessionRequest
@@ -28,7 +29,7 @@ sealed class ExecutionResult
  * @property [envelopeState] the resultant [EnvelopeState] from contract execution
  * @property [messages] a list of Provenance messages to package into a transaction for memorialization to chain
  */
-class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
+class SignedResult(val envelopeState: EnvelopeState, session: Session? = null) : ExecutionResult() {
     private val mainNet = envelopeState.result.mainNet
     private val signers = listOf(envelopeState.result.contract.invoker.signingPublicKey.publicKeyBytes.toByteArray().let { ECUtils.convertBytesToPublicKey(it).getAddress(mainNet) })
     private val parties = envelopeState.result.contract.recitalsList.map { Party.newBuilder()
@@ -43,6 +44,23 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
     /** @suppress */
     val executionInfo = mutableListOf<Triple<String, String, String>>()
     val messages: List<Message> = mutableListOf<Message>().apply {
+
+        if (session?.scope != null) {
+
+            envelopeState.result.dataAccessList
+                .map { it.toPublicKey().getAddress(mainNet) }
+                .filter { address -> !session.scope.scope.scope.dataAccessList.contains(address) }
+                .takeIf { it.isNotEmpty() }?.let { addresses ->
+                    add(
+                        MsgAddScopeDataAccessRequest.newBuilder()
+                            .setScopeId(MetadataAddress.forScope(envelopeState.result.ref.scopeUuid.toUuid()).bytes.toByteString())
+                            .addAllDataAccess(addresses)
+                            .addAllSigners(signers)
+                            .build()
+                    )
+                }
+        }
+
         if (envelopeState.result.newScope) {
             val msgWriteScopeRequest = MsgWriteScopeRequest.newBuilder()
                 .apply {
@@ -138,4 +156,4 @@ class SignedResult(val envelopeState: EnvelopeState): ExecutionResult() {
  *
  * @property [envelopeState] the resultant [EnvelopeState] from contract execution
  */
-class FragmentResult(val envelopeState: EnvelopeState): ExecutionResult()
+class FragmentResult(val envelopeState: EnvelopeState) : ExecutionResult()
