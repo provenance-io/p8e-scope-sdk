@@ -9,6 +9,7 @@ import io.provenance.metadata.v1.Party
 import io.provenance.metadata.v1.RecordInput
 import io.provenance.metadata.v1.RecordInputStatus
 import io.provenance.metadata.v1.RecordOutput
+import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Envelopes.EnvelopeState
 import io.provenance.scope.encryption.ecies.ECUtils
@@ -29,7 +30,7 @@ sealed class ExecutionResult
  * @property [envelopeState] the resultant [EnvelopeState] from contract execution
  * @property [messages] a list of Provenance messages to package into a transaction for memorialization to chain
  */
-class SignedResult(val envelopeState: EnvelopeState, session: Session? = null) : ExecutionResult() {
+class SignedResult(val envelopeState: EnvelopeState) : ExecutionResult() {
     private val mainNet = envelopeState.result.mainNet
     private val signers = listOf(envelopeState.result.contract.invoker.signingPublicKey.publicKeyBytes.toByteArray().let { ECUtils.convertBytesToPublicKey(it).getAddress(mainNet) })
     private val parties = envelopeState.result.contract.recitalsList.map { Party.newBuilder()
@@ -44,22 +45,6 @@ class SignedResult(val envelopeState: EnvelopeState, session: Session? = null) :
     /** @suppress */
     val executionInfo = mutableListOf<Triple<String, String, String>>()
     val messages: List<Message> = mutableListOf<Message>().apply {
-
-        if (session?.scope != null) {
-
-            envelopeState.result.dataAccessList
-                .map { it.toPublicKey().getAddress(mainNet) }
-                .filter { address -> !session.scope.scope.scope.dataAccessList.contains(address) }
-                .takeIf { it.isNotEmpty() }?.let { addresses ->
-                    add(
-                        MsgAddScopeDataAccessRequest.newBuilder()
-                            .setScopeId(MetadataAddress.forScope(envelopeState.result.ref.scopeUuid.toUuid()).bytes.toByteString())
-                            .addAllDataAccess(addresses)
-                            .addAllSigners(signers)
-                            .build()
-                    )
-                }
-        }
 
         if (envelopeState.result.newScope) {
             val msgWriteScopeRequest = MsgWriteScopeRequest.newBuilder()
@@ -81,6 +66,20 @@ class SignedResult(val envelopeState: EnvelopeState, session: Session? = null) :
             add(
                 msgWriteScopeRequest
             )
+        } else {
+            val scope = envelopeState.result.scope.unpack(ScopeResponse::class.java)
+            envelopeState.result.dataAccessList
+                .map { it.toPublicKey().getAddress(mainNet) }
+                .filter { address -> !scope.scope.scope.dataAccessList.contains(address) }
+                .takeIf { it.isNotEmpty() }?.let { addresses ->
+                    add(
+                        MsgAddScopeDataAccessRequest.newBuilder()
+                            .setScopeId(MetadataAddress.forScope(envelopeState.result.ref.scopeUuid.toUuid()).bytes.toByteString())
+                            .addAllDataAccess(addresses)
+                            .addAllSigners(signers)
+                            .build()
+                    )
+                }
         }
 
         if (envelopeState.result.newSession) {

@@ -1,7 +1,7 @@
 package io.provenance.scope.sdk
 
 import com.google.common.util.concurrent.Futures
-import com.google.protobuf.Message
+import com.google.protobuf.Any
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.test.TestCase
@@ -12,6 +12,7 @@ import io.mockk.every
 import io.mockk.mockkConstructor
 import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgWriteScopeRequest
+import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.TestContract
 import io.provenance.scope.contract.TestContractScopeSpecificationDefinition
@@ -158,7 +159,8 @@ class ClientTest : WordSpec() {
             "add new data access keys to scope" {
 
                 setupContractExecutionMocks(
-                    listOf(
+                    scope = createExistingScope().build(),
+                    dataAccessKeys = listOf(
                         localKeys[0].public.toPublicKeyProto(),
                         localKeys[1].public.toPublicKeyProto(),
                     )
@@ -177,7 +179,7 @@ class ClientTest : WordSpec() {
                     localKeys[1].public.getAddress(false),
                 )
 
-                (executionResult.messages.first() as MsgAddScopeDataAccessRequest).signersList.first() shouldBe signingKeyPair.public.getAddress(false)
+                (executionResult.messages.first() as MsgAddScopeDataAccessRequest).signersList.first() shouldBe localKeys[2].public.getAddress(false)
             }
             "execute and return a signed result" {
                 setupContractExecutionMocks()
@@ -197,7 +199,7 @@ class ClientTest : WordSpec() {
                 (executionResult as SignedResult).envelopeState.input.contract.definition.name shouldBe "record2"
                 executionResult.envelopeState.input.contract.definition.resourceLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
                 executionResult.messages.first().javaClass shouldBe MsgWriteScopeRequest::class.java
-                (executionResult.messages.first() as MsgWriteScopeRequest).scope.valueOwnerAddress shouldBe signingKeyPair.public.getAddress(false)
+                (executionResult.messages.first() as MsgWriteScopeRequest).scope.valueOwnerAddress shouldBe localKeys[2].public.getAddress(false)
 
                 val executionResult2 = client.execute(envelopePopulatedRecord)
 
@@ -207,7 +209,7 @@ class ClientTest : WordSpec() {
         }
     }
 
-    private fun setupContractExecutionMocks(dataAccessKeys: List<PK.PublicKey>? = null) {
+    private fun setupContractExecutionMocks(scope: ScopeResponse? = null, dataAccessKeys: List<PK.PublicKey>? = null) {
         val provenanceReference = Commons.ProvenanceReference.newBuilder().setHash(
             "M8PWxG2TFfO0YzL3sDW/l9"
         ).build()
@@ -223,14 +225,21 @@ class ClientTest : WordSpec() {
         mockkConstructor(ContractEngine::class)
 
         val signer = PK.SigningAndEncryptionPublicKeys.newBuilder()
-            .setSigningPublicKey(signingKeyPair.public.toPublicKeyProto())
-            .setEncryptionPublicKey(encryptionKeyPair.public.toPublicKeyProto())
+            .setSigningPublicKey(localKeys[2].public.toPublicKeyProto())
+            .setEncryptionPublicKey(localKeys[2].public.toPublicKeyProto())
 
         every { anyConstructed<ContractEngine>().handle(any(), any(), any(), any()) } returns
                 Envelopes.Envelope.newBuilder()
-                    .setNewScope(true)
                     .setScopeSpecUuid(UUID.randomUUID().toProtoUuid())
                     .setNewSession(true)
+                    .also { builder ->
+                        scope?.let {
+                            builder.setNewScope(false)
+                            builder.setScope(Any.pack(createExistingScope().build(), ""))
+                        } ?: run {
+                            builder.setNewScope(true)
+                        }
+                    }
                     .addDataAccess(localKeys[2].public.toPublicKeyProto())
                     .also { builder ->
                         dataAccessKeys?.let { builder.addAllDataAccess(it) }
@@ -258,7 +267,7 @@ class ClientTest : WordSpec() {
                             .addAllRecitals(
                                 listOf(
                                     Contracts.Recital.newBuilder()
-                                        .setSignerRole(Specifications.PartyType.ORIGINATOR)
+                                        .setSignerRole(Specifications.PartyType.OWNER)
                                         .setSigner(signer)
                                         .build()
                                 )

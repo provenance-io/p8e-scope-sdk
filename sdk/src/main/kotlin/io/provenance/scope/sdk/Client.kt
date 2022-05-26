@@ -234,7 +234,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
         return when (result.isSigned()) {
             true -> {
-                SignedResult(envelopeState, session).also { signedResult ->
+                SignedResult(envelopeState).also { signedResult ->
                     log.debug("Number of each type: ${signedResult.executionInfo.groupingBy { it.second }.eachCount()}")
                     log.debug("List of ID/Address ${signedResult.executionInfo.map { it.third + it.first }}")
                     log.trace("Full Content of TX Protos: ${signedResult.messages}")

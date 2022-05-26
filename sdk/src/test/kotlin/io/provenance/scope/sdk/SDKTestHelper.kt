@@ -114,7 +114,7 @@ fun createExistingScope(): ScopeResponse.Builder {
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
     val scope = Scope.newBuilder()
         .addDataAccess(localKeys[2].public.getAddress(false))
-        .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER))
+        .addOwners(Party.newBuilder().setAddress(localKeys[2].public.getAddress(false)).setRole(PartyType.PARTY_TYPE_OWNER))
         .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
         .setSpecificationId(MetadataAddress.forScopeSpecification(specificationUUID).bytes.toByteString())
