@@ -471,15 +471,6 @@ class Session(
                  listOf(it.first to it.second, it.second to it.first)
              }.toMap()
 
-             sessionDataAccessAddresses.forEach { address ->
-                 if (!scope.scope.scope.dataAccessList.contains(address)) {
-                     val correspondingAddress = correspondingAddressLookup[address]
-                     if (correspondingAddress == null || !scope.scope.scope.dataAccessList.contains(correspondingAddress)) {
-                         throw IllegalStateException("$address was added with data access in this session but does not have access in the existing scope.")
-                     }
-                 }
-             }
-
              scope.scope.scope.dataAccessList.forEach { address ->
                  if (!sessionDataAccessAddresses.contains(address)) {
                      val correspondingAddress = correspondingAddressLookup[address]

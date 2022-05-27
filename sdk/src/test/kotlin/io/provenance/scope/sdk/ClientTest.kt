@@ -1,7 +1,7 @@
 package io.provenance.scope.sdk
 
 import com.google.common.util.concurrent.Futures
-import com.google.protobuf.Message
+import com.google.protobuf.Any
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.test.TestCase
@@ -10,7 +10,9 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockkConstructor
+import io.provenance.metadata.v1.MsgAddScopeDataAccessRequest
 import io.provenance.metadata.v1.MsgWriteScopeRequest
+import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.TestContract
 import io.provenance.scope.contract.TestContractScopeSpecificationDefinition
@@ -71,7 +73,7 @@ class ClientTest : WordSpec() {
                         .clearDataAccess()
                         .addDataAccess(encryptionKeyPair.public.getAddress(false))
                 }
-                
+
                 val client = getClient()
 
                 client.inner.affiliateRepository.addAffiliate(
@@ -149,80 +151,44 @@ class ClientTest : WordSpec() {
                 }
                 hydrateResponse.name.firstName shouldBe "Test"
                 hydrateResponse.name.lastName shouldBe "TestLast"
-                hydrateResponse.nullableRecord shouldBe  null
+                hydrateResponse.nullableRecord shouldBe null
             }
         }
 
         "Client.execute" should {
+            "add new data access keys to scope" {
+
+                val owner = localKeys[2].public.getAddress(false)
+                setupContractExecutionMocks(
+                    scope = createExistingScope(ownerAddress = owner).build(),
+                    dataAccessKeys = listOf(
+                        localKeys[0].public.toPublicKeyProto(),
+                        localKeys[1].public.toPublicKeyProto(),
+                    )
+                )
+
+                val client = getClient()
+                client.inner.affiliateRepository.addAffiliate(
+                    signingPublicKey = localKeys[2].public,
+                    encryptionPublicKey = localKeys[2].public
+                )
+
+                val builder = createSessionBuilderNoRecords(client, createExistingScope(ownerAddress = owner).build())
+                val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
+                builder.addProposedRecord("record2", exampleName)
+
+                val executionResult = client.execute(builder.build()) as SignedResult
+
+                executionResult.messages.first().javaClass shouldBe MsgAddScopeDataAccessRequest::class.java
+                (executionResult.messages.first() as MsgAddScopeDataAccessRequest).dataAccessList shouldBe listOf(
+                    localKeys[2].public.getAddress(false),
+                    localKeys[0].public.getAddress(false),
+                )
+
+                (executionResult.messages.first() as MsgAddScopeDataAccessRequest).signersList.first() shouldBe localKeys[2].public.getAddress(false)
+            }
             "execute and return a signed result" {
-                val provenanceReference = Commons.ProvenanceReference.newBuilder().setHash(
-                    "M8PWxG2TFfO0YzL3sDW/l9"
-                ).build()
-                val dataLocation = Commons.Location.newBuilder()
-                    .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
-                    .setRef(provenanceReference).build()
-
-                val proposedRecord = Contracts.ProposedRecord.newBuilder()
-                    .setName("record2")
-                    .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
-                    .setHash("1234567890")
-
-                mockkConstructor(ContractEngine::class)
-
-                val signer = PK.SigningAndEncryptionPublicKeys.newBuilder()
-                    .setSigningPublicKey(signingKeyPair.public.toPublicKeyProto())
-                    .setEncryptionPublicKey(encryptionKeyPair.public.toPublicKeyProto())
-
-                every { anyConstructed<ContractEngine>().handle(any(), any(), any(), any()) } returns
-                        Envelopes.Envelope.newBuilder()
-                            .setNewScope(true)
-                            .setScopeSpecUuid(UUID.randomUUID().toProtoUuid())
-                            .setNewSession(true)
-                            .setRef(
-                                Commons.ProvenanceReference.newBuilder()
-                                    .setScopeUuid(UUID.randomUUID().toProtoUuid())
-                                    .setSessionUuid(UUID.randomUUID().toProtoUuid())
-                                    .build()
-                            )
-                            .setContract(
-                                Contracts.Contract.newBuilder().setSpec(
-                                    Contracts.Record.newBuilder().setDataLocation(dataLocation)
-                                )
-                                .addConsiderations(
-                                    Contracts.ConsiderationProto.newBuilder()
-                                        .setConsiderationName("record2")
-                                        .setResult(
-                                            Contracts.ExecutionResult.newBuilder()
-                                                .setResult(Contracts.ExecutionResult.Result.PASS)
-                                                .setOutput(proposedRecord)
-                                        ).addInputs(proposedRecord)
-                                )
-                                .setInvoker(signer)
-                                .addAllRecitals(listOf(
-                                    Contracts.Recital.newBuilder()
-                                        .setSignerRole(Specifications.PartyType.ORIGINATOR)
-                                        .setSigner(signer)
-                                        .build()
-                                ))
-                                .build()
-                            ).addAllSignatures(listOf(
-                                Common.Signature.newBuilder()
-                                    .setSigner(signer)
-                                    .build()
-                            ))
-                            .build()
-
-                mockkConstructor(CachedOsClient::class)
-                every { anyConstructed<CachedOsClient>().putRecord(any(), any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
-                    ObjectHash("1234567890")
-                )
-                every { anyConstructed<CachedOsClient>().getJar(any(), any()) } returns Futures.immediateFuture(
-                    ByteArrayInputStream(Random.nextBytes(10))
-                )
-                every { anyConstructed<CachedOsClient>().putJar(any(), any(), any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
-                    ObjectHash("1234567890")
-                )
-
+                setupContractExecutionMocks()
                 val client = getClient()
 
                 val builder = createSessionBuilderNoRecords(client, createExistingScope(client.inner.affiliateRepository).build())
@@ -239,14 +205,98 @@ class ClientTest : WordSpec() {
                 (executionResult as SignedResult).envelopeState.input.contract.definition.name shouldBe "record2"
                 executionResult.envelopeState.input.contract.definition.resourceLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
                 executionResult.messages.first().javaClass shouldBe MsgWriteScopeRequest::class.java
-                (executionResult.messages.first() as MsgWriteScopeRequest).scope.valueOwnerAddress shouldBe signingKeyPair.public.getAddress(false)
+                (executionResult.messages.first() as MsgWriteScopeRequest).scope.valueOwnerAddress shouldBe localKeys[2].public.getAddress(false)
 
                 val executionResult2 = client.execute(envelopePopulatedRecord)
 
                 (executionResult2 as FragmentResult).envelopeState.input.contract.definition.name shouldBe "record2"
                 executionResult2.envelopeState.input.contract.definition.resourceLocation.classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
-
             }
         }
+    }
+
+    private fun setupContractExecutionMocks(scope: ScopeResponse? = null, dataAccessKeys: List<PK.PublicKey>? = null) {
+        val provenanceReference = Commons.ProvenanceReference.newBuilder().setHash(
+            "M8PWxG2TFfO0YzL3sDW/l9"
+        ).build()
+        val dataLocation = Commons.Location.newBuilder()
+            .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
+            .setRef(provenanceReference).build()
+
+        val proposedRecord = Contracts.ProposedRecord.newBuilder()
+            .setName("record2")
+            .setClassname("io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName")
+            .setHash("1234567890")
+
+        mockkConstructor(ContractEngine::class)
+
+        val signer = PK.SigningAndEncryptionPublicKeys.newBuilder()
+            .setSigningPublicKey(localKeys[2].public.toPublicKeyProto())
+            .setEncryptionPublicKey(localKeys[2].public.toPublicKeyProto())
+
+        every { anyConstructed<ContractEngine>().handle(any(), any(), any(), any()) } returns
+                Envelopes.Envelope.newBuilder()
+                    .setScopeSpecUuid(UUID.randomUUID().toProtoUuid())
+                    .setNewSession(true)
+                    .also { builder ->
+                        scope?.let {
+                            builder.setNewScope(false)
+                            builder.setScope(Any.pack(scope, ""))
+                        } ?: run {
+                            builder.setNewScope(true)
+                        }
+                    }
+                    .addDataAccess(localKeys[2].public.toPublicKeyProto())
+                    .also { builder ->
+                        dataAccessKeys?.let { builder.addAllDataAccess(it) }
+                    }
+                    .setRef(
+                        Commons.ProvenanceReference.newBuilder()
+                            .setScopeUuid(UUID.randomUUID().toProtoUuid())
+                            .setSessionUuid(UUID.randomUUID().toProtoUuid())
+                            .build()
+                    )
+                    .setContract(
+                        Contracts.Contract.newBuilder().setSpec(
+                            Contracts.Record.newBuilder().setDataLocation(dataLocation)
+                        )
+                            .addConsiderations(
+                                Contracts.ConsiderationProto.newBuilder()
+                                    .setConsiderationName("record2")
+                                    .setResult(
+                                        Contracts.ExecutionResult.newBuilder()
+                                            .setResult(Contracts.ExecutionResult.Result.PASS)
+                                            .setOutput(proposedRecord)
+                                    ).addInputs(proposedRecord)
+                            )
+                            .setInvoker(signer)
+                            .addAllRecitals(
+                                listOf(
+                                    Contracts.Recital.newBuilder()
+                                        .setSignerRole(Specifications.PartyType.OWNER)
+                                        .setSigner(signer)
+                                        .build()
+                                )
+                            )
+                            .build()
+                    ).addAllSignatures(
+                        listOf(
+                            Common.Signature.newBuilder()
+                                .setSigner(signer)
+                                .build()
+                        )
+                    )
+                    .build()
+
+        mockkConstructor(CachedOsClient::class)
+        every { anyConstructed<CachedOsClient>().putRecord(any(), any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
+            ObjectHash("1234567890")
+        )
+        every { anyConstructed<CachedOsClient>().getJar(any(), any()) } returns Futures.immediateFuture(
+            ByteArrayInputStream(Random.nextBytes(10))
+        )
+        every { anyConstructed<CachedOsClient>().putJar(any(), any(), any(), any(), any(), any(), any(), any()) } returns Futures.immediateFuture(
+            ObjectHash("1234567890")
+        )
     }
 }

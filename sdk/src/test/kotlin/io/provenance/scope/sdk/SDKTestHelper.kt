@@ -90,12 +90,12 @@ fun createSessionBuilderNoRecords(client: Client, existingScope: ScopeResponse? 
         .apply {
             if (existingScope != null) {
                 setScope(existingScope)
-                addDataAccessKey(localKeys[2].public)
+                addDataAccessKey(localKeys[1].public)
             }
         }
 }
 
-fun createExistingScope(affiliateRepository: AffiliateRepository = AffiliateRepository(false)): ScopeResponse.Builder {
+fun createExistingScope(affiliateRepository: AffiliateRepository = AffiliateRepository(false), ownerAddress: String? = null): ScopeResponse.Builder {
     val scopeUuid = UUID.randomUUID()
     val sessionUUID = UUID.randomUUID()
     val specificationUUID = UUID.randomUUID()
@@ -116,8 +116,15 @@ fun createExistingScope(affiliateRepository: AffiliateRepository = AffiliateRepo
     val ownerKey = ProvenanceKeyGenerator.generateKeyPair()
     affiliateRepository.addAffiliate(ownerKey.public, ownerKey.public)
     val scope = Scope.newBuilder()
-        .addDataAccess(localKeys[2].public.getAddress(false))
-        .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER).setAddress(ownerKey.public.getAddress(false)))
+        .addDataAccess(localKeys[1].public.getAddress(false))
+        .addOwners(
+            Party.newBuilder()
+            .setRole(PartyType.PARTY_TYPE_OWNER)
+            .apply {
+                ownerAddress?.let { setAddress(it) }
+                    ?: setAddress(ownerKey.public.getAddress(false))
+            }
+        )
         .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
         .setSpecificationId(MetadataAddress.forScopeSpecification(specificationUUID).bytes.toByteString())
