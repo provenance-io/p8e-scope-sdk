@@ -57,7 +57,7 @@ class SessionBuilderTest : WordSpec({
 
             val sdkClient = createClientDummy(0)
 
-            val scopeResponse = createExistingScope()
+            val scopeResponse = createExistingScope(sdkClient.inner.affiliateRepository)
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
@@ -67,7 +67,7 @@ class SessionBuilderTest : WordSpec({
 
             val session = builder.build()
 
-            val envelopePopulatedRecord = session.packageContract(false)
+            val envelopePopulatedRecord = session.packageContract(false, sdkClient.inner.affiliateRepository)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PK.PublicKey.newBuilder()
                 .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.signingKeyRef.publicKey)))
@@ -308,7 +308,11 @@ class SessionBuilderTest : WordSpec({
 
             val correspondingEncryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
 
-            val scopeResponse = createExistingScope().also { builder ->
+            val affiliateRepository = AffiliateRepository(false).apply {
+                addAffiliate(localKeys[2].public, correspondingEncryptionKeyPair.public)
+            }
+
+            val scopeResponse = createExistingScope(affiliateRepository).also { builder ->
                 builder.scopeBuilder.scopeBuilder
                     .clearDataAccess()
                     .addDataAccess(localKeys[2].public.getAddress(false))
@@ -317,10 +321,6 @@ class SessionBuilderTest : WordSpec({
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
             val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
-
-            val affiliateRepository = AffiliateRepository(false).apply {
-                addAffiliate(localKeys[2].public, correspondingEncryptionKeyPair.public)
-            }
 
             builder.addProposedRecord("record2", exampleName)
             builder.dataAccessKeys.clear()
@@ -336,7 +336,7 @@ class SessionBuilderTest : WordSpec({
         "Create Session Builder with all given values" {
             val sdkClient = createClientDummy(0)
 
-            val scopeResponse = createExistingScope().also { builder ->
+            val scopeResponse = createExistingScope(sdkClient.inner.affiliateRepository).also { builder ->
                 builder.scopeBuilder.scopeBuilder
                     .clearDataAccess()
                     .addDataAccess(localKeys[2].public.getAddress(false))

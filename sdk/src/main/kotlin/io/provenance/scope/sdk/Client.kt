@@ -110,7 +110,7 @@ class SharedClient(val config: ClientConfig) : Closeable {
  * @property [inner] the base [SharedClient] instance containing configuration and shared resources
  * @property [affiliate] an object representing an affiliate with the appropriate keys for signing/encryption and the role of this affiliate on contracts
  */
-class Client(val inner: SharedClient, val affiliate: Affiliate) {
+class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
 
     private val log = LoggerFactory.getLogger(this::class.java);
     private val tracer = GlobalTracer.get()
@@ -421,4 +421,20 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     private fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()
+
+    override fun close() {
+        inner.close()
+    }
+
+    /**
+     * Wait for all resources to properly close and be cleaned up. Should only be called after [close].
+     *
+     * @param [timeout] the timeout value, after which to give up on waiting
+     * @param [unit] the time unit corresponding to the [timeout] value
+     *
+     * @return whether the resources were fully terminated
+     */
+    fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
+        return inner.awaitTermination(timeout, unit)
+    }
 }

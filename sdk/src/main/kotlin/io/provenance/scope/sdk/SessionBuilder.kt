@@ -486,7 +486,7 @@ class Session(
         val permissionUpdater = PermissionUpdater(
             client,
             contract,
-            contract.toAudience(scope) + dataAccessKeys,
+            contract.toAudience(scope, affiliateRepository) + dataAccessKeys,
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
@@ -543,12 +543,11 @@ class Session(
         }
     }
 
-    private fun Contract.toAudience(scope: ScopeResponse?): Set<PublicKey> = recitalsList.map {
+    private fun Contract.toAudience(scopeResponse: ScopeResponse?, affiliateRepository: AffiliateRepository): Set<PublicKey> = recitalsList.map {
         it.signer.encryptionPublicKey.toPublicKey()
-    }.toSet()
-//    .plus(scope.scope.scope.ownersList.map { // todo: add scope owners to list, need AffiliateRepository
-//        it.address
-//    })
+    }.toSet().plus(scopeResponse?.scope?.scope?.ownersList?.map { owner ->
+        affiliateRepository.getAffiliateKeysByAddress(owner.address).encryptionPublicKey
+    } ?: emptyList())
 
     private fun isMatchingRecord(inputRecord: Contracts.Record.Builder, recordName: String): Boolean {
         return inputRecord.name == recordName && inputRecord.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()

@@ -189,31 +189,24 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
         }
         val cacheKey = RecordCacheKey(encryptionKeyRef.publicKey, hash.base64String())
 
-        return if (recordCache.asMap().containsKey(cacheKey)) {
-            Futures.immediateFuture(ObjectHash(cacheKey.hash)).also {
-                span.setTag("Cached-Response", true)
-                span.finish()
-            }
-        } else {
-            val future = withFutureSemaphore(semaphore) {
-                osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, sha256 = sha256, loHash = loHash)
-            }
-
-            Futures.transform(
-                future,
-                {
-                    span.setTag("Cached-Response", false)
-                    span.finish()
-                    if (it != null) {
-                        recordCache.put(cacheKey, messageBytes)
-                        ObjectHash(it.hash.toByteArray().base64EncodeString())
-                    } else {
-                        throw OSException("Received null response when storing object to Object Store")
-                    }
-                },
-                MoreExecutors.directExecutor(),
-            )
+        val future = withFutureSemaphore(semaphore) {
+            osClient.put(message, encryptionKeyRef.publicKey, signingKeyRef.signer(), audience, uuid = uuid, sha256 = sha256, loHash = loHash)
         }
+
+        return Futures.transform(
+            future,
+            {
+                span.setTag("Cached-Response", false)
+                span.finish()
+                if (it != null) {
+                    recordCache.put(cacheKey, messageBytes)
+                    ObjectHash(it.hash.toByteArray().base64EncodeString())
+                } else {
+                    throw OSException("Received null response when storing object to Object Store")
+                }
+            },
+            MoreExecutors.directExecutor(),
+        )
     }
 
     /**

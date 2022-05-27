@@ -8,6 +8,7 @@ import io.provenance.scope.contract.proto.HelloWorldExample
 import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.contract.proto.TestContractProtos
+import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toJavaPrivateKey
@@ -94,7 +95,7 @@ fun createSessionBuilderNoRecords(client: Client, existingScope: ScopeResponse? 
         }
 }
 
-fun createExistingScope(): ScopeResponse.Builder {
+fun createExistingScope(affiliateRepository: AffiliateRepository = AffiliateRepository(false)): ScopeResponse.Builder {
     val scopeUuid = UUID.randomUUID()
     val sessionUUID = UUID.randomUUID()
     val specificationUUID = UUID.randomUUID()
@@ -112,9 +113,11 @@ fun createExistingScope(): ScopeResponse.Builder {
         .setSessionId(MetadataAddress.forSession(scopeUuid, sessionUUID).bytes.toByteString())
         .setName("record2")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
+    val ownerKey = ProvenanceKeyGenerator.generateKeyPair()
+    affiliateRepository.addAffiliate(ownerKey.public, ownerKey.public)
     val scope = Scope.newBuilder()
         .addDataAccess(localKeys[2].public.getAddress(false))
-        .addOwners(Party.newBuilder().setAddress(localKeys[2].public.getAddress(false)).setRole(PartyType.PARTY_TYPE_OWNER))
+        .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER).setAddress(ownerKey.public.getAddress(false)))
         .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
         .setSpecificationId(MetadataAddress.forScopeSpecification(specificationUUID).bytes.toByteString())
