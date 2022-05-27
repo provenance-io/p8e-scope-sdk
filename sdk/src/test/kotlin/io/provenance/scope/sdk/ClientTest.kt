@@ -158,8 +158,9 @@ class ClientTest : WordSpec() {
         "Client.execute" should {
             "add new data access keys to scope" {
 
+                val owner = localKeys[2].public.getAddress(false)
                 setupContractExecutionMocks(
-                    scope = createExistingScope().build(),
+                    scope = createExistingScope(ownerAddress = owner).build(),
                     dataAccessKeys = listOf(
                         localKeys[0].public.toPublicKeyProto(),
                         localKeys[1].public.toPublicKeyProto(),
@@ -167,7 +168,12 @@ class ClientTest : WordSpec() {
                 )
 
                 val client = getClient()
-                val builder = createSessionBuilderNoRecords(client, createExistingScope().build())
+                client.inner.affiliateRepository.addAffiliate(
+                    signingPublicKey = localKeys[2].public,
+                    encryptionPublicKey = localKeys[2].public
+                )
+
+                val builder = createSessionBuilderNoRecords(client, createExistingScope(ownerAddress = owner).build())
                 val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
                 builder.addProposedRecord("record2", exampleName)
 
@@ -175,8 +181,8 @@ class ClientTest : WordSpec() {
 
                 executionResult.messages.first().javaClass shouldBe MsgAddScopeDataAccessRequest::class.java
                 (executionResult.messages.first() as MsgAddScopeDataAccessRequest).dataAccessList shouldBe listOf(
+                    localKeys[2].public.getAddress(false),
                     localKeys[0].public.getAddress(false),
-                    localKeys[1].public.getAddress(false),
                 )
 
                 (executionResult.messages.first() as MsgAddScopeDataAccessRequest).signersList.first() shouldBe localKeys[2].public.getAddress(false)
@@ -235,7 +241,7 @@ class ClientTest : WordSpec() {
                     .also { builder ->
                         scope?.let {
                             builder.setNewScope(false)
-                            builder.setScope(Any.pack(createExistingScope().build(), ""))
+                            builder.setScope(Any.pack(scope, ""))
                         } ?: run {
                             builder.setNewScope(true)
                         }
