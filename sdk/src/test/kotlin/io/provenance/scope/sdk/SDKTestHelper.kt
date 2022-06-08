@@ -152,5 +152,8 @@ data class HelloWorldDataNullable(
     @AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName,
     @AnnotationRecord(name = "nullableRecord") val nullableRecord: TestContractProtos.TestProto?
 ) {}
+data class HelloWorldDataOnlyNullable(
+    @AnnotationRecord(name = "nullableRecord") val nullableRecord: TestContractProtos.TestProto?
+) {}
 
 
