@@ -383,13 +383,15 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
             .takeIf { it.isNotEmpty() }
             // TODO different error type?
             .orThrowContractDefinition("Unable to build POJO of type ${clazz.name} because not all constructor params implement ${Message::class.java.name} and have a \"Record\" annotation")
-            .firstOrNull {
-                it.parameters.any { param ->
-                    scope.recordsList.any { wrapper ->
-                        (wrapper.record.name == param.getAnnotation(Record::class.java)?.name &&
-                            wrapper.record.resultType() == param.type.name)
+            .run {
+                firstOrNull {
+                    it.parameters.any { param ->
+                        scope.recordsList.any { wrapper ->
+                            (wrapper.record.name == param.getAnnotation(Record::class.java)?.name &&
+                                wrapper.record.resultType() == param.type.name)
+                        }
                     }
-                }
+                } ?: firstOrNull()
             }
             .orThrowContractDefinition("No constructor params have a matching record in scope ${scope.uuid()}")
         val params = constructor.parameters

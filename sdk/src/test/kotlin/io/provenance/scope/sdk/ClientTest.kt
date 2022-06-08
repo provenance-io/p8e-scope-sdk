@@ -153,6 +153,24 @@ class ClientTest : WordSpec() {
                 hydrateResponse.name.lastName shouldBe "TestLast"
                 hydrateResponse.nullableRecord shouldBe null
             }
+            "allow for null value when only record requested is not present and is nullable" {
+                val scope = createExistingScope().apply {
+                    scopeBuilder.scopeBuilder
+                        .clearDataAccess()
+                        .addDataAccess(encryptionKeyPair.public.getAddress(false))
+                }.clearRecords() // no records
+
+                val client = getClient()
+
+                client.inner.affiliateRepository.addAffiliate(
+                    signingPublicKey = signingKeyPair.public,
+                    encryptionPublicKey = encryptionKeyPair.public
+                )
+                val hydrateResponse = shouldNotThrowAny {
+                    client.hydrate(HelloWorldDataOnlyNullable::class.java, scope.build())
+                }
+                hydrateResponse.nullableRecord shouldBe null
+            }
         }
 
         "Client.execute" should {
