@@ -331,14 +331,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
      * These need to be submitted in a successful transaction to the blockchain in order to grant access
      */
     fun approveScopeUpdate(envelopeState: EnvelopeState, expirationTime: OffsetDateTime = OffsetDateTime.now().plusHours(1)): List<Tx.MsgGrant> {
-        val granter = affiliate.signingKeyRef.publicKey.getAddress(inner.config.mainNet)
-        val grantee = envelopeState.input.contract.invoker.signingPublicKey.toPublicKey().getAddress(inner.config.mainNet)
-
-        val typeUrls = listOf(
-            if (envelopeState.input.newScope) TypeUrls.TypeURLMsgWriteScopeRequest else null,
-            if (envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteSessionRequest else null,
-            if (!envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteRecordRequest else null,
-        ).filterNotNull()
+        val (granter, grantee, typeUrls) = getGrantSetup(envelopeState)
 
         return typeUrls.map { typeUrl ->
             Tx.MsgGrant.newBuilder()
@@ -354,6 +347,26 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
                         .setExpiration(Timestamp.newBuilder().setValue(expirationTime).build())
                         .build()
                 ).build()
+        }
+    }
+
+    /**
+     * Revoke access to a scope that another party currently has.
+     *
+     * @param [envelopeState] the details on the scope update
+     *
+     * @return a list of Provenance messages revoking authorization to the grantee found in the envelope state.
+     * These need to be submitted in a successful transaction to the blockchain in order to revoke access
+     */
+    fun revokeScopeUpdate(envelopeState: EnvelopeState): List<Tx.MsgRevoke> {
+        val (granter, grantee, typeUrls) = getGrantSetup(envelopeState)
+
+        return typeUrls.map { typeUrl ->
+            Tx.MsgRevoke.newBuilder()
+                .setGranter(granter)
+                .setGrantee(grantee)
+                .setMsgTypeUrl(typeUrl)
+                .build()
         }
     }
 
@@ -408,6 +421,20 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
             }.map { it.get() }
 
         return clazz.cast(constructor.newInstance(*params.toList().toTypedArray())).also { span.finish() }
+    }
+
+    private fun getGrantSetup(envelopeState: EnvelopeState): Triple<String, String, List<String>> {
+        val granter = affiliate.signingKeyRef.publicKey.getAddress(inner.config.mainNet)
+        val grantee = envelopeState.input.contract.invoker.signingPublicKey.toPublicKey().getAddress(inner.config.mainNet)
+
+        val typeUrls = listOf(
+            if (envelopeState.input.newScope) TypeUrls.TypeURLMsgWriteScopeRequest else null,
+            if (!envelopeState.input.newScope) TypeUrls.TypeURLMsgAddScopeDataAccessRequest else null,
+            if (envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteSessionRequest else null,
+            if (!envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteRecordRequest else null,
+        ).filterNotNull()
+
+        return Triple(granter, grantee, typeUrls)
     }
 
     private fun <T: P8eContract> getContractHash(clazz: Class<T>): ContractHash {
