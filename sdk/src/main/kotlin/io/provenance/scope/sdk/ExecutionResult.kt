@@ -70,7 +70,7 @@ class SignedResult(val envelopeState: EnvelopeState) : ExecutionResult() {
             val scope = envelopeState.result.scope.unpack(ScopeResponse::class.java)
             envelopeState.result.dataAccessList
                 .map { it.toPublicKey().getAddress(mainNet) }
-                .filter { address -> !scope.scope.scope.dataAccessList.contains(address) }
+                .filter { address -> !scope.scope.scope.dataAccessList.contains(address) && address != scope.scope.scope.valueOwnerAddress }
                 .takeIf { it.isNotEmpty() }?.let { addresses ->
                     add(
                         MsgAddScopeDataAccessRequest.newBuilder()

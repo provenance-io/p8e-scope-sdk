@@ -429,6 +429,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
 
         val typeUrls = listOf(
             if (envelopeState.input.newScope) TypeUrls.TypeURLMsgWriteScopeRequest else null,
+            if (!envelopeState.input.newScope) TypeUrls.TypeURLMsgAddScopeDataAccessRequest else null,
             if (envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteSessionRequest else null,
             if (!envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteRecordRequest else null,
         ).filterNotNull()
