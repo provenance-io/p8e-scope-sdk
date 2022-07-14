@@ -73,14 +73,13 @@ message Envelope {
 }
 
 message EnvelopeError {
+    reserved 2, 3, 7;
+
     UUID uuid = 1;
-    UUID session_uuid = 2;
-    UUID execution_uuid = 3;
 
     Type type = 4;
     string message = 5;
     google.protobuf.Timestamp read_time = 6;
-    UUID scope_uuid = 7;
 
     Envelope envelope = 8;
 

@@ -12,6 +12,7 @@ import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.contract.proto.*
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
+import io.provenance.scope.encryption.model.SigningAndEncryptionPublicKeys
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.proto.PK
 import io.provenance.scope.sdk.*
@@ -27,9 +28,9 @@ class SessionBuilderTest : WordSpec({
 
         "Package Contract Single Record" {
             //Setting up single record test
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
-            val builder = createSessionBuilderNoRecords(osClient)
+            val builder = createSessionBuilderNoRecords(sdkClient)
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
             builder.addProposedRecord("record2", exampleName)
@@ -39,10 +40,10 @@ class SessionBuilderTest : WordSpec({
             val envelopePopulatedRecord = session.packageContract(false)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.signingKeyRef.publicKey)))
                 .build()
             envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.encryptionKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.encryptionKeyRef.publicKey)))
                 .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
@@ -54,25 +55,25 @@ class SessionBuilderTest : WordSpec({
         "Package Contract Existing Scope" {
             //Setting up single record test
 
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
-            val scopeResponse = createExistingScope()
+            val scopeResponse = createExistingScope(sdkClient.inner.affiliateRepository)
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
-            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+            val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
 
             builder.addProposedRecord("record2", exampleName)
 
             val session = builder.build()
 
-            val envelopePopulatedRecord = session.packageContract(false)
+            val envelopePopulatedRecord = session.packageContract(false, sdkClient.inner.affiliateRepository)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.signingKeyRef.publicKey)))
                 .build()
             envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.encryptionKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.encryptionKeyRef.publicKey)))
                 .build()
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
@@ -87,9 +88,9 @@ class SessionBuilderTest : WordSpec({
 
         "Package Contract Single Record with participants" {
             //Setting up single record test
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
-            val builder = createSessionBuilderNoRecords(osClient)
+            val builder = createSessionBuilderNoRecords(sdkClient)
 
             builder.setContractSpec(
                 builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
@@ -104,10 +105,10 @@ class SessionBuilderTest : WordSpec({
             val envelopePopulatedRecord = session.packageContract(false)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.signingKeyRef.publicKey)))
                 .build()
             envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.encryptionKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.encryptionKeyRef.publicKey)))
                 .build()
 
 
@@ -116,12 +117,14 @@ class SessionBuilderTest : WordSpec({
             envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"
             envelopePopulatedRecord.contract.considerationsList[0].inputsCount shouldBe 1
             envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
+            sdkClient.inner.affiliateRepository.tryGetAffiliateKeysByAddress(sdkClient.affiliate.signingKeyRef.publicKey.getAddress(false)) shouldBe SigningAndEncryptionPublicKeys(sdkClient.affiliate.signingKeyRef.publicKey, sdkClient.affiliate.encryptionKeyRef.publicKey)
+            sdkClient.inner.affiliateRepository.tryGetAffiliateKeysByAddress(sdkClient.affiliate.encryptionKeyRef.publicKey.getAddress(false)) shouldBe SigningAndEncryptionPublicKeys(sdkClient.affiliate.signingKeyRef.publicKey, sdkClient.affiliate.encryptionKeyRef.publicKey)
         }
 
         "handle setting scopeUuid and executionUuid then finish population" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
-            val builder = createSessionBuilderNoRecords(osClient)
+            val builder = createSessionBuilderNoRecords(sdkClient)
 
             builder.setContractSpec(
                 builder.contractSpec!!.toBuilder().addPartiesInvolved(Specifications.PartyType.AFFILIATE).build()
@@ -140,10 +143,10 @@ class SessionBuilderTest : WordSpec({
             val envelopePopulatedRecord = session.packageContract(false)
 
             envelopePopulatedRecord.contract.invoker.signingPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.signingKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.signingKeyRef.publicKey)))
                 .build()
             envelopePopulatedRecord.contract.invoker.encryptionPublicKey shouldBe PK.PublicKey.newBuilder()
-                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(osClient.affiliate.encryptionKeyRef.publicKey)))
+                .setPublicKeyBytes(ByteString.copyFrom(ECUtils.convertPublicKeyToBytes(sdkClient.affiliate.encryptionKeyRef.publicKey)))
                 .build()
 
             envelopePopulatedRecord.contract.recitalsList[0].signerRole shouldBe Specifications.PartyType.AFFILIATE
@@ -155,9 +158,9 @@ class SessionBuilderTest : WordSpec({
             envelopePopulatedRecord.contract.considerationsList[0].inputsList[0].classname shouldBe "io.provenance.scope.contract.proto.HelloWorldExample\$ExampleName"
         }
         "throw ContractDefinitionException when the same participant is added to the participant list twice" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
-            val builder = createSessionBuilderNoRecords(osClient)
+            val builder = createSessionBuilderNoRecords(sdkClient)
 
             shouldThrow<ContractSpecMapper.ContractDefinitionException> {
                 builder.setContractSpec(
@@ -169,22 +172,22 @@ class SessionBuilderTest : WordSpec({
 
         }
         "throw IllegalStateException when scope is already set" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
             val scopeResponse = createExistingScope()
 
-            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+            val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
 
             shouldThrow<java.lang.IllegalStateException> {
                 builder.setScopeUuid(UUID.randomUUID())
             }
         }
         "throw not found error when no record with type == proposed is submitted or when name doesn't match" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
             val scopeResponse = createExistingScope()
 
-            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+            val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
@@ -218,11 +221,11 @@ class SessionBuilderTest : WordSpec({
         }
 
         "throw illegal argument exception when resource location classname doesn't match classname for record" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
             val scopeResponse = createExistingScope()
 
-            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+            val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
 
             builder.setContractSpec(
                 Specifications.ContractSpec.newBuilder()
@@ -253,55 +256,31 @@ class SessionBuilderTest : WordSpec({
         }
 
         "disallow adding a scope when sessions were not requested" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
             val scopeResponse = createExistingScope().apply {
                 requestBuilder.setIncludeSessions(false)
             }
 
             val exception = shouldThrow<IllegalStateException> {
-                createSessionBuilderNoRecords(osClient, scopeResponse.build())
+                createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
             }
             exception.message shouldBe "Provided scope must include sessions"
         }
 
         "disallow adding a scope when records were not requested" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
             val scopeResponse = createExistingScope().apply {
                 requestBuilder.setIncludeRecords(false)
             }
 
             val exception = shouldThrow<IllegalStateException> {
-                createSessionBuilderNoRecords(osClient, scopeResponse.build())
+                createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
             }
             exception.message shouldBe "Provided scope must include records"
         }
 
-        "disallow setting data access keys that aren't on the existing scope" {
-            val osClient = createClientDummy(0)
-
-            val scopeResponse = createExistingScope().also { builder ->
-                builder.scopeBuilder.scopeBuilder
-                    .clearDataAccess()
-            }
-
-            val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("hello").build()
-
-            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
-
-            builder.addProposedRecord("record2", exampleName)
-            builder.dataAccessKeys.clear()
-            builder.addDataAccessKey(localKeys[2].public)
-
-            val session = builder.build()
-
-            val exception = shouldThrow<IllegalStateException> {
-                session.packageContract(false)
-            }
-            exception.message shouldContain localKeys[2].public.getAddress(false)
-        }
-
         "disallow data access keys on the existing scope that are omitted in the proposed session" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
             val scopeResponse = createExistingScope().also { builder ->
                 builder.scopeBuilder.scopeBuilder
@@ -311,7 +290,7 @@ class SessionBuilderTest : WordSpec({
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
-            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
+            val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
 
             builder.addProposedRecord("record2", exampleName)
             builder.dataAccessKeys.clear()
@@ -325,11 +304,15 @@ class SessionBuilderTest : WordSpec({
         }
 
         "allow setting data access keys that are the corresponding signing/encryption key to what is listed on the existing scope" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
             val correspondingEncryptionKeyPair = ProvenanceKeyGenerator.generateKeyPair()
 
-            val scopeResponse = createExistingScope().also { builder ->
+            val affiliateRepository = AffiliateRepository(false).apply {
+                addAffiliate(localKeys[2].public, correspondingEncryptionKeyPair.public)
+            }
+
+            val scopeResponse = createExistingScope(affiliateRepository).also { builder ->
                 builder.scopeBuilder.scopeBuilder
                     .clearDataAccess()
                     .addDataAccess(localKeys[2].public.getAddress(false))
@@ -337,11 +320,7 @@ class SessionBuilderTest : WordSpec({
 
             val exampleName = HelloWorldExample.ExampleName.newBuilder().setFirstName("Test").build()
 
-            val builder = createSessionBuilderNoRecords(osClient, scopeResponse.build())
-
-            val affiliateRepository = AffiliateRepository(false).apply {
-                addAffiliate(localKeys[2].public, correspondingEncryptionKeyPair.public)
-            }
+            val builder = createSessionBuilderNoRecords(sdkClient, scopeResponse.build())
 
             builder.addProposedRecord("record2", exampleName)
             builder.dataAccessKeys.clear()
@@ -355,9 +334,9 @@ class SessionBuilderTest : WordSpec({
         }
 
         "Create Session Builder with all given values" {
-            val osClient = createClientDummy(0)
+            val sdkClient = createClientDummy(0)
 
-            val scopeResponse = createExistingScope().also { builder ->
+            val scopeResponse = createExistingScope(sdkClient.inner.affiliateRepository).also { builder ->
                 builder.scopeBuilder.scopeBuilder
                     .clearDataAccess()
                     .addDataAccess(localKeys[2].public.getAddress(false))
@@ -390,10 +369,10 @@ class SessionBuilderTest : WordSpec({
             }
             val provenanceReference = Commons.ProvenanceReference.newBuilder().build()
             var scopeSpecUuid = UUID.randomUUID()
-            var session = Session.Builder(scopeSpecUuid)
+            var session = Session.Builder(scopeSpecUuid, sdkClient.inner.affiliateRepository)
                 .setContractSpec(spec.build())
                 .setProvenanceReference(provenanceReference)
-                .setClient(osClient)
+                .setClient(sdkClient)
                 .setSessionUuid(UUID.randomUUID())
                 .apply {
                     if (scopeResponse.build() != null) {
@@ -402,7 +381,7 @@ class SessionBuilderTest : WordSpec({
                     }
                 }.build()
 
-            val envelopePopulatedRecord = session.packageContract(false)
+            val envelopePopulatedRecord = session.packageContract(false, sdkClient.inner.affiliateRepository)
 
             envelopePopulatedRecord.contract.considerationsCount shouldBe 1
             envelopePopulatedRecord.contract.considerationsList[0].considerationName shouldBe "record2"

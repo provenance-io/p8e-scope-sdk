@@ -25,6 +25,16 @@ class AffiliateRepository(private val mainNet: Boolean) {
     }
 
     /**
+     * Add an affiliate to the repository
+     *
+     * @param [keys] the signing and encryption public keys of the affiliate
+     */
+    fun addAffiliate(keys: SigningAndEncryptionPublicKeys) {
+        affiliateAddressToPublicKeys.put(keys.signingPublicKey.getAddress(mainNet), keys)
+        affiliateAddressToPublicKeys.put(keys.encryptionPublicKey.getAddress(mainNet), keys)
+    }
+
+    /**
      * Add multiple affiliates to the repository
      *
      * @param [affiliateKeys] a list of signing/encryption public keys for affiliates to add

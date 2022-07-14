@@ -3,6 +3,9 @@ package io.provenance.scope.sdk
 import com.google.common.util.concurrent.Futures
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
+import com.google.protobuf.Timestamp
+import cosmos.authz.v1beta1.Authz
+import cosmos.authz.v1beta1.Tx
 import io.provenance.metadata.v1.ScopeResponse
 import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.annotations.Record
@@ -33,7 +36,16 @@ import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.ServiceLoader
 import io.opentracing.util.GlobalTracer;
+import com.google.protobuf.Any as ProtoAny;
 import io.provenance.scope.contract.proto.Commons
+import io.provenance.scope.contract.proto.Envelopes
+import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.encryption.util.toPublicKey
+import io.provenance.scope.util.AffiliateNotFoundException
+import io.provenance.scope.util.EnvelopeAlreadySignedException
+import io.provenance.scope.util.TypeUrls
+import io.provenance.scope.util.setValue
+import java.time.OffsetDateTime
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -61,7 +73,7 @@ class SharedClient(val config: ClientConfig) : Closeable {
     /**
      * A client for communcation with the Object Store
      */
-    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs, config.osChannelCustomizeFn, config.extraHeaders), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes)
+    val osClient: CachedOsClient = CachedOsClient(OsClient(config.osGrpcUrl, config.osGrpcDeadlineMs, config.osChannelCustomizeFn, config.extraHeaders), config.osDecryptionWorkerThreads, config.osConcurrencySize, config.cacheRecordSizeInBytes, config.cacheJarSizeInBytes)
 
     /** @suppress */
     val contractEngine: ContractEngine = ContractEngine(osClient, config.disableContractLogs)
@@ -98,10 +110,18 @@ class SharedClient(val config: ClientConfig) : Closeable {
  * @property [inner] the base [SharedClient] instance containing configuration and shared resources
  * @property [affiliate] an object representing an affiliate with the appropriate keys for signing/encryption and the role of this affiliate on contracts
  */
-class Client(val inner: SharedClient, val affiliate: Affiliate) {
+class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
 
     private val log = LoggerFactory.getLogger(this::class.java);
     private val tracer = GlobalTracer.get()
+
+    init {
+        // inject client's own keys into affiliate repository
+        inner.affiliateRepository.addAffiliate(
+            signingPublicKey = affiliate.signingKeyRef.publicKey,
+            encryptionPublicKey = affiliate.encryptionKeyRef.publicKey
+        )
+    }
 
     /**
      * The [ProtoIndexer] utility class to use for generating an indexable map of record values from a scope
@@ -138,7 +158,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
 
         val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
 
-        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuid())
+        return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuid(), inner.affiliateRepository)
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -179,7 +199,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             "The annotation for the scope specifications must not be null"
         }
 
-        return Session.Builder(scopeSpecAnnotation.uuid.toUuid())
+        return Session.Builder(scopeSpecAnnotation.uuid.toUuid(), inner.affiliateRepository)
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -250,19 +270,20 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      *
      * @param [executor] a [ScheduledExecutorService] on which to poll for mail
      * @param [handler] a [MailHandlerFn] to receive incoming mail for this client's affiliate
+     * @param [rate] a [Long] rate (in seconds) at which the mailbox is polled mail. Default is 1 second.
      *
      * @return a [ScheduledFuture] that can be used to cancel the scheduled polling for this handler
      */
-    fun registerMailHandler(executor: ScheduledExecutorService, handler: MailHandlerFn): ScheduledFuture<*> =
+    fun registerMailHandler(executor: ScheduledExecutorService, rate: Long = 1, handler: MailHandlerFn): ScheduledFuture<*> =
         executor.scheduleAtFixedRate(PollAffiliateMailbox(
-            inner.osClient.osClient,
+            inner.osClient,
             inner.mailboxService,
             signingKeyRef = affiliate.signingKeyRef,
             encryptionKeyRef = affiliate.encryptionKeyRef,
             maxResults = 100,
             inner.config.mainNet,
             handler
-        ), 1, 1, TimeUnit.SECONDS)
+        ), 1, rate, TimeUnit.SECONDS)
 
     /**
      * Submit an envelope to other contract parties for execution
@@ -270,10 +291,12 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      * @param [envelopeState] the [EnvelopeState] object from an execution [FragmentResult] for mailing
      */
     fun requestAffiliateExecution(envelopeState: EnvelopeState) {
-        // todo: verify this Client instance's affiliate is on the envelope?
+        envelopeState.input.contract.recitalsList
+            .find { it.signerRole == affiliate.partyType && it.signer.signingPublicKey == affiliate.signingKeyRef.publicKey.toPublicKeyProto() }
+            .orThrow { AffiliateNotFoundException("Affiliate not found on contract recital list") }
 
         if (envelopeState.result.isSigned()) {
-            TODO("should we throw an exception or something in the event that an affiliate is requesting signatures on an already fully-signed envelope?")
+            throw EnvelopeAlreadySignedException("Envelope already fully signed, cannot request affiliate execution")
         }
 
         inner.mailboxService.fragment(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.input)
@@ -283,9 +306,68 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
      * Return an envelope to the invoking party with the result of execution
      *
      * @param [envelopeState] the result of executing an incoming envelope
+     * @param [approvalTxHash] the transaction hash granting approval for the scope/session/record writes  the invoking party
      */
-    fun respondWithSignedResult(envelopeState: EnvelopeState) {
+    fun respondWithApproval(envelopeState: EnvelopeState, approvalTxHash: String) {
         inner.mailboxService.result(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), envelopeState.result)
+    }
+
+    /**
+     * Return an error to the invoking party
+     *
+     * @param [error] the error to respond with
+     */
+    fun respondWithError(error: Envelopes.EnvelopeError) {
+        inner.mailboxService.error(affiliate.encryptionKeyRef.publicKey, affiliate.signingKeyRef.signer(), error)
+    }
+
+    /**
+     * Approve another party's update to the scope
+     *
+     * @param [envelopeState] the details on the scope update
+     * @param [expirationTime] the time at which the granted authorization expires
+     *
+     * @return a list of Provenance messages granting authorization to the invoking party to submit this scope update.
+     * These need to be submitted in a successful transaction to the blockchain in order to grant access
+     */
+    fun approveScopeUpdate(envelopeState: EnvelopeState, expirationTime: OffsetDateTime = OffsetDateTime.now().plusHours(1)): List<Tx.MsgGrant> {
+        val (granter, grantee, typeUrls) = getGrantSetup(envelopeState)
+
+        return typeUrls.map { typeUrl ->
+            Tx.MsgGrant.newBuilder()
+                .setGranter(granter)
+                .setGrantee(grantee)
+                .setGrant(
+                    Authz.Grant.newBuilder()
+                        .setAuthorization(ProtoAny.pack(
+                            Authz.GenericAuthorization.newBuilder()
+                                .setMsg(typeUrl)
+                                .build(), "")
+                        )
+                        .setExpiration(Timestamp.newBuilder().setValue(expirationTime).build())
+                        .build()
+                ).build()
+        }
+    }
+
+    /**
+     * Revoke access to a scope that another party currently has.
+     *
+     * @param [envelopeState] the details on the scope update
+     *
+     * @return a list of Provenance messages revoking authorization to the grantee found in the envelope state.
+     * These need to be submitted in a successful transaction to the blockchain in order to revoke access
+     */
+    fun revokeScopeUpdate(envelopeState: EnvelopeState): List<Tx.MsgRevoke> {
+        val (granter, grantee, typeUrls) = getGrantSetup(envelopeState)
+
+        return typeUrls.map { typeUrl ->
+            Tx.MsgRevoke.newBuilder()
+                .setGranter(granter)
+                .setGrantee(grantee)
+                .setMsgTypeUrl(typeUrl)
+                .build()
+        }
     }
 
     /**
@@ -314,13 +396,15 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
             .takeIf { it.isNotEmpty() }
             // TODO different error type?
             .orThrowContractDefinition("Unable to build POJO of type ${clazz.name} because not all constructor params implement ${Message::class.java.name} and have a \"Record\" annotation")
-            .firstOrNull {
-                it.parameters.any { param ->
-                    scope.recordsList.any { wrapper ->
-                        (wrapper.record.name == param.getAnnotation(Record::class.java)?.name &&
-                            wrapper.record.resultType() == param.type.name)
+            .run {
+                firstOrNull {
+                    it.parameters.any { param ->
+                        scope.recordsList.any { wrapper ->
+                            (wrapper.record.name == param.getAnnotation(Record::class.java)?.name &&
+                                wrapper.record.resultType() == param.type.name)
+                        }
                     }
-                }
+                } ?: firstOrNull()
             }
             .orThrowContractDefinition("No constructor params have a matching record in scope ${scope.uuid()}")
         val params = constructor.parameters
@@ -339,6 +423,20 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
         return clazz.cast(constructor.newInstance(*params.toList().toTypedArray())).also { span.finish() }
     }
 
+    private fun getGrantSetup(envelopeState: EnvelopeState): Triple<String, String, List<String>> {
+        val granter = affiliate.signingKeyRef.publicKey.getAddress(inner.config.mainNet)
+        val grantee = envelopeState.input.contract.invoker.signingPublicKey.toPublicKey().getAddress(inner.config.mainNet)
+
+        val typeUrls = listOf(
+            if (envelopeState.input.newScope) TypeUrls.TypeURLMsgWriteScopeRequest else null,
+            if (!envelopeState.input.newScope) TypeUrls.TypeURLMsgAddScopeDataAccessRequest else null,
+            if (envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteSessionRequest else null,
+            if (!envelopeState.input.newSession) TypeUrls.TypeURLMsgWriteRecordRequest else null,
+        ).filterNotNull()
+
+        return Triple(granter, grantee, typeUrls)
+    }
+
     private fun <T: P8eContract> getContractHash(clazz: Class<T>): ContractHash {
         return contractHashes.find {
             it.getClasses()[clazz.name] == true
@@ -352,4 +450,20 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) {
     }
 
     private fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()
+
+    override fun close() {
+        inner.close()
+    }
+
+    /**
+     * Wait for all resources to properly close and be cleaned up. Should only be called after [close].
+     *
+     * @param [timeout] the timeout value, after which to give up on waiting
+     * @param [unit] the time unit corresponding to the [timeout] value
+     *
+     * @return whether the resources were fully terminated
+     */
+    fun awaitTermination(timeout: Long, unit: TimeUnit): Boolean {
+        return inner.awaitTermination(timeout, unit)
+    }
 }

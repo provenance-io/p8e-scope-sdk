@@ -1,0 +1,26 @@
+package io.provenance.scope.util
+
+object TypeUrls {
+    val TypeURLMsgWriteScopeRequest                      = "/provenance.metadata.v1.MsgWriteScopeRequest"
+    val TypeURLMsgDeleteScopeRequest                     = "/provenance.metadata.v1.MsgDeleteScopeRequest"
+    val TypeURLMsgAddScopeDataAccessRequest              = "/provenance.metadata.v1.MsgAddScopeDataAccessRequest"
+    val TypeURLMsgDeleteScopeDataAccessRequest           = "/provenance.metadata.v1.MsgDeleteScopeDataAccessRequest"
+    val TypeURLMsgAddScopeOwnerRequest                   = "/provenance.metadata.v1.MsgAddScopeOwnerRequest"
+    val TypeURLMsgDeleteScopeOwnerRequest                = "/provenance.metadata.v1.MsgDeleteScopeOwnerRequest"
+    val TypeURLMsgWriteSessionRequest                    = "/provenance.metadata.v1.MsgWriteSessionRequest"
+    val TypeURLMsgWriteRecordRequest                     = "/provenance.metadata.v1.MsgWriteRecordRequest"
+    val TypeURLMsgDeleteRecordRequest                    = "/provenance.metadata.v1.MsgDeleteRecordRequest"
+    val TypeURLMsgWriteScopeSpecificationRequest         = "/provenance.metadata.v1.MsgWriteScopeSpecificationRequest"
+    val TypeURLMsgDeleteScopeSpecificationRequest        = "/provenance.metadata.v1.MsgDeleteScopeSpecificationRequest"
+    val TypeURLMsgWriteContractSpecificationRequest      = "/provenance.metadata.v1.MsgWriteContractSpecificationRequest"
+    val TypeURLMsgDeleteContractSpecificationRequest     = "/provenance.metadata.v1.MsgDeleteContractSpecificationRequest"
+    val TypeURLMsgAddContractSpecToScopeSpecRequest      = "/provenance.metadata.v1.MsgAddContractSpecToScopeSpecRequest"
+    val TypeURLMsgDeleteContractSpecFromScopeSpecRequest = "/provenance.metadata.v1.MsgDeleteContractSpecFromScopeSpecRequest"
+    val TypeURLMsgWriteRecordSpecificationRequest        = "/provenance.metadata.v1.MsgWriteRecordSpecificationRequest"
+    val TypeURLMsgDeleteRecordSpecificationRequest       = "/provenance.metadata.v1.MsgDeleteRecordSpecificationRequest"
+    val TypeURLMsgBindOSLocatorRequest                   = "/provenance.metadata.v1.MsgBindOSLocatorRequest"
+    val TypeURLMsgDeleteOSLocatorRequest                 = "/provenance.metadata.v1.MsgDeleteOSLocatorRequest"
+    val TypeURLMsgModifyOSLocatorRequest                 = "/provenance.metadata.v1.MsgModifyOSLocatorRequest"
+    val TypeURLMsgWriteP8eContractSpecRequest            = "/provenance.metadata.v1.MsgWriteP8eContractSpecRequest"
+    val TypeURLMsgP8eMemorializeContractRequest          = "/provenance.metadata.v1.MsgP8eMemorializeContractRequest"
+}

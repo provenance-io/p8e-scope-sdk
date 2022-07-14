@@ -4,6 +4,7 @@ import cosmos.tx.signing.v1beta1.Signing
 import io.provenance.metadata.v1.Scope
 import io.provenance.scope.contract.proto.Envelopes
 import io.provenance.scope.contract.proto.Envelopes.Envelope
+import io.provenance.scope.contract.proto.sessionUuid
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.model.SigningAndEncryptionPublicKeys
 import io.provenance.scope.objectstore.client.OsClient

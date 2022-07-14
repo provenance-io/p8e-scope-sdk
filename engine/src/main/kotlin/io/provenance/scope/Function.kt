@@ -4,6 +4,7 @@ import arrow.core.Either
 import com.google.protobuf.Message
 import io.provenance.scope.contract.annotations.Input
 import io.provenance.scope.contract.annotations.Record
+import io.provenance.scope.contract.annotations.SkipIfRecordExists
 import io.provenance.scope.contract.proto.Commons.ProvenanceReference
 import io.provenance.scope.contract.proto.Commons.DefinitionSpec
 import io.provenance.scope.contract.proto.Contracts.ProposedRecord
@@ -32,6 +33,10 @@ class Function<T: P8eContract>(
     val fact = method.getAnnotation(Record::class.java)
         ?: throw ContractDefinitionException("${contract.javaClass.name}.${method.name} must have the ${Record::class.java.name} annotation.")
 
+    val skipBecauseRecordAlreadyExists: Boolean = method.getAnnotation(SkipIfRecordExists::class.java)?.let {
+        records.find { record -> record.name == it.name }
+    } != null
+
     val returnType = method.returnType
 
     private val methodParameters = getFunctionParameters(
@@ -43,7 +48,7 @@ class Function<T: P8eContract>(
     )
 
     fun canExecute(): Boolean {
-        return methodParameters.size == method.parameters.size
+        return methodParameters.size == method.parameters.size && !skipBecauseRecordAlreadyExists
     }
 
     operator fun invoke(): Pair<ConsiderationProto.Builder, Message?> {

@@ -21,10 +21,11 @@ object ValidateRecitalMatchesSpec: ContractValidator {
     }
 }
 
-object ValidateAllFactsAreSupplied: ContractValidator {
+object ValidateAllRequiredFactsAreSupplied: ContractValidator {
     override fun validate(contract: Contract, spec: ContractSpec) {
-        val specFacts = spec.inputSpecsList.map { it.name }.sorted()
-        val contractFacts = contract.inputsList.filter { it.dataLocation.ref.hash.isNotEmpty() }.map { it.name }.intersect(specFacts).sorted()
+        val optionalInputs = spec.inputSpecsList.filter { it.optional }.map { it.name }.toSet()
+        val specFacts = spec.inputSpecsList.map { it.name }.filterNot { optionalInputs.contains(it) }.sorted()
+        val contractFacts = contract.inputsList.filter { it.dataLocation.ref.hash.isNotEmpty() }.map { it.name }.filterNot { optionalInputs.contains(it) }.intersect(specFacts).sorted()
 
         if (contractFacts != specFacts) {
             throw ContractValidationException("Provided facts do not match the contract spec, the constructor for the contract contains a fact that is not in the current scope record on chain. [required facts: $specFacts] [specified facts: $contractFacts]")
@@ -35,7 +36,7 @@ object ValidateAllFactsAreSupplied: ContractValidator {
 object ContractValidators {
     private val validators = listOf(
         ValidateRecitalMatchesSpec,
-        ValidateAllFactsAreSupplied
+        ValidateAllRequiredFactsAreSupplied
     )
 
     @Throws(ContractValidationException::class)

@@ -1,6 +1,8 @@
-// package io.provenance.scope.contract.proto
+ package io.provenance.scope.contract.proto
 
-// import com.google.protobuf.DescriptorProtos
+ import io.provenance.scope.proto.Util
+
+ // import com.google.protobuf.DescriptorProtos
 // import com.google.protobuf.GeneratedMessage
 // import com.google.protobuf.ProtocolMessageEnum
 // import io.provenance.scope.contract.proto.ContractScope.Envelope.Status
@@ -22,3 +24,12 @@
 //         throw IllegalArgumentException("${javaClass.name}.$this missing extension [(${extension.descriptor.name}) = ???]. Try filtering it out")
 //     }
 // }
+
+ val Envelopes.EnvelopeError.executionUuid: Util.UUID
+    get() = envelope.executionUuid
+
+ val Envelopes.EnvelopeError.sessionUuid: Util.UUID
+    get() = envelope.ref.sessionUuid
+
+ val Envelopes.EnvelopeError.scopeUuid: Util.UUID
+    get() = envelope.ref.scopeUuid

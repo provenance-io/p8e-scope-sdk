@@ -8,17 +8,15 @@ import io.provenance.scope.contract.proto.HelloWorldExample
 import io.provenance.scope.proto.PK
 import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.contract.proto.TestContractProtos
-import io.provenance.scope.encryption.ecies.ECUtils
+import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toJavaPrivateKey
-import io.provenance.scope.encryption.util.toJavaPublicKey
 import io.provenance.scope.encryption.util.toKeyPair
 import io.provenance.scope.util.MetadataAddress
 import io.provenance.scope.util.toByteString
 import io.provenance.scope.util.toUuid
 import java.net.URI
-import java.security.KeyPair
 import java.util.*
 
 
@@ -50,7 +48,7 @@ fun createClientDummy(localKeyIndex: Int): Client {
     return Client(SharedClient(clientConfig), affiliate)
 }
 
-fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse? = null): Session.Builder {
+fun createSessionBuilderNoRecords(client: Client, existingScope: ScopeResponse? = null): Session.Builder {
     val defSpec = Commons.DefinitionSpec.newBuilder()
         .setType(Commons.DefinitionSpec.Type.PROPOSED)
         .setResourceLocation(
@@ -84,20 +82,20 @@ fun createSessionBuilderNoRecords(osClient: Client, existingScope: ScopeResponse
     } else {
         scopeSpecUuid = UUID.randomUUID()
     }
-    return Session.Builder(scopeSpecUuid)
+    return Session.Builder(scopeSpecUuid, client.inner.affiliateRepository)
         .setContractSpec(spec.build())
         .setProvenanceReference(provenanceReference)
-        .setClient(osClient)
+        .setClient(client)
         .setSessionUuid(UUID.randomUUID())
         .apply {
             if (existingScope != null) {
                 setScope(existingScope)
-                addDataAccessKey(localKeys[2].public)
+                addDataAccessKey(localKeys[1].public)
             }
         }
 }
 
-fun createExistingScope(): ScopeResponse.Builder {
+fun createExistingScope(affiliateRepository: AffiliateRepository = AffiliateRepository(false), ownerAddress: String? = null): ScopeResponse.Builder {
     val scopeUuid = UUID.randomUUID()
     val sessionUUID = UUID.randomUUID()
     val specificationUUID = UUID.randomUUID()
@@ -115,9 +113,18 @@ fun createExistingScope(): ScopeResponse.Builder {
         .setSessionId(MetadataAddress.forSession(scopeUuid, sessionUUID).bytes.toByteString())
         .setName("record2")
     val recordWrapper = RecordWrapper.newBuilder().setRecord(scopeRecord).build()
+    val ownerKey = ProvenanceKeyGenerator.generateKeyPair()
+    affiliateRepository.addAffiliate(ownerKey.public, ownerKey.public)
     val scope = Scope.newBuilder()
-        .addDataAccess(localKeys[2].public.getAddress(false))
-        .addOwners(Party.newBuilder().setRole(PartyType.PARTY_TYPE_OWNER))
+        .addDataAccess(localKeys[1].public.getAddress(false))
+        .addOwners(
+            Party.newBuilder()
+            .setRole(PartyType.PARTY_TYPE_OWNER)
+            .apply {
+                ownerAddress?.let { setAddress(it) }
+                    ?: setAddress(ownerKey.public.getAddress(false))
+            }
+        )
         .setScopeId(MetadataAddress.forScope(scopeUuid).bytes.toByteString())
         .setValueOwnerAddress("ownerAddress")
         .setSpecificationId(MetadataAddress.forScopeSpecification(specificationUUID).bytes.toByteString())
@@ -143,6 +150,9 @@ fun createExistingScope(): ScopeResponse.Builder {
 data class HelloWorldData(@AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName) {}
 data class HelloWorldDataNullable(
     @AnnotationRecord(name = "record2") val name: HelloWorldExample.ExampleName,
+    @AnnotationRecord(name = "nullableRecord") val nullableRecord: TestContractProtos.TestProto?
+) {}
+data class HelloWorldDataOnlyNullable(
     @AnnotationRecord(name = "nullableRecord") val nullableRecord: TestContractProtos.TestProto?
 ) {}
 

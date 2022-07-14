@@ -49,4 +49,6 @@ enum PartyType {
     AFFILIATE = 6;
     OMNIBUS = 7;
     PROVENANCE = 8;
+    CONTROLLER = 10;
+    VALIDATOR = 11;
 }

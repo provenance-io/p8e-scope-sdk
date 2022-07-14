@@ -19,6 +19,7 @@ import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.model.SigningAndEncryptionPublicKeys
 import io.provenance.scope.encryption.proto.Encryption
+import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.OsClient
 import io.provenance.scope.sdk.mailbox.ExecutionErrorEvent
 import io.provenance.scope.sdk.mailbox.ExecutionRequestEvent
@@ -46,6 +47,8 @@ class PollAffiliateMailboxTest: WordSpec() {
         osClient = mockk<OsClient>()
         mailboxService = mockk<MailboxService>()
     }
+
+    private fun OsClient.toCachedClient(): CachedOsClient = CachedOsClient(this, 1, 1, 1, 1)
 
     fun buildEnvelope(recitals: List<SigningAndEncryptionPublicKeys>) = Envelopes.Envelope.newBuilder()
         .apply {
@@ -86,10 +89,10 @@ class PollAffiliateMailboxTest: WordSpec() {
                 every { osClient.mailboxAck(any()) } returns Unit
 
                 var handlerCount = 0
-                PollAffiliateMailbox(osClient, mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
+                PollAffiliateMailbox(osClient.toCachedClient(), mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
                     handlerCount++
                     event::class shouldBe ExecutionRequestEvent::class
-                    (event as ExecutionRequestEvent).envelope shouldBe request
+                    (event as ExecutionRequestEvent).contract.envelope shouldBe request
                     true
                 }.run()
 
@@ -103,10 +106,10 @@ class PollAffiliateMailboxTest: WordSpec() {
                 every { osClient.mailboxAck(any()) } returns Unit
 
                 var handlerCount = 0
-                PollAffiliateMailbox(osClient, mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
+                PollAffiliateMailbox(osClient.toCachedClient(), mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
                     handlerCount++
                     event::class shouldBe ExecutionResponseEvent::class
-                    (event as ExecutionResponseEvent).envelope shouldBe request
+                    (event as ExecutionResponseEvent).contract.envelope shouldBe request
                     true
                 }.run()
 
@@ -121,10 +124,10 @@ class PollAffiliateMailboxTest: WordSpec() {
                 every { osClient.mailboxAck(any()) } returns Unit
 
                 var handlerCount = 0
-                PollAffiliateMailbox(osClient, mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
+                PollAffiliateMailbox(osClient.toCachedClient(), mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
                     handlerCount++
                     event::class shouldBe ExecutionErrorEvent::class
-                    (event as ExecutionErrorEvent).error shouldBe error
+                    (event as ExecutionErrorEvent).contract.error shouldBe error
                     true
                 }.run()
 
@@ -141,10 +144,10 @@ class PollAffiliateMailboxTest: WordSpec() {
                 every { osClient.mailboxAck(any()) } returns Unit
 
                 var handlerCount = 0
-                PollAffiliateMailbox(osClient, mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
+                PollAffiliateMailbox(osClient.toCachedClient(), mailboxService, signingKeyRef, encryptionKeyRef, 100, false) { event ->
                     handlerCount++
                     event::class shouldBe ExecutionRequestEvent::class
-                    (event as ExecutionRequestEvent).envelope shouldBe requests[handlerCount - 1]
+                    (event as ExecutionRequestEvent).contract.envelope shouldBe requests[handlerCount - 1]
                     throw Exception("failure")
                 }.run()
 

@@ -53,7 +53,7 @@ class CachedOsClientTest: WordSpec() {
                 every { dimeInputStream.getDecryptedPayload(any()) } returns signatureInputStream
                 every { osClient.get(any(), any()) } returns Futures.immediateFuture(dimeInputStream)
 
-                val cachedOsClient = CachedOsClient(osClient, 1, 1, 0)
+                val cachedOsClient = CachedOsClient(osClient, 1, 1, 0, 0)
 
                 val exception = shouldThrow<NotFoundException> {
                     val ex = cachedOsClient.getJar("abc".base64Decode(), encryptionKeyRef).runCatching { get() }.exceptionOrNull()
@@ -76,7 +76,7 @@ class CachedOsClientTest: WordSpec() {
                 every { dimeInputStream.close() } returns Unit
                 every { osClient.get(any(), any()) } returns Futures.immediateFuture(dimeInputStream)
 
-                val cachedOsClient = CachedOsClient(osClient, 1, 1, 0)
+                val cachedOsClient = CachedOsClient(osClient, 1, 1, 0, 0)
 
                 val exception = shouldThrow<ProtoParseException> {
                     val ex = cachedOsClient.getRecord(NonMessage::class.java.name, "abc".base64Decode(), encryptionKeyRef).runCatching { get() }.exceptionOrNull()
@@ -100,7 +100,7 @@ class CachedOsClientTest: WordSpec() {
                 every { dimeInputStream.close() } returns Unit
                 every { osClient.get(any(), any()) } returns Futures.immediateFuture(dimeInputStream)
 
-                val cachedOsClient = CachedOsClient(osClient, 1, 1, 0)
+                val cachedOsClient = CachedOsClient(osClient, 1, 1, 0, 0)
 
                 val exception = shouldThrow<ProtoParseException> {
                     val ex = cachedOsClient.getRecord(DoesNotEvenLookLikeAMessage::class.java.name, "abc".base64Decode(), encryptionKeyRef).runCatching { get() }.exceptionOrNull()

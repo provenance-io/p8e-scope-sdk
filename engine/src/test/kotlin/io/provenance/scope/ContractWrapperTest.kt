@@ -2,10 +2,13 @@ package io.provenance.scope
 
 import com.google.common.util.concurrent.Futures
 import com.google.protobuf.Message
+import cosmwasm.wasm.v1.contract
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.core.test.TestCase
+import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNot
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.every
@@ -13,9 +16,13 @@ import io.mockk.mockk
 import io.provenance.scope.contract.BadTestContract
 import io.provenance.scope.contract.SimpleTestContract
 import io.provenance.scope.contract.TestContract
+import io.provenance.scope.contract.annotations.Function
+import io.provenance.scope.contract.annotations.Input
 import io.provenance.scope.contract.annotations.Record
+import io.provenance.scope.contract.annotations.SkipIfRecordExists
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Contracts
+import io.provenance.scope.contract.proto.Specifications
 import io.provenance.scope.contract.proto.TestContractProtos
 import io.provenance.scope.contract.spec.P8eContract
 import io.provenance.scope.definition.DefinitionService
@@ -39,6 +46,37 @@ private class DoubleConstructorContract(someValue: TestContractProtos.TestProto)
 private class ContractWithUnAnnotatedConstructorArg(val someRecord: TestContractProtos.TestProto): P8eContract()
 
 private class ContractWithOneRecord(@Record(name = "someRecord") val someRecord: TestContractProtos.TestProto): P8eContract()
+private class ContractWithOneRequiredOneOptionalRecord(
+    @Record(name = "someRecord") val someRecord: TestContractProtos.TestProto,
+    @Record(name = "someOptionalRecordAppend", optional = true) val someOptionalRecordAppend: TestContractProtos.TestProto?,
+): P8eContract() {
+    @Record(name = "someRecord")
+    @Function(invokedBy = Specifications.PartyType.OWNER)
+    fun someRecord(): TestContractProtos.TestProto {
+        return someRecord.toBuilder().setValue(someRecord.value + "-updated").build()
+    }
+
+    // function to append or overwrite record, depending on its existence
+    @Record(name = "someOptionalRecordAppend")
+    @Function(invokedBy = Specifications.PartyType.OWNER)
+    fun someOptionalRecordAppend(@Input("someProposedRecordToAppend") someProposedRecordToAppend: TestContractProtos.TestProto): TestContractProtos.TestProto {
+        return (someOptionalRecordAppend?.toBuilder() ?: TestContractProtos.TestProto.newBuilder())
+            .setValue((someOptionalRecordAppend?.value?.plus("-") ?: "") + someProposedRecordToAppend.value).build()
+    }
+}
+private class ContractWithOneOptionalRecordAndFunctionToSkipIfExists(
+    @Record(name = "someRecordOnlySetOnce", optional = true) val someRecordOnlySetOnce: TestContractProtos.TestProto?,
+): P8eContract() {
+    // function to set record, will not be executed if existing record not present
+    @Record(name = "someRecordOnlySetOnce")
+    @Function(invokedBy = Specifications.PartyType.OWNER)
+    @SkipIfRecordExists(name = "someRecordOnlySetOnce")
+    fun someRecordOnlySetOnce(
+        @Input("someRecordOnlySetOnce") proposedRecord: TestContractProtos.TestProto,
+    ): TestContractProtos.TestProto {
+        return proposedRecord
+    }
+}
 
 class ContractWrapperTest: WordSpec() {
     private val encryptionKeyRef = DirectKeyRef(ProvenanceKeyGenerator.generateKeyPair())
@@ -145,6 +183,56 @@ class ContractWrapperTest: WordSpec() {
                 }
 
                 exception.message shouldContain "Error constructing contract class ${ContractWithOneRecord::class.java.name}\n\tparameter types were (io.provenance.scope.contract.proto.TestContractProtos\$TestProto2)\n\texpected (io.provenance.scope.contract.proto.TestContractProtos\$TestProto)"
+            }
+            "work for a contract that has an optional record that is not present" {
+                definitionService.register(ContractWithOneRequiredOneOptionalRecord::class)
+                addRecord("someRecord", testProto("someRecordValue"))
+                addConsideration("someRecord", listOf())
+                addConsideration("someOptionalRecordAppend", listOf("someProposedRecordToAppend" to testProto("someProposedRecordToAppendValue")))
+
+                val wrapper = getContractWrapper(ContractWithOneRequiredOneOptionalRecord::class)
+
+                wrapper.functions.count() shouldBe 2
+                val function1 = wrapper.functions.find { it.method.name == "someRecord" }!!
+                function1.canExecute() shouldBe true
+                val result = function1.invoke()
+                result.second shouldNotBe null
+                result.second!!.javaClass shouldBe TestContractProtos.TestProto::class.java
+                (result.second!! as TestContractProtos.TestProto) shouldBe testProto("someRecordValue-updated")
+
+                val function2 = wrapper.functions.find { it.method.name == "someOptionalRecordAppend" }!!
+                function2.canExecute() shouldBe true
+                val result2 = function2.invoke()
+                result2.second shouldNotBe null
+                result2.second!!.javaClass shouldBe TestContractProtos.TestProto::class.java
+                (result2.second!! as TestContractProtos.TestProto) shouldBe testProto("someProposedRecordToAppendValue")
+            }
+            "Skip function execution if record is already present and SkipIfRecordExists annotation is present for record" {
+                definitionService.register(ContractWithOneOptionalRecordAndFunctionToSkipIfExists::class)
+
+                addRecord("someRecordOnlySetOnce", testProto("someRecordOnlySetOnceValue"))
+                addConsideration("someRecordOnlySetOnce", listOf("someRecordOnlySetOnce" to testProto("someRecordOnlySetOnceProposedValue")))
+
+                val wrapper = getContractWrapper(ContractWithOneOptionalRecordAndFunctionToSkipIfExists::class)
+
+                wrapper.functions.count() shouldBe 1
+                val function = wrapper.functions.find { it.method.name == "someRecordOnlySetOnce" }!!
+                function.canExecute() shouldBe false
+            }
+            "Not skip function execution if record is not already present and SkipIfRecordExists annotation is present for record" {
+                definitionService.register(ContractWithOneOptionalRecordAndFunctionToSkipIfExists::class)
+
+                addConsideration("someRecordOnlySetOnce", listOf("someRecordOnlySetOnce" to testProto("someRecordOnlySetOnceProposedValue")))
+
+                val wrapper = getContractWrapper(ContractWithOneOptionalRecordAndFunctionToSkipIfExists::class)
+
+                wrapper.functions.count() shouldBe 1
+                val function = wrapper.functions.find { it.method.name == "someRecordOnlySetOnce" }!!
+                function.canExecute() shouldBe true
+                val result = function.invoke()
+                result.second shouldNotBe null
+                result.second!!.javaClass shouldBe TestContractProtos.TestProto::class.java
+                (result.second!! as TestContractProtos.TestProto) shouldBe testProto("someRecordOnlySetOnceProposedValue")
             }
             "produce a list of functions that need to be executed based on considerations" {
                 definitionService.register(SimpleTestContract::class)

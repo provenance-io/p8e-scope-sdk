@@ -126,7 +126,8 @@ class ContractEngineTest : WordSpec() {
             OsClient(URI("https://localhost:5000"), 20000L),
             osDecryptionThreadCount,
             osConcurrencySize,
-            20000L
+            20000L,
+            20000L,
         )
         contractEngine = ContractEngine(osClient)
 

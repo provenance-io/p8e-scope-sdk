@@ -10,12 +10,14 @@ import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.SigningAndEncryptionPublicKeys
 import io.provenance.scope.encryption.util.getAddress
+import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.sdk.ContractSpecMapper.newContract
 import io.provenance.scope.sdk.ContractSpecMapper.orThrowNotFound
 import io.provenance.scope.sdk.extensions.resultHash
 import io.provenance.scope.sdk.extensions.uuid
 import io.provenance.scope.util.toProtoUuid
 import io.provenance.scope.objectstore.util.base64EncodeString
+import io.provenance.scope.objectstore.util.loBytes
 import io.provenance.scope.objectstore.util.sha256
 import io.provenance.scope.objectstore.util.toPublicKey
 import io.provenance.scope.proto.PK
@@ -25,6 +27,7 @@ import io.provenance.scope.sdk.extensions.validateRecordsRequested
 import io.provenance.scope.sdk.extensions.validateSessionsRequested
 import io.provenance.scope.util.toUuid
 import org.slf4j.LoggerFactory
+import java.io.ByteArrayInputStream
 import java.security.PublicKey
 import java.util.*
 import java.util.UUID
@@ -83,7 +86,7 @@ class Session(
      *
      * @property [scopeSpecUuid] the uuid of the scope specification associated with the new/existing scope
      */
-    class Builder(val scopeSpecUuid: UUID) {
+    class Builder(val scopeSpecUuid: UUID, private val affiliateRepository: AffiliateRepository) {
         /** The records proposed by the invoking party of this session execution */
         var proposedRecords: HashMap<String, Message> = HashMap()
             private set
@@ -237,7 +240,9 @@ class Session(
                 .orThrowNotFound("Can't find participant for party type ${party}")
 
             if (participants.get(party) == null) {
-                participants[party] = SigningAndEncryptionPublicKeys(signingPublicKey, encryptionPublicKey)
+                participants[party] = SigningAndEncryptionPublicKeys(signingPublicKey, encryptionPublicKey).also {
+                    affiliateRepository.addAffiliate(it)
+                }
             } else {
                 throw ContractSpecMapper.ContractDefinitionException("Participant for party type $party already exists in the participant list.")
             }
@@ -466,15 +471,6 @@ class Session(
                  listOf(it.first to it.second, it.second to it.first)
              }.toMap()
 
-             sessionDataAccessAddresses.forEach { address ->
-                 if (!scope.scope.scope.dataAccessList.contains(address)) {
-                     val correspondingAddress = correspondingAddressLookup[address]
-                     if (correspondingAddress == null || !scope.scope.scope.dataAccessList.contains(correspondingAddress)) {
-                         throw IllegalStateException("$address was added with data access in this session but does not have access in the existing scope.")
-                     }
-                 }
-             }
-
              scope.scope.scope.dataAccessList.forEach { address ->
                  if (!sessionDataAccessAddresses.contains(address)) {
                      val correspondingAddress = correspondingAddressLookup[address]
@@ -490,7 +486,7 @@ class Session(
         val permissionUpdater = PermissionUpdater(
             client,
             contract,
-            contract.toAudience(scope) + dataAccessKeys,
+            contract.toAudience(scope, affiliateRepository) + dataAccessKeys,
         )
         // Build the envelope for this execution
         val envelope = Envelope.newBuilder()
@@ -547,12 +543,11 @@ class Session(
         }
     }
 
-    private fun Contract.toAudience(scope: ScopeResponse?): Set<PublicKey> = recitalsList.map {
+    private fun Contract.toAudience(scopeResponse: ScopeResponse?, affiliateRepository: AffiliateRepository): Set<PublicKey> = recitalsList.map {
         it.signer.encryptionPublicKey.toPublicKey()
-    }.toSet()
-//    .plus(scope.scope.scope.ownersList.map { // todo: add scope owners to list, need AffiliateRepository
-//        it.address
-//    })
+    }.toSet().plus(scopeResponse?.scope?.scope?.ownersList?.map { owner ->
+        affiliateRepository.getAffiliateKeysByAddress(owner.address).encryptionPublicKey
+    } ?: emptyList())
 
     private fun isMatchingRecord(inputRecord: Contracts.Record.Builder, recordName: String): Boolean {
         return inputRecord.name == recordName && inputRecord.dataLocation.ref == Commons.ProvenanceReference.getDefaultInstance()
@@ -561,21 +556,32 @@ class Session(
     class PermissionUpdater(
         private val client: Client,
         private val contract: Contract,
-        private val audience: Set<java.security.PublicKey>
+        private val audience: Set<PublicKey>
     ) {
         private val log = LoggerFactory.getLogger(this::class.java);
         fun saveConstructorArguments() {
-            // TODO (later) this can be optimized by checking the recitals and record groups and determining what subset, if any,
+            // TODO this can be optimized by checking the recitals and record groups and determining what subset, if any,
             // of input facts need to be fetched and stored in order only save the objects that are needed by some of
             // the recitals
-//            contract.inputsList.map { record ->
-//                with(client) {
-////                     val obj = this.loadObject(record.dataLocation.ref.hash)
-////                     val inputStream = ByteArrayInputStream(obj)
-////
-////                     this.storeObject(inputStream, audience)
-//                }
-//            }
+            contract.inputsList
+                .filter { record -> record.dataLocation.ref.hash.isNotBlank() }
+                .map { record ->
+                    with(client) {
+                        val hashBytes = record.dataLocation.ref.hash.base64Decode()
+                         val obj = inner.osClient.getJar(hashBytes, affiliate.encryptionKeyRef).get().readAllBytes()
+                        val inputStream = ByteArrayInputStream(obj)
+
+                        val loHash = hashBytes.size == 16
+                        val msgSha256 = obj.sha256()
+                        val useSha256 = if (loHash) {
+                            msgSha256.loBytes().toByteArray()
+                        } else {
+                            msgSha256
+                        }.contentEquals(hashBytes)
+
+                         inner.osClient.putJar(inputStream, affiliate.signingKeyRef, affiliate.encryptionKeyRef, obj.size.toLong(), audience, sha256 = useSha256, loHash = loHash)
+                    }
+                }
         }
 
         // TODO (steve) for later convert to async with ListenableFutures
