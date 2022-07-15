@@ -568,7 +568,7 @@ class Session(
                 .map { record ->
                     with(client) {
                         val hashBytes = record.dataLocation.ref.hash.base64Decode()
-                         val obj = inner.osClient.getJar(hashBytes, affiliate.encryptionKeyRef).get().readAllBytes()
+                        val obj = inner.osClient.getJar(hashBytes, affiliate.encryptionKeyRef).get().readAllBytes()
                         val inputStream = ByteArrayInputStream(obj)
 
                         val loHash = hashBytes.size == 16

@@ -132,7 +132,11 @@ class CachedOsClient(val osClient: OsClient, osDecryptionWorkerThreads: Short, o
             getRawBytes(hash, encryptionKeyRef, jarCache),
             { byteArray -> byteArray?.let { ByteArrayInputStream(it) } },
             MoreExecutors.directExecutor(),
-        )
+        ).let {
+            Futures.catching(it, StatusRuntimeException::class.java, { e ->
+                ByteArrayInputStream(byteArrayOf())
+            }, decryptionWorkerThreadPool)
+        }
     }
 
     /**
