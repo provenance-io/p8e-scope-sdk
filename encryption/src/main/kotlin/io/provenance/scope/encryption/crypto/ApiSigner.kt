@@ -26,27 +26,17 @@ class ApiSigner(
         Security.addProvider(BouncyCastleProvider())
     }
     
+    override var deterministic = true
+    
     override var hashType: SignerImpl.Companion.HashType = DEFAULT_HASH
         set(value) {
             field = value
-            resetDigest()
+            
+            // Reset digest
+            messageDigest = MessageDigest.getInstance(hashType.value)
         }
     
     private var messageDigest = MessageDigest.getInstance(hashType.value)
-    
-    private var signatureRequest: SignRequest? = null
-    
-    private fun resetDigest() {
-        messageDigest = MessageDigest.getInstance(hashType.value)
-    }
-
-    private val digestAlgorithm: DigestAlgorithm
-        get() = when(hashType) {
-            SignerImpl.Companion.HashType.SHA256 -> DigestAlgorithm.SHA256
-            SignerImpl.Companion.HashType.SHA512 -> DigestAlgorithm.SHA512
-        }
-
-    override var deterministic = true
     
     override fun sign(data: String) = sign(data.toByteArray())
 
@@ -65,11 +55,8 @@ class ApiSigner(
             .orThrow { IllegalStateException("can't verify signature - public cert may not match private key.") }
     }
 
-    override fun sign(): ByteArray {
-        signatureRequest?.hash = messageDigest.digest()
-        
-        return apiClient.sign(byteArrayOf())
-    }
+    override fun sign(): ByteArray =
+        apiClient.sign(messageDigest.digest())
 
     override fun update(data: Byte) =
         messageDigest.update(data)
@@ -81,10 +68,7 @@ class ApiSigner(
         messageDigest.update(data, off, len)
     
     override fun initSign() {
-        signatureRequest = SignRequest()
-            .hashAlg(digestAlgorithm)
-            .deterministicSignature(deterministic)
-            .hash(byteArrayOf())
+        // Not needed
     }
 
     override fun signer(): PK.SigningAndEncryptionPublicKeys =
