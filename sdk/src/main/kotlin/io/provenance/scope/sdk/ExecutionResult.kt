@@ -10,7 +10,6 @@ import io.provenance.metadata.v1.RecordInput
 import io.provenance.metadata.v1.RecordInputStatus
 import io.provenance.metadata.v1.RecordOutput
 import io.provenance.metadata.v1.ScopeResponse
-import io.provenance.metadata.v1.ValueOwnershipRequest
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Envelopes.EnvelopeState
 import io.provenance.scope.encryption.ecies.ECUtils
