@@ -1,11 +1,12 @@
 package io.provenance.scope.encryption.model
 
 import com.fortanix.sdkms.v1.api.SignAndVerifyApi
+import io.provenance.scope.encryption.crypto.ApiSigner
+import io.provenance.scope.encryption.crypto.ApiSignerClient
 import io.provenance.scope.encryption.crypto.Pen
 import io.provenance.scope.encryption.crypto.SignerImpl
 import io.provenance.scope.encryption.crypto.SmartKeySigner
 import io.provenance.scope.encryption.ecies.ECUtils
-import io.provenance.scope.encryption.ecies.ProvenanceECIESCryptogram
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.experimental.extensions.toAgreeKey
 import io.provenance.scope.encryption.experimental.extensions.toTransientSecurityObject
@@ -60,6 +61,13 @@ class DirectKeyRef(publicKey: PublicKey, private val privateKey: PrivateKey) : K
     }
 
     override fun signer(): SignerImpl = Pen(KeyPair(publicKey, privateKey))
+}
+
+class ApiKeyRef(publicKey: PublicKey, private val apiSignerClient: ApiSignerClient): KeyRef(publicKey) {
+    override fun getSecretKey(ephemeralPublicKey: PublicKey) =
+        apiSignerClient.secretKey(publicKey)
+
+    override fun signer(): SignerImpl = ApiSigner(publicKey, apiSignerClient)
 }
 
 /**
