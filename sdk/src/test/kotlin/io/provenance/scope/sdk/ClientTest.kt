@@ -17,6 +17,7 @@ import io.provenance.scope.ContractEngine
 import io.provenance.scope.contract.TestContract
 import io.provenance.scope.contract.TestContractScopeSpecificationDefinition
 import io.provenance.scope.contract.proto.*
+import io.provenance.scope.contract.proto.Specifications.ContractSpecV2
 import io.provenance.scope.encryption.ecies.ProvenanceKeyGenerator
 import io.provenance.scope.encryption.model.DirectKeyRef
 import io.provenance.scope.encryption.util.getAddress
@@ -24,6 +25,9 @@ import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.client.ObjectHash
 import io.provenance.scope.proto.Common
 import io.provenance.scope.proto.PK
+import io.provenance.scope.util.base64String
+import io.provenance.scope.util.sha256
+import io.provenance.scope.util.sha256String
 import io.provenance.scope.util.toProtoUuid
 import java.io.ByteArrayInputStream
 import java.net.URI
@@ -51,17 +55,32 @@ class ClientTest : WordSpec() {
         cleanupHandlers.forEach { it.invoke() }
     }
 
-    private fun getClient(): Client = Client(
-        SharedClient(ClientConfig(0, 0, 0, URI.create("http://localhost:5000"), mainNet = false)),
-        Affiliate(
-            DirectKeyRef(signingKeyPair),
-            DirectKeyRef(encryptionKeyPair),
-            Specifications.PartyType.OWNER
-        )
-    ).also {
-        cleanupHandlers.add {
-            it.close()
-            it.awaitTermination(1, TimeUnit.SECONDS)
+    private fun getContractSpec(): ContractSpecV2 = ContractSpecV2.newBuilder()
+        .apply {
+            wasmBuilder.setHash("fakeHash")
+        }
+        .build()
+
+    private fun getClient(spec: ContractSpecV2 = getContractSpec()): Client {
+        every { anyConstructed<CachedOsClient>().getJar(any(), any()) } answers {
+            when (firstArg<ByteArray>().base64String()) {
+                spec.toByteArray().sha256String() -> Futures.immediateFuture(spec.toByteArray())
+                else -> throw Exception("Unexpected hash")
+            }
+        }
+        return Client(
+            SharedClient(ClientConfig(0, 0, 0, URI.create("httpvlbucincecnvfdltfnjgulnhtl" +
+                    "://localhost:5000"), mainNet = false)),
+            Affiliate(
+                DirectKeyRef(signingKeyPair),
+                DirectKeyRef(encryptionKeyPair),
+                Specifications.PartyType.OWNER
+            )
+        ).also {
+            cleanupHandlers.add {
+                it.close()
+                it.awaitTermination(1, TimeUnit.SECONDS)
+            }
         }
     }
 
@@ -93,8 +112,7 @@ class ClientTest : WordSpec() {
                     encryptionPublicKey = encryptionKeyPair.public
                 )
 
-                val session =
-                    client.newSession(TestContract::class.java, TestContractScopeSpecificationDefinition::class.java)
+                val session = client.newSession(TestContract::class.java, TestContractScopeSpecificationDefinition::class.java)
 
                 session.contractSpec!!.definition.name shouldBe "TestContract"
                 session.contractSpec!!.functionSpecsList[0].funcName shouldBe "testRecordFn"

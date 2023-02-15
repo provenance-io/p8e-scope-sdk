@@ -15,4 +15,6 @@ object Version {
     const val jackson_version = "2.12.2"
     const val arrow = "0.13.1"
     const val openTracing = "0.33.0"
+
+    const val wasmer_version = "0.13.0"
 }

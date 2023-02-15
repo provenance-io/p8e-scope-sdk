@@ -1,85 +1,40 @@
 package io.provenance.scope
 
 import arrow.core.Either
+import com.google.gson.FieldNamingPolicy
+import com.google.gson.GsonBuilder
 import com.google.protobuf.Message
 import io.provenance.scope.contract.proto.Contracts.ExecutionResult
 import io.provenance.scope.contract.proto.Contracts.Record
 import io.provenance.scope.contract.proto.Contracts.Contract
-import io.provenance.scope.contract.spec.P8eContract
-import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.orThrowContractDefinition
-import io.provenance.scope.util.toOffsetDateTime
-import io.provenance.scope.util.withoutLogging
-import java.lang.reflect.Constructor
-import java.lang.reflect.Method
 import java.lang.reflect.Parameter
 
 class ContractWrapper(
-    private val contractSpecClass: Class<out Any>,
+    contractBytes: ByteArray,
     private val encryptionKeyRef: KeyRef,
-    private val definitionService: DefinitionService,
     private val osClient: CachedOsClient,
     private val contractBuilder: Contract.Builder,
     private val disableContractLogs: Boolean = true,
 ) {
     private val records = buildRecords()
 
-    private fun <T> withConfigurableLogging(block: () -> T): T = if (disableContractLogs) {
-        withoutLogging(block)
-    } else {
-        block()
-    }
+    // todo: bring configurable logging back to contracts? (via some sort of wasm log import)
+//    private fun <T> withConfigurableLogging(block: () -> T): T = if (disableContractLogs) {
+//        withoutLogging(block)
+//    } else {
+//        block()
+//    }
 
-    val contractClass = definitionService.loadClass(
-        contractBuilder.definition
-    ).takeIf {
-        contractSpecClass.isAssignableFrom(it)
-    }.orThrowContractDefinition("Contract class ${contractBuilder.definition.resourceLocation.classname} must implement ${contractSpecClass.name}")
-    .takeIf {
-        P8eContract::class.java.isAssignableFrom(it)
-    }.orThrowContractDefinition("Contract class ${contractBuilder.definition.resourceLocation.classname} must extend ${P8eContract::class.java.name}")
-
-    private val constructor = getConstructor(contractClass)
-
-    private val constructorParameters = getConstructorParameters(constructor, records).map {
-        x -> when(x) {
-            is Either.Left<*> -> x.value
-            is Either.Right<*> -> x.value
-            else -> x
-        }
-    }
-
-    private val contract = withConfigurableLogging {
-        (constructor.newInstance(*constructorParameters.toTypedArray()) as P8eContract)
-            .also { it.currentTime.set(contractBuilder.startTime.toOffsetDateTime()) }
-    }
+    val contract = ContractWasm(contractBytes)
 
     val functions = contractBuilder.considerationsBuilderList
         .filter { it.result == ExecutionResult.getDefaultInstance() }
-        .map { consideration -> consideration to getConsiderationMethod(contract.javaClass, consideration.considerationName) }
+        .map { consideration -> consideration to getConsiderationMethod(consideration.considerationName) }
         .map { (consideration, method) -> Function(encryptionKeyRef, osClient, contract, consideration, method, records) }
-
-    private fun getConstructor(
-        clazz: Class<*>
-    ): Constructor<*> =
-        clazz.declaredConstructors
-            .takeIf { it.size == 1 }
-            ?.first()
-            .orThrowContractDefinition("Class ${clazz.name} must have only one constructor.")
-            .takeIf { it.parameters.all { parameter -> parameter.getAnnotation(io.provenance.scope.contract.annotations.Record::class.java) != null } }
-            .orThrowContractDefinition("All constructor arguments for ${clazz.name} must have an @Record annotation ")
-
-    private fun getConstructorParameters(
-        constructor: Constructor<*>,
-        records: List<RecordInstance>
-    ): List<Any?> =
-        constructor.parameters
-            .map { getParameterRecord(it, records) }
-            .filter { (annotation, record) -> record != null || annotation.optional }
-            .map { (_, record) -> record?.messageOrCollection }
 
     private fun getParameterRecord(
         parameter: Parameter,
@@ -92,13 +47,11 @@ class ContractWrapper(
     }
 
     private fun getConsiderationMethod(
-        contractClass: Class<*>,
         name: String
-    ): Method {
-        return contractClass.methods
-            .filter { it.isAnnotationPresent(io.provenance.scope.contract.annotations.Function::class.java) }
+    ): P8eFunction {
+        return contract.structure.functions
             .find { it.name == name }
-            .orThrowContractDefinition("Unable to find method on class ${contractClass.name} with annotation ${io.provenance.scope.contract.annotations.Function::class.java} with name $name")
+            .orThrowContractDefinition("Unable to find method on class ${contract.structure.name} with name $name")
     }
 
     private fun buildRecords(): List<RecordInstance> {

@@ -2,6 +2,10 @@ package io.provenance.scope.sdk
 
 import com.google.common.hash.Hashing
 import com.google.protobuf.Message
+import io.provenance.scope.ContractWasm
+import io.provenance.scope.ContractWrapper
+import io.provenance.scope.P8eFunction
+import io.provenance.scope.RecordType
 import io.provenance.scope.contract.annotations.Function
 import io.provenance.scope.contract.annotations.Record
 import io.provenance.scope.contract.annotations.Input
@@ -77,29 +81,30 @@ object ContractSpecMapper {
     fun findRecital(clazz: KClass<out P8eContract>) = clazz.findAnnotation<Participants>()
 
     fun dehydrateSpec(
-        clazz: KClass<out P8eContract>,
+        contractBytes: ByteArray,
         contractRef: ProvenanceReference,
         protoRef: ProvenanceReference
     ): ContractSpec {
 
         // Verify that the contract is valid by checking for the appropriate java interface.
-        clazz.isSubclassOf(P8eContract::class)
-            .orThrowContractDefinition("Contract class ${clazz::class.java.name} is not a subclass of P8eContract")
+//        clazz.isSubclassOf(P8eContract::class)
+//            .orThrowContractDefinition("Contract class ${clazz::class.java.name} is not a subclass of P8eContract")
+        val contract = ContractWasm(contractBytes)
 
-        val scopeSpecifications = clazz.annotations
-            .filter { it is ScopeSpecification }
-            .map { it as ScopeSpecification }
-            .flatMap { it.names.toList() }
-            .takeUnless { it.isEmpty() }
-            .orThrowContractDefinition("Class requires a ScopeSpecification annotation")
+//        val scopeSpecifications = clazz.annotations
+//            .filter { it is ScopeSpecification }
+//            .map { it as ScopeSpecification }
+//            .flatMap { it.names.toList() }
+//            .takeUnless { it.isEmpty() }
+//            .orThrowContractDefinition("Class requires a ScopeSpecification annotation")
 
         val spec = ContractSpec.newBuilder()
 
         with(ProtoUtil) {
             spec.definition = defSpecBuilderOf(
-                clazz.simpleName!!,
+                contract.structure.name,
                 locationBuilderOf(
-                    clazz.jvmName,
+                    contract.structure.name,
                     contractRef
                 ),
                 FACT
@@ -107,61 +112,58 @@ object ContractSpecMapper {
                 .build()
         }
 
-        clazz.constructors
-            .takeIf { it.size == 1 }
-            .orThrowContractDefinition("No constructor found, or more than one constructor identified")
-            .first()
-            .valueParameters
-            .forEach { param ->
-                val factAnnotation = param.findAnnotation<Record>()
-                    .orThrowContractDefinition("Constructor param(${param.name}) is missing @Record annotation")
-
-                with(ProtoUtil) {
-                    if (List::class == param.type.classifier) {
-                        val erasedType = (param.type.javaType as ParameterizedType)
-                            .actualTypeArguments[0]
-                            .let { it as Class<*> }
-                            .takeIf {
-                                Message::class.java.isAssignableFrom(it)
-                            }
-                            .orThrowContractDefinition("Constructor parameter of type List<T> must have a type T that implements ${Message::class.java.name}")
-
-                        spec.addInputSpecs(
-                            defSpecBuilderOf(
-                                factAnnotation.name,
-                                locationBuilderOf(
-                                    erasedType.name,
-                                    protoRef
-                                ),
-                                FACT_LIST,
-                                optional = factAnnotation.optional
-                            )
-                        )
-                    } else {
-                        spec.addInputSpecs(
-                            defSpecBuilderOf(
-                                factAnnotation.name,
-                                locationBuilderOf(
-                                    param.type.javaType.typeName,
-                                    protoRef
-                                ),
-                                FACT,
-                                optional = factAnnotation.optional
-                            )
-                        )
-                    }
-                }
-            }
+//        clazz.constructors
+//            .takeIf { it.size == 1 }
+//            .orThrowContractDefinition("No constructor found, or more than one constructor identified")
+//            .first()
+//            .valueParameters
+//            .forEach { param ->
+//                val factAnnotation = param.findAnnotation<Record>()
+//                    .orThrowContractDefinition("Constructor param(${param.name}) is missing @Record annotation")
+//
+//                with(ProtoUtil) {
+//                    if (List::class == param.type.classifier) {
+//                        val erasedType = (param.type.javaType as ParameterizedType)
+//                            .actualTypeArguments[0]
+//                            .let { it as Class<*> }
+//                            .takeIf {
+//                                Message::class.java.isAssignableFrom(it)
+//                            }
+//                            .orThrowContractDefinition("Constructor parameter of type List<T> must have a type T that implements ${Message::class.java.name}")
+//
+//                        spec.addInputSpecs(
+//                            defSpecBuilderOf(
+//                                factAnnotation.name,
+//                                locationBuilderOf(
+//                                    erasedType.name,
+//                                    protoRef
+//                                ),
+//                                FACT_LIST,
+//                                optional = factAnnotation.optional
+//                            )
+//                        )
+//                    } else {
+//                        spec.addInputSpecs(
+//                            defSpecBuilderOf(
+//                                factAnnotation.name,
+//                                locationBuilderOf(
+//                                    param.type.javaType.typeName,
+//                                    protoRef
+//                                ),
+//                                FACT,
+//                                optional = factAnnotation.optional
+//                            )
+//                        )
+//                    }
+//                }
+//            }
 
         // Add the recital to the contract spec.
-        clazz.annotations
-            .filter { it is Participants }
-            .map { it as Participants }
-            .flatMap { it.roles.toList() }
+        contract.structure.participants
+            .map(PartyType::valueOf)
             .let(spec::addAllPartiesInvolved)
 
-        clazz.functions
-            .filter { it.findAnnotation<Function>() != null }
+        contract.structure.functions
             .map { func ->
                 buildFunctionSpec(protoRef, func)
             }.let {
@@ -173,66 +175,42 @@ object ContractSpecMapper {
 
     private fun buildFunctionSpec(
         protoRef: ProvenanceReference,
-        func: KFunction<*>
+        func: P8eFunction
     ): FunctionSpec {
         val function = FunctionSpec.newBuilder()
         function.funcName = func.name
 
-        val considerationDecorator = func.findAnnotation<Function>()
-            .orThrowNotFound("Function Annotation not found on ${func}")
-        function.invokerParty = considerationDecorator.invokedBy
+        function.invokerParty = PartyType.valueOf(func.invokedBy)
 
-        func.valueParameters
+        func.parameters
             .forEach { param ->
-                param.findAnnotation<Record>()
-                    ?.also {
-                        with(ProtoUtil) {
-                            function.addInputSpecs(
-                                defSpecBuilderOf(
-                                    it.name,
-                                    locationBuilderOf(
-                                        param.type.javaType.typeName,
-                                        protoRef
-                                    ),
-                                    FACT
-                                )
-                            )
-                        }
-                    } ?: param.findAnnotation<Input>()
-                    .orThrowNotFound("No @Input or @Record Found for Param ${param}")
-                    .also {
-                        with(ProtoUtil) {
-                            function.addInputSpecs(
-                                defSpecBuilderOf(
-                                    it.name,
-                                    locationBuilderOf(
-                                        param.type.javaType.typeName,
-                                        protoRef
-                                    ),
-                                    PROPOSED
-                                )
-                            )
-                        }
-                    }
-            }
-
-        func.findAnnotation<Record>()
-            .orThrowNotFound("No @Record Found for Function ${func}")
-            .also { fact ->
                 with(ProtoUtil) {
-                    function.setOutputSpec(
-                        outputSpecBuilderOf(
-                            defSpecBuilderOf(
-                                fact.name,
-                                locationBuilderOf(
-                                    func.returnType.javaType.typeName,
-                                    protoRef
-                                ),
-                                PROPOSED
-                            )
+                    function.addInputSpecs(
+                        defSpecBuilderOf(
+                            param.name,
+                            locationBuilderOf(
+                                param.type,
+                                protoRef
+                            ),
+                            if (param.recordType == RecordType.Existing) FACT else PROPOSED
                         )
                     )
                 }
+            }
+
+            with(ProtoUtil) {
+                function.setOutputSpec(
+                    outputSpecBuilderOf(
+                        defSpecBuilderOf(
+                            func.name,
+                            locationBuilderOf(
+                                func.returnType,
+                                protoRef
+                            ),
+                            PROPOSED
+                        )
+                    )
+                )
             }
 
         return function.build()

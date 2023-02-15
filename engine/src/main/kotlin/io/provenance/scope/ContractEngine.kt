@@ -4,29 +4,23 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.google.protobuf.Message
-import io.grpc.Status
-import io.grpc.StatusRuntimeException
 import io.provenance.metadata.v1.ScopeResponse
-import io.provenance.scope.classloader.ClassLoaderCache
-import io.provenance.scope.classloader.MemoryClassLoader
 import io.provenance.scope.contract.proto.Contracts
 import io.provenance.scope.contract.proto.Contracts.Contract
 import io.provenance.scope.contract.proto.Contracts.ExecutionResult.Result.SKIP
 import io.provenance.scope.contract.proto.Envelopes.Envelope
 import io.provenance.scope.contract.proto.Specifications.ContractSpec
-import io.provenance.scope.definition.DefinitionService
 import io.provenance.scope.encryption.ecies.ECUtils
 import io.provenance.scope.encryption.model.KeyRef
 import io.provenance.scope.objectstore.client.CachedOsClient
 import io.provenance.scope.objectstore.util.base64Decode
-import io.provenance.scope.objectstore.util.toHex
 import io.provenance.scope.util.ContractDefinitionException
 import io.provenance.scope.util.ProtoUtil.proposedRecordOf
-import io.provenance.scope.util.forThread
 import io.provenance.scope.util.scopeOrNull
 import io.provenance.scope.util.toMessageWithStackTrace
 import io.provenance.scope.util.toUuid
 import io.provenance.scope.util.withoutLogging
+import org.bouncycastle.asn1.x500.style.RFC4519Style.name
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.security.PublicKey
@@ -55,62 +49,30 @@ class ContractEngine(
 
         val spec = osClient.getRecord(contract.spec.dataLocation.classname, contract.spec.dataLocation.ref.hash.base64Decode(), encryptionKeyRef).get() as? ContractSpec
                 ?: throw ContractDefinitionException("Spec stored at contract.spec.dataLocation is not of type ${ContractSpec::class.java.name}")
+        val wasm = osClient.getJar(spec.definition.resourceLocation.ref.hash.base64Decode(), encryptionKeyRef).get().readAllBytes()
 
-        val classLoaderKey = "${spec.definition.resourceLocation.ref.hash}-${contract.definition.resourceLocation.ref.hash}-${spec.functionSpecsList.first().outputSpec.spec.resourceLocation.ref.hash}"
-        val memoryClassLoader = ClassLoaderCache.classLoaderCache.get(classLoaderKey) {
-            MemoryClassLoader("", ByteArrayInputStream(ByteArray(0)))
-        }
-
-        return memoryClassLoader.forThread {
-            internalRun(
+        return internalRun(
                 contract,
+                wasm,
                 envelope,
                 encryptionKeyRef,
                 signingKeyRef,
-                memoryClassLoader,
                 affiliateSharePublicKeys,
                 spec
             )
-        }
     }
 
     private fun internalRun(
         contract: Contracts.Contract,
+        contractWasmBytes: ByteArray,
         envelope: Envelope,
         encryptionKeyRef: KeyRef,
         signingKeyRef: KeyRef,
-        memoryClassLoader: MemoryClassLoader,
         shares: Collection<PublicKey>,
         spec: ContractSpec
     ): Envelope {
-        val definitionService = DefinitionService(osClient, memoryClassLoader)
-
         val signer = signingKeyRef.signer()
         val scope = envelope.scopeOrNull()
-
-        // Load contract spec class
-        val contractSpecClass = try {
-            definitionService.loadClass(encryptionKeyRef, spec.definition)
-        } catch (e: StatusRuntimeException) {
-            if (e.status.code == Status.Code.NOT_FOUND) {
-                throw ContractDefinitionException(
-                    """
-                        Unable to load contract jar. Verify that you're using a jar that has been bootstrapped.
-                        [classname: ${spec.definition.resourceLocation.classname}]
-                        [public key: ${encryptionKeyRef.publicKey.toHex()}]
-                        [hash: ${spec.definition.resourceLocation.ref.hash}]
-                    """.trimIndent()
-                )
-            }
-            throw e
-        }
-
-        // Ensure all the classes listed in the spec are loaded into the MemoryClassLoader
-        loadAllClasses(
-            encryptionKeyRef,
-            definitionService,
-            spec
-        )
 
         // validate contract
         contract.validateAgainst(spec)
@@ -119,9 +81,8 @@ class ContractEngine(
 
         val contractBuilder = contract.toBuilder()
         val contractWrapper = ContractWrapper(
-            contractSpecClass,
+            contractWasmBytes,
             encryptionKeyRef,
-            definitionService,
             osClient,
             contractBuilder,
             disableContractLogs,
@@ -129,7 +90,7 @@ class ContractEngine(
 
         val (execList, skipList) = contractWrapper.functions.partition { it.canExecute() }
 
-        log.trace("Skipped Records: ${skipList.map { it.fact.name }}")
+        log.trace("Skipped Records: ${skipList.map { it.method.name }}")
 
         val functionResults =
             execList
@@ -138,7 +99,7 @@ class ContractEngine(
                         withConfigurableLogging { function.invoke() }
                     } catch (t: Throwable) {
                         // Abort execution on a failed condition
-                        log.error("Error executing condition ${contractWrapper.contractClass}.${function.method.name} [Exception classname: ${t.javaClass.name}]", t)
+                        log.error("Error executing condition ${contractWrapper.contract.structure.name}.${function.method.name} [Exception classname: ${t.javaClass.name}]", t)
                         function.considerationBuilder.result = failResult(t) // TODO: how to handle failures properly
 
                         val contractForSignature = contractBuilder.build()
@@ -151,7 +112,7 @@ class ContractEngine(
                         throw ContractDefinitionException(
                             """
                                 Invoked function returned null instead of type ${Message::class.java.name}
-                                [class: ${contractWrapper.contractClass.name}]
+                                [class: ${contractWrapper.contract.structure.name}]
                                 [invoked function: ${function.method.name}]
                             """.trimIndent()
                         )
@@ -159,7 +120,7 @@ class ContractEngine(
 
                     ResultSetter {
                         signAndStore(
-                            function.fact.name,
+                            function.method,
                             result,
                             contract.toAudience(scope, shares),
                             encryptionKeyRef,
@@ -175,8 +136,8 @@ class ContractEngine(
                 ResultSetter {
                     function.considerationBuilder.resultBuilder.setResult(SKIP)
                         .outputBuilder
-                        .setName(function.fact.name)
-                        .setClassname(function.returnType.name)
+                        .setName(function.method.name)
+                        .setClassname(function.method.returnType)
                     Futures.immediateFuture(Unit)
                 }
             }
@@ -195,43 +156,19 @@ class ContractEngine(
             .build()
     }
 
-    private fun loadAllClasses(
-        encryptionKeyRef: KeyRef,
-        definitionService: DefinitionService,
-        spec: ContractSpec
-    ) {
-        mutableListOf(spec.definition)
-            .apply {
-                add(
-                    spec.functionSpecsList
-                        .first()
-                        .outputSpec
-                        .spec
-                )
-            }.map { definition ->
-                with (definition.resourceLocation) {
-                    this to osClient.getJar(
-                        this.ref.hash.base64Decode(),
-                        encryptionKeyRef,
-                    )
-                }
-            }.toList()
-            .map { (resourceLocation, future) -> resourceLocation to future.get() }
-            .forEach { (location, inputStream) ->  definitionService.addJar(location.ref.hash, inputStream) }
-    }
-
     private fun signAndStore(
-        name: String,
-        message: Message,
+        method: P8eFunction,
+        message: ByteArray,
         audience: Set<PublicKey>,
         encryptionKeyRef: KeyRef,
         signingKeyRef: KeyRef,
         scope: ScopeResponse?
     ): ListenableFuture<Contracts.ExecutionResult> {
-        val putResponse = osClient.putRecord(
-            message,
+        val putResponse = osClient.putJar(
+            ByteArrayInputStream(message),
             signingKeyRef,
             encryptionKeyRef,
+            message.size.toLong(),
             audience
         )
 
@@ -241,7 +178,7 @@ class ContractEngine(
             // todo: it would appear that the ancestorHash isn't a thing on chain anymore? can we remove this?
             val ancestorHash = scope?.recordsList
                 ?.map { it.record }
-                ?.find { it.name == name }
+                ?.find { it.name == method.name }
                 ?.outputsList
                 ?.first() // todo: how to handle multiple outputs?
                 ?.hash
@@ -249,9 +186,9 @@ class ContractEngine(
             Contracts.ExecutionResult.newBuilder()
                 .setResult(Contracts.ExecutionResult.Result.PASS)
                 .setOutput(proposedRecordOf(
-                    name,
+                    method.name,
                     sha512,
-                    message.javaClass.name,
+                    method.returnType,
                     scope?.scope?.scopeIdInfo?.scopeUuid?.toUuid(),
                     ancestorHash
                 )

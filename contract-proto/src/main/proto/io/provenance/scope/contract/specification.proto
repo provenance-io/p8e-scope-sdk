@@ -18,6 +18,15 @@ message ContractSpec {
     repeated FunctionSpec function_specs = 6;
 }
 
+message ContractSpecV2 {
+    LocationV2 wasm = 1;
+    LocationV2 source = 2;
+}
+
+message LocationV2 {
+    string hash = 1;
+}
+
 message ConditionSpec {
     string func_name = 1;
     repeated DefinitionSpec input_specs = 2;

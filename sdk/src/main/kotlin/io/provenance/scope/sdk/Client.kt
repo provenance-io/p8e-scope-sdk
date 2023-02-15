@@ -39,13 +39,17 @@ import io.opentracing.util.GlobalTracer;
 import com.google.protobuf.Any as ProtoAny;
 import io.provenance.scope.contract.proto.Commons
 import io.provenance.scope.contract.proto.Envelopes
+import io.provenance.scope.contract.proto.Specifications.ContractSpecV2
 import io.provenance.scope.encryption.util.getAddress
 import io.provenance.scope.encryption.util.toPublicKey
+import io.provenance.scope.objectstore.util.base64Decode
 import io.provenance.scope.util.AffiliateNotFoundException
 import io.provenance.scope.util.EnvelopeAlreadySignedException
 import io.provenance.scope.util.TypeUrls
 import io.provenance.scope.util.setValue
+import io.provenance.scope.util.sha256String
 import java.time.OffsetDateTime
+import java.util.UUID
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -123,12 +127,6 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
         )
     }
 
-    /**
-     * The [ProtoIndexer] utility class to use for generating an indexable map of record values from a scope
-     * according to the indexing behavior defined on the contract proto messages.
-     */
-    val indexer: ProtoIndexer = ProtoIndexer(inner.osClient, inner.config.mainNet, affiliate)
-
     companion object {
         // TODO add a set of affiliates here - every time we create a new Client we should add to it and verify the new affiliate is unique
         private val contractHashes = ServiceLoader.load(ContractHash::class.java).toList() // todo: can we use the contract/proto hashes to generate a dynamic list of what should/should not be loaded from memory vs. system class loader
@@ -138,25 +136,22 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
     /**
      * Create a new contract session against an existing scope on chain.
      *
-     * @param [clazz] the contract class to run in this session
+     * @param [contract] the contract's wasm bytes
      * @param [scope] the [ScopeResponse] queried from chain. Note: this must include all sessions/records on the scope
      *
      * @return a [Session Builder][Session.Builder] object allowing you to set proposed record (Input) values, contract participants and
      *          various properties on the session before proceeding to execution.
      */
-    fun<T: P8eContract> newSession(clazz: Class<T>, scope: ScopeResponse): Session.Builder {
-        val contractHash = getContractHash(clazz)
-        val protoHash = clazz.methods
-            .find { Message::class.java.isAssignableFrom(it.returnType) }
-            ?.returnType
-            ?.let { getProtoHash(contractHash, it) }
-            .orThrow {
-                IllegalStateException("Unable to find hash for proto JAR for return types on ${clazz.name}")
-            }
-        val contractRef = Commons.ProvenanceReference.newBuilder().setHash(contractHash.getHash()).build()
-        val protoRef = Commons.ProvenanceReference.newBuilder().setHash(protoHash.getHash()).build()
+    fun<T: P8eContract> newSession(contractSpecHash: String, scope: ScopeResponse): Session.Builder {
+        val spec = inner.osClient.getJar(contractSpecHash.base64Decode(), affiliate.encryptionKeyRef).get().let(ContractSpecV2::parseFrom)
 
-        val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
+//        val contractAndProtoHash = contract.sha256String() // todo: how are we passing in contract
+        val contractRef = Commons.ProvenanceReference.newBuilder().setHash(contractSpecHash).build()
+        val protoRef = Commons.ProvenanceReference.newBuilder().setHash(contractSpecHash).build()
+
+        val contractBytes = inner.osClient.getJar(spec.wasm.hash.base64Decode(), affiliate.encryptionKeyRef).get().readAllBytes()
+
+        val contractSpec = dehydrateSpec(contractBytes, contractRef, protoRef)
 
         return Session.Builder(scope.scope.scopeSpecIdInfo.scopeSpecUuid.toUuid(), inner.affiliateRepository)
             .also { it.client = this } // TODO remove when class is moved over
@@ -171,7 +166,7 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
      * Create a new contract session against a new scope. Both the provided contract and scope specification must have been
      * properly bootstrapped in order for the messages produced by executing this session to be accepted by the Provenance chain.
      *
-     * @param [clazz] the contract class to run in this session
+     * @param [contract] the contract's wasm bytes
      * @param [scopeSpecificationDef] the [P8eScopeSpecification] class annotated with the [ScopeSpecificationDefinition]
      *          annotation. Note: In order for this session to be written/accepted by the Provenance chain, the contract class
      *          must be allowed to run against this scope specification via the [ScopeSpecification][io.provenance.scope.contract.annotations.ScopeSpecification] annotation.
@@ -179,27 +174,24 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
      * @return a [Session Builder][Session.Builder] object allowing you to set proposed record (Input) values, contract participants and
      *          various properties on the session before proceeding to execution.
      */
-    fun<T: P8eContract, S: P8eScopeSpecification> newSession(clazz: Class<T>, scopeSpecificationDef: Class<S>): Session.Builder {
-        val contractHash = getContractHash(clazz)
-        val protoHash = clazz.methods
-            .find { Message::class.java.isAssignableFrom(it.returnType) }
-            ?.returnType
-            ?.let { getProtoHash(contractHash, it) }
-            .orThrow {
-                IllegalStateException("Unable to find hash for proto JAR for return types on ${clazz.name}")
-            }
-        val contractRef = Commons.ProvenanceReference.newBuilder().setHash(contractHash.getHash()).build()
-        val protoRef = Commons.ProvenanceReference.newBuilder().setHash(protoHash.getHash()).build()
+    fun<T: P8eContract, S: P8eScopeSpecification> newSession(contractSpecHash: String, scopeSpecUuid: UUID): Session.Builder {
+        val spec = inner.osClient.getJar(contractSpecHash.base64Decode(), affiliate.encryptionKeyRef).get().let(ContractSpecV2::parseFrom)
 
-        val contractSpec = dehydrateSpec(clazz.kotlin, contractRef, protoRef)
+//        val contractAndProtoHash = contract.sha256String() // todo: how are we passing in contract
+        val contractRef = Commons.ProvenanceReference.newBuilder().setHash(contractSpecHash).build()
+        val protoRef = Commons.ProvenanceReference.newBuilder().setHash(contractSpecHash).build()
 
-        val scopeSpecAnnotation = scopeSpecificationDef.getAnnotation(ScopeSpecificationDefinition::class.java)
+        val contractBytes = inner.osClient.getJar(spec.wasm.hash.base64Decode(), affiliate.encryptionKeyRef).get().readAllBytes()
 
-        requireNotNull(scopeSpecAnnotation) {
-            "The annotation for the scope specifications must not be null"
-        }
+        val contractSpec = dehydrateSpec(contractBytes, contractRef, protoRef)
 
-        return Session.Builder(scopeSpecAnnotation.uuid.toUuid(), inner.affiliateRepository)
+//        val scopeSpecAnnotation = scopeSpecificationDef.getAnnotation(ScopeSpecificationDefinition::class.java)
+//
+//        requireNotNull(scopeSpecAnnotation) {
+//            "The annotation for the scope specifications must not be null"
+//        }
+
+        return Session.Builder(scopeSpecUuid, inner.affiliateRepository)
             .also { it.client = this } // TODO remove when class is moved over
             .setContractSpec(contractSpec)
             .setProvenanceReference(contractRef)
@@ -435,18 +427,6 @@ class Client(val inner: SharedClient, val affiliate: Affiliate) : Closeable {
         ).filterNotNull()
 
         return Triple(granter, grantee, typeUrls)
-    }
-
-    private fun <T: P8eContract> getContractHash(clazz: Class<T>): ContractHash {
-        return contractHashes.find {
-            it.getClasses()[clazz.name] == true
-        }.orThrow { ContractBootstrapException("Unable to find ContractHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
-    }
-
-    private fun getProtoHash(contractHash: ContractHash, clazz: Class<*>): ProtoHash {
-        return protoHashes.find {
-            it.getUuid() == contractHash.getUuid() && it.getClasses()[clazz.name] == true
-        }.orThrow { ContractBootstrapException("Unable to find ProtoHash instance to match ${clazz.name}, please verify you are running a Provenance bootstrapped JAR.") }
     }
 
     private fun <T : Any, X : Throwable> T?.orThrow(supplier: () -> X) = this ?: throw supplier()

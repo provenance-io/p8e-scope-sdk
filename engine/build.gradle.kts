@@ -14,6 +14,9 @@ dependencies {
     implementation("com.google.protobuf", "protobuf-java-util", Version.protobuf)
     implementation("io.grpc", "grpc-protobuf", Version.grpc_version)
 
+    // WASM runtime
+    implementation("io.github.kawamuray.wasmtime", "wasmtime-java", Version.wasmer_version)
+
     implementation("org.bouncycastle", "bcpkix-jdk15on", Version.bouncy_castle)
 
     // Align versions of all Kotlin components
