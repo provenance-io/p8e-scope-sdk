@@ -65,7 +65,7 @@ class DirectKeyRef(publicKey: PublicKey, private val privateKey: PrivateKey) : K
 
 class ApiKeyRef(publicKey: PublicKey, private val apiSignerClient: ApiSignerClient): KeyRef(publicKey) {
     override fun getSecretKey(ephemeralPublicKey: PublicKey) =
-        apiSignerClient.secretKey(publicKey)
+        apiSignerClient.secretKey(ephemeralPublicKey)
 
     override fun signer(): SignerImpl = ApiSigner(publicKey, apiSignerClient)
 }
