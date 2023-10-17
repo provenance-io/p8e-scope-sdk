@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-include ':contracts', ':protos'
+include(":contracts", ":protos")

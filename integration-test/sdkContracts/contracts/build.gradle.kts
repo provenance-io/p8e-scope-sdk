@@ -6,19 +6,19 @@ buildscript {
 }
 
 plugins {
-    id "maven-publish"
-    id "kotlin"
+    id("maven-publish")
+    id("kotlin")
 }
 
 dependencies {
-    api project(':protos')
+    api(project(":protos"))
     implementation("io.provenance.scope:contract-base:1.0-SNAPSHOT")
 }
 
 publishing {
     publications {
-        contract(MavenPublication) {
-            artifact tasks.jar
+        create<MavenPublication>("maven") {
+            artifact("tasks.jar")
         }
     }
 }
