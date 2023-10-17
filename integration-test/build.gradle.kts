@@ -1,7 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-// import com.google.protobuf.gradle.*
 import org.gradle.kotlin.dsl.provider.gradleKotlinDslOf
 
 group = "io.provenance.p8e.p8e-integration-tests"
@@ -61,7 +60,7 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "17"
 }
 
 // sourceSets{

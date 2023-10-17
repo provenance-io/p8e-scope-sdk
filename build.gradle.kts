@@ -51,6 +51,10 @@ subprojects {
 
     val subProjectName = name
 
+    tasks.withType<Jar>() {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
     apply(plugin = "java-library")
@@ -63,13 +67,17 @@ subprojects {
 
     tasks.withType<KotlinCompile>().all {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = "17"
         }
     }
 
     java {
         withJavadocJar()
         withSourcesJar()
+    }
+
+    tasks.withType<PublishToMavenLocal> {
+        signing.setRequired(false)
     }
 
     dependencies {

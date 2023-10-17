@@ -25,13 +25,13 @@ dependencies {
     testImplementation(project(":util"))
 
     val testConfig = configurations.create("testArtifacts") {
-        extendsFrom(configurations["testCompile"])
+        extendsFrom(configurations["testImplementation"])
     }
 
     tasks.register("testJar", Jar::class.java) {
         dependsOn("testClasses")
-        classifier += "test"
-        from(sourceSets["test"].output)
+        archiveClassifier = "test"
+        from(sourceSets.test.get().output)
     }
 
     artifacts {

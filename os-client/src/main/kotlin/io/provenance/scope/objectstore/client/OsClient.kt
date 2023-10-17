@@ -91,10 +91,10 @@ open class OsClient(
             }
 
         //Bind headers to stubs
-        objectAsyncClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newStub(channel), headers)
-        objectFutureClient = MetadataUtils.attachHeaders(ObjectServiceGrpc.newFutureStub(channel), headers)
-        publicKeyBlockingClient = MetadataUtils.attachHeaders(PublicKeyServiceGrpc.newBlockingStub(channel), headers)
-        mailboxBlockingClient = MetadataUtils.attachHeaders(MailboxServiceGrpc.newBlockingStub(channel), headers)
+        objectAsyncClient = ObjectServiceGrpc.newStub(channel).withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
+        objectFutureClient = ObjectServiceGrpc.newFutureStub(channel).withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
+        publicKeyBlockingClient = PublicKeyServiceGrpc.newBlockingStub(channel).withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
+        mailboxBlockingClient = MailboxServiceGrpc.newBlockingStub(channel).withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers))
     }
 
     /**

@@ -34,7 +34,8 @@ services:
       - 16686:16686
 
   object-store:
-    image: ghcr.io/provenance-io/object-store:0.7.0
+    image: ghcr.io/provenance-io/object-store:0.7.1
+    platform: linux/amd64
     container_name: object-store
     networks:
       - p8e
@@ -58,7 +59,7 @@ services:
       - TRACE_HEADER=x-trace-header
       - LOGGING_THRESHOLD_SECONDS=1
     ports:
-      - 5000:8080
+      - 5001:8080
     volumes:
       - object_store:/mnt/data
 
@@ -89,12 +90,13 @@ services:
       - TRACE_HEADER=x-trace-header
       - LOGGING_THRESHOLD_SECONDS=1
     ports:
-      - 5001:8080
+      - 5002:8080
     volumes:
       - mp_object_store:/mnt/data
 
   provenance:
-    image: provenanceio/provenance:v1.8.0-rc8
+    image: provenanceio/provenance:v1.16.0
+    platform: linux/amd64
     container_name: provenance
     command: bash -c "cp -rn /home/provenance_seed/* /home/provenance && /usr/bin/provenanced -t --home /home/provenance start"
     networks:
