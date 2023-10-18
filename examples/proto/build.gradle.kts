@@ -1,9 +1,5 @@
-import com.google.protobuf.gradle.generateProtoTasks
 import com.google.protobuf.gradle.id
-import com.google.protobuf.gradle.ofSourceSet
-import com.google.protobuf.gradle.plugins
 import com.google.protobuf.gradle.protobuf
-import com.google.protobuf.gradle.protoc
 
 buildscript {
     repositories {
@@ -16,7 +12,7 @@ plugins {
     kotlin
     java
 
-    id("com.google.protobuf") version "0.8.16"
+    id("com.google.protobuf") version "0.9.4"
 }
 
 repositories {
@@ -38,11 +34,11 @@ dependencies {
     compileOnly("io.provenance.scope:contract-base:1.0-SNAPSHOT")
 
     // Protobuf
-    implementation("com.google.protobuf", "protobuf-java", "3.12.0")
+    implementation("com.google.protobuf", "protobuf-java", "3.24.4")
 
     // Grpc
-    implementation("io.grpc", "grpc-stub", "1.39.0")
-    implementation("io.grpc", "grpc-protobuf", "1.39.0") {
+    implementation("io.grpc", "grpc-stub", "1.58.0")
+    implementation("io.grpc", "grpc-protobuf", "1.58.0") {
         exclude("com.google.protobuf")
     }
 
@@ -53,6 +49,6 @@ dependencies {
 protobuf {
     protoc {
         // The artifact spec for the Protobuf Compiler
-        artifact = "com.google.protobuf:protoc:3.6.1"
+        artifact = "com.google.protobuf:protoc:3.24.4"
     }
 }

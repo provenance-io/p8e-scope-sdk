@@ -5,6 +5,7 @@ buildscript {
     repositories {
         mavenLocal()
         jcenter()
+        maven { url = uri("https://s01.oss.sonatype.org/content/groups/staging/") }
         mavenCentral()
         maven { url = uri("https://javadoc.jitpack.io") }
     }

@@ -3,6 +3,9 @@ import io.provenance.p8e.plugin.P8ePartyExtension
 
 buildscript {
     repositories {
+        maven {
+            url = uri("https://s01.oss.sonatype.org/content/groups/staging/")
+        }
         mavenCentral()
         maven { url = uri("https://javadoc.jitpack.io") }
     }

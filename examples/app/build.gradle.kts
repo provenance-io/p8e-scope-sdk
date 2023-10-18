@@ -22,11 +22,11 @@ dependencies {
 
 
     // https://mvnrepository.com/artifact/io.provenance/proto-kotlin
-    implementation("io.provenance", "proto-kotlin", "1.8.0-rc10")
+    implementation("io.provenance", "proto-kotlin", "1.16.0")
     implementation("io.provenance.scope:sdk:1.0-SNAPSHOT")
     implementation("io.provenance.scope:util:1.0-SNAPSHOT")
-    implementation("io.grpc:grpc-protobuf:1.39.0")
-    implementation("io.grpc:grpc-stub:1.39.0")
+    implementation("io.grpc:grpc-protobuf:1.58.0")
+    implementation("io.grpc:grpc-stub:1.58.0")
     implementation("ch.qos.logback:logback-classic:1.0.13")
 
     implementation("com.fortanix", "sdkms-client", "3.23.1408")
@@ -37,7 +37,7 @@ dependencies {
     implementation("com.github.komputing.kethereum:crypto_api:0.83.4")
     implementation("com.github.komputing.kethereum:crypto_impl_bouncycastle:0.83.4")
 
-    runtimeOnly("io.grpc:grpc-netty-shaded:1.39.0")
+    runtimeOnly("io.grpc:grpc-netty-shaded:1.58.0")
 }
 
 tasks.withType<KotlinCompile>() {
@@ -45,5 +45,5 @@ tasks.withType<KotlinCompile>() {
 }
 
 application {
-    mainClassName = project.properties["mainClass"] as String? ?: "Please provide a main class to run."
+    mainClass = project.properties["mainClass"] as String? ?: "Please provide a main class to run."
 }
