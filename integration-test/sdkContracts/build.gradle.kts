@@ -16,7 +16,7 @@ buildscript {
 }
 
 plugins {
-    id("io.provenance.p8e.p8e-publish") version "1.0-SNAPSHOT" // todo: update to new version
+    id("io.provenance.p8e.p8e-publish") version "0.8.0-rc1"
 }
 
 allprojects {
