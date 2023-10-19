@@ -1,8 +1,7 @@
 import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-// import com.google.protobuf.gradle.*
-import org.gradle.kotlin.dsl.provider.gradleKotlinDslOf
+//import org.gradle.kotlin.dsl.provider.gradleKotlinDslOf
 
 group = "io.provenance.p8e.p8e-integration-tests"
 version = (project.property("version") as String?)
@@ -11,7 +10,7 @@ version = (project.property("version") as String?)
 
 plugins {
     `jacoco`
-    kotlin("jvm") version "1.4.32"
+    kotlin("jvm") version "1.9.10"
 //     id("com.google.protobuf") version "0.8.13"
 }
 
@@ -23,7 +22,7 @@ repositories {
 }
 
 dependencies {
-    implementation(kotlin("stdlib", "1.4.32"))
+    implementation(kotlin("stdlib", "1.9.10"))
 
 //    implementation("io.provenance.p8e:p8e-sdk:0.7.+")
 //    implementation("io.provenance.p8e:p8e-contract-base:1.0-SNAPSHOT")
@@ -36,8 +35,8 @@ dependencies {
     //Don't actually know if this will work or not
 //    implementation("io.provenance.p8e.p8e-integration-tests:sdkContracts:1.0-SNAPSHOT")
 
-    compile("com.google.protobuf:protobuf-java:3.6.+")
-    compile("com.google.protobuf:protobuf-java-util:3.6.+")
+    implementation("com.google.protobuf:protobuf-java:3.24.4")
+    implementation("com.google.protobuf:protobuf-java-util:3.24.4")
 
     // protobuf(files("src/main/protos/"))
 
@@ -50,7 +49,7 @@ dependencies {
     implementation("io.provenance.scope:sdk:1.0-SNAPSHOT")
 
     //TransactionService.kt
-    implementation("io.grpc:grpc-stub:1.39.0")
+    implementation("io.grpc:grpc-stub:1.58.0")
     implementation("io.provenance.scope:util:1.0-SNAPSHOT")
     implementation("org.bouncycastle:bcprov-jdk15on:1.68")
 
@@ -61,7 +60,7 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions.jvmTarget = "17"
 }
 
 // sourceSets{
@@ -120,7 +119,7 @@ jacoco {
 
 tasks.jacocoTestReport {
     reports {
-        xml.isEnabled = true
-        csv.isEnabled = false
+        xml.required.set(true)
+        csv.required.set(false)
     }
 }

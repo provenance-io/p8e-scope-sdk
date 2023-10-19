@@ -3,19 +3,18 @@ dependencies {
 
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
 
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit")
+    testImplementation(kotlin("test"))
     testImplementation(project(":contract-proto", "testArtifacts"))
 }
 
 val testConfig = configurations.create("testArtifacts") {
-    extendsFrom(configurations["testCompile"])
+    extendsFrom(configurations["testImplementation"])
 }
 
 tasks.register("testJar", Jar::class.java) {
     dependsOn("testClasses")
-    classifier += "test"
-    from(sourceSets["test"].output)
+    archiveClassifier = "test"
+    from(sourceSets.test.get().output)
 }
 
 artifacts {
