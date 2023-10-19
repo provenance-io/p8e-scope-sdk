@@ -17,8 +17,8 @@ dependencies {
 
 publishing {
     publications {
-        create<MavenPublication>("maven") {
-            artifact("tasks.jar")
+        create<MavenPublication>("contract") {
+            artifact(tasks.jar)
         }
     }
 }

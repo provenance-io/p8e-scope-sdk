@@ -68,8 +68,8 @@ protobuf {
 
 publishing {
     publications {
-        create<MavenPublication>("maven") {
-            artifact("tasks.jar")
+        create<MavenPublication>("proto") {
+            artifact(tasks.jar)
         }
     }
 }
