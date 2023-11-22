@@ -2,7 +2,7 @@ dependencies {
     // re-exported deps
     api(project(":os-client"))
     api(project(":contract-base"))
-    implementation(project(":contract-proto"))
+    api(project(":contract-proto"))
     api(project(":encryption"))
     api(project(":engine"))
     implementation(project(":util"))
