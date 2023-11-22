@@ -4,7 +4,7 @@ object Version {
 
     const val kotlin = "1.9.10"
     const val protobuf = "3.24.4"
-    const val provenanceProtos = "1.8.0-rc10"
+    const val provenanceProtos = "1.17.0"
     const val guava = "30.1.1-jre"
     const val fortanixKms = "3.23.1408"
 
