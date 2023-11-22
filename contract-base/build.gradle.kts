@@ -1,5 +1,5 @@
 dependencies {
-    api(project(":contract-proto"))
+    implementation(project(":contract-proto"))
 
     implementation("com.google.protobuf", "protobuf-java", Version.protobuf)
 

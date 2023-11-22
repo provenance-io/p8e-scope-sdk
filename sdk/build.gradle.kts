@@ -2,13 +2,13 @@ dependencies {
     // re-exported deps
     api(project(":os-client"))
     api(project(":contract-base"))
-    api(project(":contract-proto"))
+    implementation(project(":contract-proto"))
     api(project(":encryption"))
     api(project(":engine"))
     implementation(project(":util"))
     implementation(project(":engine"))
     // https://mvnrepository.com/artifact/io.provenance/proto-kotlin
-    api("io.provenance", "proto-kotlin", Version.provenanceProtos)
+    implementation("io.provenance", "proto-kotlin", Version.provenanceProtos)
 
     compileOnly("org.slf4j", "log4j-over-slf4j", "1.7.30")
     implementation("org.jetbrains.kotlin", "kotlin-reflect", Version.kotlin)
